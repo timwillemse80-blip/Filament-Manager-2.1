@@ -32,7 +32,7 @@ export const AdminPanel: React.FC = () => {
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
 
-  // Check if Gemini API Key is configured
+  // Check if Gemini AI API Key is configured
   const isAiConfigured = !!process.env.API_KEY && process.env.API_KEY.length > 5;
 
   useEffect(() => {
@@ -47,9 +47,13 @@ export const AdminPanel: React.FC = () => {
 
   const checkLatency = async () => {
      const start = performance.now();
-     await supabase.from('filaments').select('id').limit(1);
-     const end = performance.now();
-     setLatency(Math.round(end - start));
+     try {
+       await supabase.from('filaments').select('id').limit(1);
+       const end = performance.now();
+       setLatency(Math.round(end - start));
+     } catch (e) {
+       setLatency(null);
+     }
   };
 
   const loadDashboardStats = async () => {
@@ -99,202 +103,77 @@ export const AdminPanel: React.FC = () => {
   const loadBrands = async () => { const { data } = await supabase.from('brands').select('*').order('name'); if (data) setBrands(data); };
   const loadMaterials = async () => { const { data } = await supabase.from('materials').select('*').order('name'); if (data) setMaterials(data); };
 
-  const handleDeleteFeedback = async (id: number) => {
-    if (!confirm("Weet je het zeker?")) return;
-    try {
-      const { error } = await supabase.from('feedback').delete().eq('id', id);
-      if (error) throw error;
-      loadFeedback();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleDeleteRequest = async (id: string) => {
-    if (!confirm("Weet je het zeker? Dit verwijderd alleen het verzoek uit deze lijst, niet het account.")) return;
-    try {
-      const { error } = await supabase.from('deletion_requests').delete().eq('id', id);
-      if (error) throw error;
-      loadRequests();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleAddSpool = async () => {
-    if (!newSpool.name || !newSpool.weight) return;
-    try {
-      const { error } = await supabase.from('spool_weights').insert({
-        name: newSpool.name,
-        weight: Number(newSpool.weight)
-      });
-      if (error) throw error;
-      setNewSpool({ name: '', weight: '' });
-      loadSpoolWeights();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleDeleteSpool = async (id: number) => {
-    if (!confirm("Weet je het zeker?")) return;
-    try {
-      const { error } = await supabase.from('spool_weights').delete().eq('id', id);
-      if (error) throw error;
-      loadSpoolWeights();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleAddBrand = async () => {
-    if (!newBrand) return;
-    try {
-      const { error } = await supabase.from('brands').insert({ name: newBrand });
-      if (error) throw error;
-      setNewBrand('');
-      loadBrands();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleDeleteBrand = async (id: number) => {
-    if (!confirm("Weet je het zeker?")) return;
-    try {
-      const { error } = await supabase.from('brands').delete().eq('id', id);
-      if (error) throw error;
-      loadBrands();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleAddMaterial = async () => {
-    if (!newMaterial) return;
-    try {
-      const { error } = await supabase.from('materials').insert({ name: newMaterial });
-      if (error) throw error;
-      setNewMaterial('');
-      loadMaterials();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleDeleteMaterial = async (id: number) => {
-    if (!confirm("Weet je het zeker?")) return;
-    try {
-      const { error } = await supabase.from('materials').delete().eq('id', id);
-      if (error) throw error;
-      loadMaterials();
-    } catch (e: any) { alert(e.message); }
-  };
-
-  const handleCopySql = () => { navigator.clipboard.writeText(sqlSetupCode); setCopiedSql(true); setTimeout(() => setCopiedSql(false), 2000); };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) { 
-      setLogoFile(file); 
-      setPreviewUrl(URL.createObjectURL(file)); 
-      setLogoStatus('idle'); 
-    }
-  };
-
-  const handleSaveLogo = async () => {
-    if (!logoFile || !previewUrl) return;
-    setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(logoFile);
-      reader.onload = async () => {
-        const { error } = await supabase.from('global_settings').upsert({ key: 'app_logo', value: reader.result as string }, { onConflict: 'key' });
-        if (error) throw error;
-        setLogoStatus('success');
-        setLogoMsg('Logo opgeslagen!');
-        await refreshLogo();
-      };
-    } catch (e: any) { 
-      setLogoStatus('error'); 
-      setLogoMsg(e.message); 
-    } finally { 
-      setIsUploading(false); 
-    }
-  };
-
-  const sqlSetupCode = `-- REPARATIE & SETUP SCRIPT (Voer dit uit in Supabase SQL Editor)
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  is_pro boolean default false,
-  updated_at timestamptz default now()
-);
-alter table public.profiles add column if not exists updated_at timestamptz default now();
-alter table public.profiles enable row level security;
-drop policy if exists "Users view own profile" on public.profiles;
-drop policy if exists "Admins manage profiles" on public.profiles;
-create policy "Users view own profile" on public.profiles for select using (auth.uid() = id);
-create policy "Admins manage profiles" on public.profiles for all using (true) with check (true);
-`;
-
   return (
-    <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
-       <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 space-y-6">
-             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
-                <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
-                <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
-                <button onClick={() => setActiveTab('sql')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'sql' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Database size={18}/> SQL Setup</button>
-                <button onClick={() => setActiveTab('data')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'data' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Tag size={18}/> Merken & Materialen</button>
-                <button onClick={() => setActiveTab('logo')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'logo' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><ImageIcon size={18}/> Logo</button>
-                <button onClick={() => setActiveTab('spools')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'spools' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Weight size={18}/> Spoel Gewichten</button>
-                <button onClick={() => setActiveTab('feedback')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'feedback' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><MessageSquare size={18}/> Feedback</button>
-                <button onClick={() => setActiveTab('requests')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'requests' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><UserX size={18}/> Verzoeken</button>
-             </div>
+    <div className="max-w-7xl mx-auto pb-20 animate-fade-in flex flex-col gap-8">
+       
+       {/* TOP SECTION: MAIN ADMIN INTERFACE */}
+       <div className="space-y-6 w-full">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
+             <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
+             <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
+             <button onClick={() => setActiveTab('data')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'data' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Tag size={18}/> Merken & Materialen</button>
+             <button onClick={() => setActiveTab('logo')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'logo' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><ImageIcon size={18}/> Logo</button>
+             <button onClick={() => setActiveTab('feedback')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'feedback' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><MessageSquare size={18}/> Feedback</button>
+          </div>
 
+          <div className="min-h-[400px]">
              {activeTab === 'dashboard' && (
-                <div className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Geregistreerde Gebruikers</h3>
-                         <p className="text-3xl font-black text-slate-800 dark:text-white">{users.length}</p>
-                      </div>
-                      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Openstaande Feedback</h3>
-                         <p className="text-3xl font-black text-purple-600">{feedbacks.filter(f => !f.is_read).length}</p>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3">Totaal Gebruikers</h3>
+                      <p className="text-5xl font-black text-slate-800 dark:text-white">{users.length}</p>
+                   </div>
+                   <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3">Openstaande Feedback</h3>
+                      <p className="text-5xl font-black text-purple-600">{feedbacks.filter(f => !f.is_read).length}</p>
                    </div>
                 </div>
              )}
 
              {activeTab === 'users' && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                   <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                         <Users size={20} className="text-blue-500"/> Gebruikers ({users.length})
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                         <Users size={24} className="text-blue-500"/> Gebruikers ({users.length})
                       </h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Auto-logout bij statuswijziging</p>
                    </div>
                    <div className="overflow-x-auto">
                      <table className="w-full text-left">
                         <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
                            <tr>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Gebruiker</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase text-center">Status</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase text-center">Data</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">E-mailadres / ID</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Voorraad</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                            {users.map(u => (
-                              <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                 <td className="p-4">
-                                    <div className="font-bold text-sm dark:text-white">{u.email}</div>
-                                    <div className="text-[10px] text-slate-400 font-mono">{u.id}</div>
+                              <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                 <td className="p-6">
+                                    <div className="font-bold text-base dark:text-white">{u.email}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono mt-1">{u.id}</div>
                                  </td>
-                                 <td className="p-4 text-center">
+                                 <td className="p-6 text-center">
                                     {u.email?.toLowerCase() === 'timwillemse@hotmail.com' ? (
-                                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm mx-auto">
-                                          <Shield size={12} fill="currentColor" /> BEHEERDER
+                                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm mx-auto">
+                                          <Shield size={14} fill="currentColor" /> BEHEERDER
                                        </span>
                                     ) : (
                                        <button 
-                                          onClick={(e) => { e.preventDefault(); toggleProStatus(u.id, u.is_pro); }}
+                                          onClick={() => toggleProStatus(u.id, u.is_pro)}
                                           disabled={updatingUserId === u.id}
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all relative z-10 ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'}`}
+                                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'}`}
                                        >
-                                          {updatingUserId === u.id ? <Loader2 size={12} className="animate-spin" /> : (u.is_pro ? <Crown size={12} fill="currentColor" /> : <Plus size={12} />)}
-                                          {u.is_pro ? 'PRO' : 'Maak PRO'}
+                                          {updatingUserId === u.id ? <Loader2 size={14} className="animate-spin" /> : (u.is_pro ? <Crown size={14} fill="currentColor" /> : <Plus size={14} />)}
+                                          {u.is_pro ? 'PRO STATUS' : 'MAAK PRO'}
                                        </button>
                                     )}
                                  </td>
-                                 <td className="p-4 text-center text-xs font-bold text-slate-500 uppercase">
-                                    {u.filament_count}f • {u.print_count}l
+                                 <td className="p-6 text-center text-sm font-bold text-slate-500">
+                                    <div className="flex flex-col items-center">
+                                       <span>{u.filament_count}f</span>
+                                       <span className="text-[10px] opacity-60 font-normal">{u.print_count} logs</span>
+                                    </div>
                                  </td>
                               </tr>
                            ))}
@@ -304,80 +183,71 @@ create policy "Admins manage profiles" on public.profiles for all using (true) w
                 </div>
              )}
           </div>
+       </div>
 
-          {/* RIGHT SIDEBAR: SERVER STATUS - WIDER & MORE SPACIOUS */}
-          <div className="w-full lg:w-[450px] space-y-6">
-             <div className="bg-[#0b1221] rounded-[32px] p-12 text-white shadow-2xl border border-slate-800/50">
-                <h3 className="font-bold text-[36px] mb-12 flex items-start gap-6 leading-tight">
-                   <Server size={42} className="text-[#10b981] mt-1.5"/> Server<br/>Status
-                </h3>
+       {/* BOTTOM SECTION: HORIZONTAL SERVER STATUS BAR */}
+       <div className="w-full mt-4">
+          <div className="bg-[#0b1221] rounded-[40px] p-10 text-white shadow-2xl border border-slate-800/50">
+             <div className="flex flex-col lg:flex-row items-center gap-10">
                 
-                <div className="space-y-9">
-                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold">Status</span>
-                      <span className="text-[#10b981] font-black text-xl flex items-center gap-4">
-                         <span className="w-3.5 h-3.5 bg-[#10b981] rounded-full shadow-[0_0_12px_#10b981]"></span> Online
+                {/* Header Section */}
+                <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-2 flex-shrink-0 lg:pr-10 lg:border-r lg:border-slate-800/60">
+                   <Server size={42} className="text-[#10b981]"/>
+                   <div>
+                      <h3 className="font-bold text-2xl lg:text-3xl leading-none">Server</h3>
+                      <h3 className="font-bold text-2xl lg:text-3xl leading-none">Status</h3>
+                   </div>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-x-12 gap-y-6 w-full">
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block">Status</span>
+                      <span className="text-[#10b981] font-black text-lg flex items-center gap-2">
+                         <span className="w-2.5 h-2.5 bg-[#10b981] rounded-full shadow-[0_0_10px_#10b981]"></span> Online
                       </span>
                    </div>
                    
-                   <div className="flex justify-between items-start pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold">Database</span>
-                      <div className="text-right">
-                        <span className="text-white font-black text-xl block leading-tight">Supabase</span>
-                        <span className="text-white font-black text-xl block leading-tight">(PG)</span>
-                      </div>
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block">Database</span>
+                      <span className="text-white font-black text-lg block">Supabase (PG)</span>
                    </div>
 
-                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold">Regio</span>
-                      <span className="text-slate-200 font-mono text-xl font-black tracking-tight">eu-central-1</span>
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block">Regio</span>
+                      <span className="text-slate-200 font-mono text-lg font-black">eu-central-1</span>
                    </div>
 
-                   {/* Gemini AI API Key Status */}
-                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
-                         <Sparkles size={28} className="text-purple-400" /> Gemini AI
-                      </span>
-                      <span className={`${isAiConfigured ? 'text-[#10b981]' : 'text-red-500'} font-black text-xl flex items-center gap-4`}>
-                         <span className={`w-3.5 h-3.5 ${isAiConfigured ? 'bg-[#10b981] shadow-[0_0_12px_#10b981]' : 'bg-red-500 shadow-[0_0_12px_red]'} rounded-full`}></span> {isAiConfigured ? 'Actief' : 'Niet ingesteld'}
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Sparkles size={12} className="text-purple-400" /> Gemini AI</span>
+                      <span className={`${isAiConfigured ? 'text-[#10b981]' : 'text-red-500'} font-black text-lg flex items-center gap-2`}>
+                         <span className={`w-2.5 h-2.5 ${isAiConfigured ? 'bg-[#10b981] shadow-[0_0_10px_#10b981]' : 'bg-red-500 shadow-[0_0_10px_red]'} rounded-full`}></span> {isAiConfigured ? 'Actief' : 'Mist Sleutel'}
                       </span>
                    </div>
 
-                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
-                         <Activity size={28} className="text-slate-500" /> Latency
-                      </span>
-                      <span className="text-[#10b981] font-mono text-xl font-black">
-                         {latency ? `${latency}ms` : '145ms'}
-                      </span>
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Activity size={12} className="text-slate-500" /> Latency</span>
+                      <span className="text-[#10b981] font-mono text-lg font-black">{latency ? `${latency}ms` : '---'}</span>
                    </div>
 
-                   <div className="flex justify-between items-start pb-5 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
-                         <Shield size={28} className="text-slate-500" /> App<br/>Versie
-                      </span>
-                      <span className="text-[#3b82f6] font-mono text-xl font-black">
-                         2.1.13
-                      </span>
-                   </div>
-
-                   {/* Stats Section */}
-                   <div className="pt-10">
-                      <h4 className="text-[16px] font-black text-slate-500 uppercase tracking-[0.2em] mb-10 opacity-70">
-                         STATISTIEKEN<br/>(SCHATTING)
-                      </h4>
-                      <div className="grid grid-cols-2 gap-6">
-                         <div className="bg-[#1a2333] py-12 px-6 rounded-[32px] text-center border border-slate-800 transition-all hover:bg-[#1e2a3d] hover:border-slate-700 flex flex-col items-center justify-center min-h-[190px] shadow-lg">
-                            <span className="block text-[64px] font-black leading-none mb-4">{tableCounts.logs || 14}</span>
-                            <span className="text-[14px] text-slate-500 uppercase font-black tracking-widest">LOGBOEK</span>
-                         </div>
-                         <div className="bg-[#1a2333] py-12 px-6 rounded-[32px] text-center border border-slate-800 transition-all hover:bg-[#1e2a3d] hover:border-slate-700 flex flex-col items-center justify-center min-h-[190px] shadow-lg">
-                            <span className="block text-[64px] font-black leading-none mb-4">{tableCounts.filaments || 66}</span>
-                            <span className="text-[14px] text-slate-500 uppercase font-black tracking-widest">FILAMENTEN</span>
-                         </div>
-                      </div>
+                   <div className="space-y-1">
+                      <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Shield size={12} className="text-slate-500" /> Versie</span>
+                      <span className="text-[#3b82f6] font-mono text-lg font-black">2.1.18</span>
                    </div>
                 </div>
+
+                {/* Stats Blocks */}
+                <div className="flex gap-4 flex-shrink-0 w-full lg:w-auto border-t lg:border-t-0 lg:border-l border-slate-800/60 pt-8 lg:pt-0 lg:pl-10">
+                   <div className="bg-[#1a2333] py-4 px-6 rounded-2xl flex-1 lg:flex-none flex items-center gap-4 border border-slate-800 transition-all hover:border-slate-700 min-w-[140px]">
+                      <span className="text-3xl font-black text-white">{tableCounts.logs || 0}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-tight">PRINT<br/>LOGS</span>
+                   </div>
+                   <div className="bg-[#1a2333] py-4 px-6 rounded-2xl flex-1 lg:flex-none flex items-center gap-4 border border-slate-800 transition-all hover:border-slate-700 min-w-[140px]">
+                      <span className="text-3xl font-black text-white">{tableCounts.filaments || 0}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-tight">FILA<br/>MENTEN</span>
+                   </div>
+                </div>
+
              </div>
           </div>
        </div>
