@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" width="1600" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.05"/>
+    </pattern>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3B82F6" />
+        <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGrad)" />
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- Center Group -->
+  <g transform="translate(800, 200)">
+    
+    <!-- Logo (Left of center) -->
+    <g transform="translate(-350, -80) scale(6.5)">
+       <path d="M21 12 L21 3.5" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+       <path d="M21 3.5 L15 3.5" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+       <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+       <circle cx="12" cy="12" r="2.5" fill="#1E40AF" stroke="none" />
+    </g>
+
+    <!-- Text (Right of center) -->
+    <g transform="translate(-160, -10)">
+      <text font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="80" fill="white" x="0" y="0">
+        Filament Manager
+      </text>
+      <text font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="32" fill="#94a3b8" x="5" y="50">
+        De slimme voorraad app voor makers.
+      </text>
+    </g>
+  </g>
+  
+  <!-- Decorative Elements -->
+  <circle cx="100" cy="300" r="150" fill="#3b82f6" opacity="0.05" filter="blur(40px)" />
+  <circle cx="1500" cy="50" r="100" fill="#f97316" opacity="0.05" filter="blur(40px)" />
+</svg>
