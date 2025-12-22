@@ -1,11 +1,5 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { AiSuggestion } from "../types";
-
-// Volgens de nieuwste richtlijnen: initialiseer de client direct met process.env.API_KEY
-const getAiClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-};
 
 const cleanJsonString = (str: string): string => {
   if (!str) return "{}";
@@ -20,40 +14,34 @@ const cleanJsonString = (str: string): string => {
 
 export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggestion> => {
   try {
-    const ai = getAiClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
     
-    // Gebruik gemini-3-flash-preview voor snelle analyse taken
-    const modelId = 'gemini-3-flash-preview';
-
-    const prompt = `
-      Analyseer deze afbeelding van een filament spoel.
-      Extracteer gegevens in JSON:
-      - brand: Merknaam.
-      - material: Materiaal type (PLA, PETG, etc).
-      - colorName: Kleurnaam in het Nederlands.
-      - colorHex: Geschatte CSS Hex code.
-      - tempNozzle: Nozzle temp (getal).
-      - tempBed: Bed temp (getal).
-      Output alleen JSON.
-    `;
-
     const response = await ai.models.generateContent({
-      model: modelId,
+      model: 'gemini-3-flash-preview',
       contents: [{
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: prompt }
+          { text: "Analyseer deze filament spoel afbeelding. Geef JSON terug met: brand, material, colorName (NL), colorHex, tempNozzle (number), tempBed (number)." }
         ]
       }],
       config: { 
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            brand: { type: Type.STRING },
+            material: { type: Type.STRING },
+            colorName: { type: Type.STRING },
+            colorHex: { type: Type.STRING },
+            tempNozzle: { type: Type.NUMBER },
+            tempBed: { type: Type.NUMBER },
+          }
+        }
       }
     });
 
-    if (!response.text) throw new Error("Leeg antwoord van AI");
-    return JSON.parse(cleanJsonString(response.text));
-
+    return JSON.parse(cleanJsonString(response.text || "{}"));
   } catch (error: any) {
     console.error("Gemini Error:", error);
     throw new Error(error.message || "AI Analyse mislukt.");
@@ -62,11 +50,20 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
 
 export const suggestSettings = async (brand: string, material: string): Promise<AiSuggestion> => {
   try {
-    const ai = getAiClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Return JSON with avg tempNozzle and tempBed for ${brand} ${material} filament.`,
-      config: { responseMimeType: "application/json" }
+      contents: `Geef aanbevolen temperaturen voor ${brand} ${material} filament in JSON formaat.`,
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            tempNozzle: { type: Type.NUMBER },
+            tempBed: { type: Type.NUMBER },
+          }
+        }
+      }
     });
     return JSON.parse(cleanJsonString(response.text || "{}"));
   } catch (error) {
