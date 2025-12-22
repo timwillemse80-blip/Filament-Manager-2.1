@@ -76,7 +76,7 @@ const MissingConfigScreen = () => {
             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center font-black shrink-0">1</div>
             <div>
               <h3 className="font-bold mb-1">Ga naar Supabase.com</h3>
-              <p className="text-xs text-slate-400">Log in en open je project. Ga naar <strong>Settings</strong> (tandwiel) > <strong>API</strong>.</p>
+              <p className="text-xs text-slate-400">Log in en open je project. Ga naar <strong>Settings</strong> (tandwiel) &gt; <strong>API</strong>.</p>
             </div>
           </div>
 
@@ -96,7 +96,7 @@ const MissingConfigScreen = () => {
             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center font-black shrink-0">3</div>
             <div>
               <h3 className="font-bold mb-1">Plak in Vercel</h3>
-              <p className="text-xs text-slate-400">Ga naar je Vercel Dashboard > <strong>Settings</strong> > <strong>Environment Variables</strong> en voeg beide toe.</p>
+              <p className="text-xs text-slate-400">Ga naar je Vercel Dashboard &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong> en voeg beide toe.</p>
             </div>
           </div>
         </div>
