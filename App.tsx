@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
 import { Inventory } from './components/Inventory';
@@ -29,7 +30,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.17"; 
+const APP_VERSION = "2.1.18"; 
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2; 
 
@@ -58,7 +59,7 @@ const NavButton = ({ view, setView, target, icon, label, count, onClick, classNa
   </button>
 );
 
-const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, isAdmin, onBecomePro, onOpenShowcase, adminBadgeCount }: any) => {
+const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, isAdmin, onBecomePro, onOpenShowcase, adminBadgeCount, avgRating }: any) => {
   return (
     <div className="flex flex-col h-full p-4 pb-8 lg:p-6 lg:pb-12 overflow-x-hidden">
       <div className="flex justify-between items-center mb-4 lg:hidden">
@@ -93,6 +94,18 @@ const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, i
       </div>
 
       <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 pb-2">
+         {/* RATING WIDGET - RESTORED TO SIDEBAR */}
+         <div className="mx-1 mb-4 p-3 bg-[#0b1221] rounded-xl border border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="flex gap-1 mb-1.5">
+               {[1, 2, 3, 4, 5].map(s => (
+                  <Star key={s} size={14} fill={s <= Math.round(avgRating) ? "#fbbf24" : "none"} className={s <= Math.round(avgRating) ? "text-amber-400" : "text-slate-700"} />
+               ))}
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold leading-tight">
+               Gebruikers beoordelen ons met een <span className="text-amber-400 ml-0.5">{avgRating.toFixed(1)}</span>
+            </p>
+         </div>
+
          {!isAdmin && (
             <button onClick={onBecomePro} className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-95">
                <Crown size={18} fill="currentColor" />
@@ -127,6 +140,7 @@ const AppContent = () => {
   const [printJobs, setPrintJobs] = useState<PrintJob[]>([]); 
   const [printers, setPrinters] = useState<Printer[]>([]); 
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
+  const [avgRating, setAvgRating] = useState<number>(5.0);
   const [settings, setSettings] = useState<AppSettings>({ lowStockThreshold: 20, theme: 'dark', unusedWarningDays: 90, enableWeeklyEmail: false });
   const [view, setView] = useState<ViewState>('dashboard');
   const [showModal, setShowModal] = useState(false);
@@ -158,6 +172,16 @@ const AppContent = () => {
       if (jData) setPrintJobs(jData);
       const { data: pData } = await supabase.from('printers').select('*').eq('user_id', userId);
       if (pData) setPrinters(pData);
+      
+      // Fetch Feedback for Rating Widget
+      const { data: feedbackData } = await supabase.from('feedback').select('rating');
+      if (feedbackData && feedbackData.length > 0) {
+         const rated = feedbackData.filter(f => f.rating > 0);
+         if (rated.length > 0) {
+            const sum = rated.reduce((acc, f) => acc + f.rating, 0);
+            setAvgRating(sum / rated.length);
+         }
+      }
     } catch (error) { console.error('Error fetching data:', error); }
   };
 
@@ -175,11 +199,8 @@ const AppContent = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- AUTO LOGOUT ON PROFILE CHANGE (PRO STATUS) ---
   useEffect(() => {
     if (!session?.user?.id) return;
-
-    // Listen for changes specifically to the current user's profile
     const channel = supabase
       .channel('profile-monitor')
       .on(
@@ -191,20 +212,12 @@ const AppContent = () => {
           filter: `id=eq.${session.user.id}`
         },
         (payload) => {
-          // Detect if is_pro changed
-          console.log("Profiel gewijzigd door beheerder:", payload.new);
           alert("Je account-status is gewijzigd door de beheerder. Je wordt nu uitgelogd om de wijzigingen door te voeren.");
-          // Small timeout to allow the alert to be read
-          setTimeout(() => {
-            supabase.auth.signOut();
-          }, 500);
+          setTimeout(() => { supabase.auth.signOut(); }, 500);
         }
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [session?.user?.id]);
 
   const lowStockFilaments = filaments.filter(f => (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold);
@@ -221,14 +234,14 @@ const AppContent = () => {
           <Logo className="w-8 h-8" />
           <span className="font-bold text-lg dark:text-white truncate">Filament Manager</span>
         </div>
-        <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} />
+        <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} />
       </aside>
 
       {isSidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
           <div className="relative w-80 bg-white dark:bg-slate-950 h-full">
-            <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} />
+            <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} />
           </div>
         </div>
       )}
@@ -247,6 +260,8 @@ const AppContent = () => {
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isAdmin} />}
            {view === 'admin' && isAdmin && <AdminPanel />}
            {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => {}} onDeleteLocation={() => {}} onSaveSupplier={() => {}} onDeleteSupplier={() => {}} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} />}
+           {view === 'support' && <SupportPage isAdmin={isAdmin} />}
+           {view === 'help' && <HelpPage />}
         </PullToRefresh>
       </main>
       {showProModal && <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-900 p-8 rounded-2xl max-w-sm text-center shadow-2xl"><Crown size={48} className="mx-auto text-amber-500 mb-4" /><h3 className="text-xl font-bold dark:text-white">Word PRO</h3><p className="text-slate-500 my-4">Deze functie is binnenkort beschikbaar!</p><button onClick={() => setShowProModal(false)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Sluiten</button></div></div>}

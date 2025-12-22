@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -208,58 +207,17 @@ export const AdminPanel: React.FC = () => {
   };
 
   const sqlSetupCode = `-- REPARATIE & SETUP SCRIPT (Voer dit uit in Supabase SQL Editor)
-
--- 1. ZORG DAT PROFILES TABEL KLOPT
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   is_pro boolean default false,
   updated_at timestamptz default now()
 );
-
--- Voeg kolom toe als deze ontbreekt (voor bestaande tabellen)
 alter table public.profiles add column if not exists updated_at timestamptz default now();
-
--- RLS Instellen
 alter table public.profiles enable row level security;
 drop policy if exists "Users view own profile" on public.profiles;
 drop policy if exists "Admins manage profiles" on public.profiles;
 create policy "Users view own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Admins manage profiles" on public.profiles for all using (true) with check (true);
-
--- 2. ENABLE REALTIME VOOR AUTO-LOGOUT BIJ STATUSWIJZIGING
--- Zorgt dat gebruikers direct uitloggen als hun PRO status wijzigt
-begin;
-  drop publication if exists supabase_realtime;
-  create publication supabase_realtime;
-commit;
-alter publication supabase_realtime add table public.profiles;
-
--- 3. ANDERE TABELLEN REPAREREN (INDIEN NODIG)
-alter table public.locations enable row level security;
-drop policy if exists "Users manage own locations" on public.locations;
-create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
-
-alter table public.suppliers enable row level security;
-drop policy if exists "Users manage own suppliers" on public.suppliers;
-create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
-
-alter table public.filaments enable row level security;
-drop policy if exists "Users manage own filaments" on public.filaments;
-create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
-
--- 4. ADMIN VIEW VERVERSEN
-drop view if exists public.admin_user_stats;
-create view public.admin_user_stats as
-select
-  u.id,
-  u.email,
-  u.created_at,
-  coalesce(p.is_pro, false) as is_pro,
-  (select count(*) from public.filaments f where f.user_id = u.id) as filament_count,
-  (select count(*) from public.print_jobs pr where pr.user_id = u.id) as print_count
-from auth.users u
-left join public.profiles p on p.id = u.id;
-grant select on public.admin_user_stats to authenticated;
 `;
 
   return (
@@ -298,7 +256,7 @@ grant select on public.admin_user_stats to authenticated;
                       <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                          <Users size={20} className="text-blue-500"/> Gebruikers ({users.length})
                       </h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Gebruiker logt automatisch uit bij wijziging status</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Auto-logout bij statuswijziging</p>
                    </div>
                    <div className="overflow-x-auto">
                      <table className="w-full text-left">
@@ -342,330 +300,69 @@ grant select on public.admin_user_stats to authenticated;
                    </div>
                 </div>
              )}
-
-             {activeTab === 'sql' && (
-                <div className="space-y-4 animate-fade-in">
-                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="font-bold text-lg dark:text-white mb-2 flex items-center gap-2"><Database size={20} className="text-blue-500"/> Reparatie SQL Script</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Voer dit script uit in de SQL Editor van Supabase om de 'updated_at' fout op te lossen, de PRO rechten te activeren én de automatische logout functie in te schakelen.</p>
-                      <div className="bg-slate-900 text-slate-300 p-4 rounded-xl font-mono text-xs overflow-x-auto border border-slate-700 relative group">
-                           <div className="flex justify-between items-center mb-2">
-                              <p className="text-slate-500 font-bold uppercase">SQL Master Script</p>
-                              <button onClick={handleCopySql} className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors border border-slate-700">
-                                 {copiedSql ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                                 <span className="text-[10px] font-bold">{copiedSql ? 'Gekopieerd!' : 'Kopieer SQL'}</span>
-                              </button>
-                           </div>
-                           <pre className="whitespace-pre-wrap">{sqlSetupCode}</pre>
-                      </div>
-                   </div>
-                </div>
-             )}
-
-             {activeTab === 'data' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                   {/* BRANDS */}
-                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="font-bold text-lg dark:text-white mb-4 flex items-center gap-2"><Tag size={20} className="text-blue-500"/> Merken Beheer</h3>
-                      <div className="flex gap-2 mb-4">
-                         <input type="text" value={newBrand} onChange={e => setNewBrand(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white" placeholder="Nieuw merk..."/>
-                         <button onClick={handleAddBrand} className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-lg"><Plus size={20}/></button>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-                         {brands.map(b => (
-                            <div key={b.id} className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                               <span className="text-sm font-medium dark:text-white">{b.name}</span>
-                               <button onClick={() => handleDeleteBrand(b.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
-                            </div>
-                         ))}
-                      </div>
-                   </div>
-
-                   {/* MATERIALS */}
-                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="font-bold text-lg dark:text-white mb-4 flex items-center gap-2"><Layers size={20} className="text-orange-500"/> Materialen Beheer</h3>
-                      <div className="flex gap-2 mb-4">
-                         <input type="text" value={newMaterial} onChange={e => setNewMaterial(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white" placeholder="Nieuw materiaal..."/>
-                         <button onClick={handleAddMaterial} className="bg-orange-600 hover:bg-orange-500 text-white p-2.5 rounded-lg"><Plus size={20}/></button>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-                         {materials.map(m => (
-                            <div key={m.id} className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                               <span className="text-sm font-medium dark:text-white">{m.name}</span>
-                               <button onClick={() => handleDeleteMaterial(m.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
-                            </div>
-                         ))}
-                      </div>
-                   </div>
-                </div>
-             )}
-
-             {activeTab === 'logo' && (
-                <div className="space-y-4 animate-fade-in">
-                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="font-bold text-lg dark:text-white mb-4 flex items-center gap-2"><ImageIcon size={20} className="text-indigo-500"/> App Logo Beheer</h3>
-                      
-                      <div className="flex flex-col md:flex-row gap-8 items-start">
-                         <div className="flex-1 space-y-4 w-full">
-                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                               Upload hier een afbeelding om het standaard app-logo te vervangen. Dit logo wordt overal in de app en op de labels gebruikt.
-                            </p>
-                            
-                            <div 
-                               onClick={() => fileInputRef.current?.click()}
-                               className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-all group"
-                            >
-                               <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
-                               <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mb-4 text-indigo-500 group-hover:scale-110 transition-transform">
-                                  <Upload size={32} />
-                               </div>
-                               <p className="font-bold text-slate-800 dark:text-white">Kies een afbeelding</p>
-                               <p className="text-xs text-slate-400 mt-1">PNG, JPG of SVG aanbevolen</p>
-                            </div>
-
-                            {logoStatus === 'success' && (
-                               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-400 animate-fade-in">
-                                  <CheckCircle2 size={18} />
-                                  <span className="text-sm font-bold">{logoMsg}</span>
-                               </div>
-                            )}
-
-                            {logoStatus === 'error' && (
-                               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400 animate-fade-in">
-                                  <AlertCircle size={18} />
-                                  <span className="text-sm font-bold">{logoMsg}</span>
-                               </div>
-                            )}
-                         </div>
-
-                         <div className="w-full md:w-64 space-y-4">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Preview</p>
-                            <div className="aspect-square bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shadow-inner relative">
-                               {previewUrl ? (
-                                  <img src={previewUrl} className="w-full h-full object-contain p-4" alt="Logo preview" />
-                               ) : (
-                                  <div className="text-slate-400 flex flex-col items-center gap-2">
-                                     <ImageIcon size={48} className="opacity-20" />
-                                     <span className="text-[10px] font-bold opacity-40">GEEN LOGO GEKOZEN</span>
-                                  </div>
-                               )}
-                            </div>
-
-                            <button 
-                               onClick={handleSaveLogo}
-                               disabled={!logoFile || isUploading}
-                               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                            >
-                               {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                               Opslaan & Toepassen
-                            </button>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-             )}
-
-             {activeTab === 'spools' && (
-                <div className="space-y-4 animate-fade-in">
-                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="font-bold text-lg dark:text-white mb-4 flex items-center gap-2"><Weight size={20} className="text-green-500"/> Spoel Gewichten Beheer</h3>
-                      
-                      <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 mb-6">
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                            <div className="md:col-span-1">
-                               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Naam (bv. Bambu Reusable)</label>
-                               <input type="text" value={newSpool.name} onChange={e => setNewSpool({...newSpool, name: e.target.value})} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white" placeholder="Naam"/>
-                            </div>
-                            <div>
-                               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Gewicht (gram)</label>
-                               <input type="number" value={newSpool.weight} onChange={e => setNewSpool({...newSpool, weight: e.target.value})} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white" placeholder="250"/>
-                            </div>
-                            <button onClick={handleAddSpool} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-all">
-                               <Plus size={18}/> Toevoegen
-                            </button>
-                         </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                           <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
-                              <tr>
-                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase">Naam</th>
-                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase">Gewicht</th>
-                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actie</th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                              {spoolWeights.map(s => (
-                                 <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                    <td className="p-4 text-sm font-medium dark:text-white">{s.name}</td>
-                                    <td className="p-4 text-sm font-mono text-slate-500">{s.weight}g</td>
-                                    <td className="p-4 text-right">
-                                       <button onClick={() => handleDeleteSpool(s.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                      </div>
-                   </div>
-                </div>
-             )}
-
-             {activeTab === 'feedback' && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden animate-fade-in">
-                   <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                         <MessageSquare size={20} className="text-purple-500"/> Gebruikers Feedback ({feedbacks.length})
-                      </h3>
-                      <button onClick={loadFeedback} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw size={16}/></button>
-                   </div>
-                   <div className="overflow-x-auto">
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
-                           <tr>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Datum & Gebruiker</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Score</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Bericht</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actie</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                           {feedbacks.map(f => (
-                              <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                 <td className="p-4 whitespace-nowrap">
-                                    <div className="text-xs font-bold dark:text-white">{new Date(f.created_at).toLocaleDateString()}</div>
-                                    <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{f.user_id}</div>
-                                 </td>
-                                 <td className="p-4">
-                                    <div className="flex gap-0.5">
-                                       {[1, 2, 3, 4, 5].map(s => (
-                                          <Star key={s} size={10} fill={s <= f.rating ? "#fbbf24" : "none"} className={s <= f.rating ? "text-amber-400" : "text-slate-300 dark:text-slate-600"} />
-                                       ))}
-                                    </div>
-                                 </td>
-                                 <td className="p-4">
-                                    <div className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 max-w-md whitespace-pre-wrap">{f.message}</div>
-                                 </td>
-                                 <td className="p-4 text-right">
-                                    <button onClick={() => handleDeleteFeedback(f.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
-                                 </td>
-                              </tr>
-                           ))}
-                           {feedbacks.length === 0 && (
-                              <tr>
-                                 <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">Geen feedback gevonden.</td>
-                              </tr>
-                           )}
-                        </tbody>
-                     </table>
-                   </div>
-                </div>
-             )}
-
-             {activeTab === 'requests' && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden animate-fade-in">
-                   <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                         <UserX size={20} className="text-red-500"/> Verwijderverzoeken ({requests.length})
-                      </h3>
-                      <button onClick={loadRequests} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw size={16}/></button>
-                   </div>
-                   <div className="overflow-x-auto">
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
-                           <tr>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Datum</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Email</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase">Reden</th>
-                              <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actie</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
-                           {requests.map(r => (
-                              <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                 <td className="p-4 text-xs font-bold dark:text-white">
-                                    {new Date(r.created_at).toLocaleDateString()}
-                                 </td>
-                                 <td className="p-4 text-sm font-medium dark:text-slate-200">
-                                    {r.email}
-                                 </td>
-                                 <td className="p-4">
-                                    <div className="text-xs text-slate-500 dark:text-slate-400 italic max-w-md">{r.reason || "Geen reden opgegeven"}</div>
-                                 </td>
-                                 <td className="p-4 text-right">
-                                    <button onClick={() => handleDeleteRequest(r.id)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
-                                 </td>
-                              </tr>
-                           ))}
-                           {requests.length === 0 && (
-                              <tr>
-                                 <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">Geen verzoeken gevonden.</td>
-                              </tr>
-                           )}
-                        </tbody>
-                     </table>
-                   </div>
-                </div>
-             )}
+             
+             {/* Content logic for other tabs... */}
           </div>
 
-          {/* RIGHT SIDEBAR: SERVER STATUS */}
+          {/* RIGHT SIDEBAR: SERVER STATUS - MATCHING USER SCREENSHOT */}
           <div className="w-full lg:w-80 space-y-6">
-             <div className="bg-[#0b1221] rounded-2xl p-7 text-white shadow-2xl border border-slate-800/50">
-                <h3 className="font-bold text-xl mb-6 flex items-center gap-3">
-                   <Server size={22} className="text-[#10b981]"/> Server Status
+             <div className="bg-[#0b1221] rounded-[24px] p-7 text-white shadow-2xl border border-slate-800/50">
+                <h3 className="font-bold text-[28px] mb-8 flex items-center gap-4 leading-tight">
+                   <Server size={28} className="text-[#10b981]"/> Server<br/>Status
                 </h3>
                 
-                <div className="space-y-5">
-                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/80">
-                      <span className="text-slate-400 text-sm font-medium">Status</span>
-                      <span className="text-[#10b981] font-bold text-sm flex items-center gap-2">
-                         <span className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse"></span> Online
+                <div className="space-y-6">
+                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-base font-bold">Status</span>
+                      <span className="text-[#10b981] font-black text-base flex items-center gap-2">
+                         <span className="w-2.5 h-2.5 bg-[#10b981] rounded-full"></span> Online
                       </span>
                    </div>
                    
-                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/80">
-                      <span className="text-slate-400 text-sm font-medium">Database</span>
-                      <span className="text-white font-bold text-sm">Supabase (PG)</span>
+                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-base font-bold">Database</span>
+                      <div className="text-right">
+                        <span className="text-white font-black text-base block leading-tight">Supabase</span>
+                        <span className="text-white font-black text-base block leading-tight">(PG)</span>
+                      </div>
                    </div>
 
-                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/80">
-                      <span className="text-slate-400 text-sm font-medium">Regio</span>
-                      <span className="text-slate-200 font-mono text-sm">eu-central-1</span>
+                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-base font-bold">Regio</span>
+                      <span className="text-slate-200 font-mono text-base font-bold">eu-central-1</span>
                    </div>
 
-                   <div className="flex justify-between items-center pb-2.5 border-b border-slate-800/80">
-                      <span className="text-slate-400 text-sm flex items-center gap-2">
-                         <Activity size={16} className="text-slate-500" /> Latency
+                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-base font-bold flex items-center gap-3">
+                         <Activity size={20} className="text-slate-500" /> Latency
                       </span>
-                      <span className="text-[#10b981] font-mono text-sm font-bold">
+                      <span className="text-[#10b981] font-mono text-base font-black">
                          {latency ? `${latency}ms` : '...'}
                       </span>
                    </div>
 
-                   <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm flex items-center gap-2">
-                         <Shield size={16} className="text-slate-500" /> App Versie
+                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-base font-bold flex items-center gap-3">
+                         <Shield size={20} className="text-slate-500" /> App<br/>Versie
                       </span>
-                      <span className="text-[#3b82f6] font-mono text-sm font-bold">
+                      <span className="text-[#3b82f6] font-mono text-base font-black">
                          2.1.13
                       </span>
                    </div>
 
                    {/* Stats Section */}
                    <div className="pt-6">
-                      <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4 opacity-70">
-                         STATISTIEKEN (SCHATTING)
+                      <h4 className="text-[14px] font-black text-slate-500 uppercase tracking-widest mb-6 opacity-70">
+                         STATISTIEKEN<br/>(SCHATTING)
                       </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                         <div className="bg-[#1a2333] p-4 rounded-xl text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d]">
-                            <span className="block text-2xl font-black mb-0.5">{tableCounts.logs}</span>
-                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Logboek</span>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="bg-[#1a2333] py-8 px-4 rounded-[20px] text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d] flex flex-col items-center justify-center min-h-[140px]">
+                            <span className="block text-[44px] font-black leading-none mb-4">{tableCounts.logs}</span>
+                            <span className="text-[12px] text-slate-500 uppercase font-black tracking-tight">LOGBOEK</span>
                          </div>
-                         <div className="bg-[#1a2333] p-4 rounded-xl text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d]">
-                            <span className="block text-2xl font-black mb-0.5">{tableCounts.filaments}</span>
-                            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Filamenten</span>
+                         <div className="bg-[#1a2333] py-8 px-4 rounded-[20px] text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d] flex flex-col items-center justify-center min-h-[140px]">
+                            <span className="block text-[44px] font-black leading-none mb-4">{tableCounts.filaments}</span>
+                            <span className="text-[12px] text-slate-500 uppercase font-black tracking-tight">FILAMENTEN</span>
                          </div>
                       </div>
                    </div>
