@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
 import { Inventory } from './components/Inventory';
@@ -18,9 +17,9 @@ import { ShowcaseModal } from './components/ShowcaseModal';
 import { AuthScreen } from './components/AuthScreen';
 import { AdminPanel } from './components/AdminPanel';
 import { PullToRefresh } from './components/PullToRefresh';
+import { ProModal } from './components/ProModal';
 import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield } from 'lucide-react';
 import { Logo } from './components/Logo';
-import { CreatorLogo } from './components/CreatorLogo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { supabase } from './services/supabase';
@@ -30,36 +29,79 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.18"; 
+const APP_VERSION = "2.1.23"; 
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2; 
 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
-const NavButton = ({ view, setView, target, icon, label, count, onClick, className }: any) => (
+// Proper typing for NavButton props
+interface NavButtonProps {
+  view: ViewState;
+  setView: (view: ViewState) => void;
+  target: ViewState;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+  onClick?: () => void;
+  className?: string;
+}
+
+const NavButton: React.FC<NavButtonProps> = ({ 
+  view, setView, target, icon, label, count, onClick, className 
+}) => (
   <button 
     onClick={() => {
       setView(target);
       if (onClick) onClick();
     }}
-    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium whitespace-nowrap ${
+    className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium ${
       view === target 
         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' 
         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
     } ${className || ''}`}
     title={label} 
   >
-    {icon}
-    <span>{label}</span>
+    <span className="mt-0.5 shrink-0">{icon}</span>
+    <span className="text-left flex-1 break-words">{label}</span>
     {count !== undefined && count > 0 && (
-      <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-bold min-w-[20px] text-center shadow-sm">
+      <span className="ml-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center shadow-sm shrink-0">
         {count}
       </span>
     )}
   </button>
 );
 
-const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, isAdmin, onBecomePro, onOpenShowcase, adminBadgeCount, avgRating }: any) => {
+// Proper typing for MenuHeader to fix reported TS errors
+interface MenuHeaderProps {
+  children: React.ReactNode;
+}
+
+const MenuHeader: React.FC<MenuHeaderProps> = ({ children }) => (
+  <div className="px-3 mt-6 mb-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] select-none">
+    {children}
+  </div>
+);
+
+// Proper typing for SidebarContent props
+interface SidebarContentProps {
+  view: ViewState;
+  setView: (view: ViewState) => void;
+  filaments: Filament[];
+  lowStockCount: number;
+  onClose: () => void;
+  t: (key: string) => string;
+  isAdmin: boolean;
+  onBecomePro: () => void;
+  onOpenShowcase: () => void;
+  adminBadgeCount: number;
+  avgRating: number;
+}
+
+const SidebarContent: React.FC<SidebarContentProps> = ({ 
+  view, setView, filaments, lowStockCount, onClose, t, isAdmin, 
+  onBecomePro, onOpenShowcase, adminBadgeCount, avgRating 
+}) => {
   return (
     <div className="flex flex-col h-full p-4 pb-8 lg:p-6 lg:pb-12 overflow-x-hidden">
       <div className="flex justify-between items-center mb-4 lg:hidden">
@@ -72,57 +114,83 @@ const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, i
         <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500"><X size={24} /></button>
       </div>
 
-      <div className="space-y-1 flex-1 overflow-y-auto">
-        <NavButton onClick={onClose} view={view} setView={setView} target="dashboard" icon={<LayoutDashboard size={18} />} label={t('dashboard')} />
-        <NavButton onClick={onClose} view={view} setView={setView} target="inventory" icon={<Package size={18} />} label={t('inventory')} />
-        <NavButton onClick={onClose} view={view} setView={setView} target="history" icon={<History size={18} />} label={t('printHistory')} />
-        <NavButton onClick={onClose} view={view} setView={setView} target="printers" icon={<PrinterIcon size={18} />} label={t('printers')} />
-        <NavButton onClick={onClose} view={view} setView={setView} target="shopping" icon={<ShoppingCart size={18} />} label={t('shopping')} count={lowStockCount} />
-        
-        <button
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <MenuHeader>Overzicht & Beheer</MenuHeader>
+        <div className="space-y-1">
+          <NavButton onClick={onClose} view={view} setView={setView} target="dashboard" icon={<LayoutDashboard size={18} className="text-blue-500" />} label={t('dashboard')} />
+          <NavButton onClick={onClose} view={view} setView={setView} target="inventory" icon={<Package size={18} className="text-violet-500" />} label={t('inventory')} />
+          <NavButton onClick={onClose} view={view} setView={setView} target="history" icon={<History size={18} className="text-emerald-500" />} label={t('printHistory')} />
+          <NavButton onClick={onClose} view={view} setView={setView} target="printers" icon={<PrinterIcon size={18} className="text-pink-500" />} label={t('printers')} />
+        </div>
+
+        <MenuHeader>Tools</MenuHeader>
+        <div className="space-y-1">
+          <NavButton onClick={onClose} view={view} setView={setView} target="shopping" icon={<ShoppingCart size={18} className="text-orange-500" />} label={t('shopping')} count={lowStockCount} />
+        </div>
+
+        <MenuHeader>Premium</MenuHeader>
+        <div className="space-y-2 px-1">
+          {/* Showcase is a PRO function */}
+          <button
+              onClick={() => {
+                  onClose();
+                  if(!isAdmin) onBecomePro();
+                  else onOpenShowcase();
+              }}
+              className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 group`}
+          >
+              <span className="mt-0.5 shrink-0"><Globe size={18} className="text-cyan-500" /></span>
+              <span className="flex-1 text-left break-words">{t('showcaseTitle')}</span>
+              <span className="ml-2 flex items-center gap-1.5 shrink-0">
+                <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 shadow-sm uppercase tracking-tighter">PRO</span>
+                {!isAdmin && <Lock size={12} className="text-slate-400 group-hover:text-amber-500 transition-colors" />}
+              </span>
+          </button>
+
+          <button 
             onClick={() => {
-                onClose();
-                if(!isAdmin) onBecomePro();
-                else onOpenShowcase();
-            }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium whitespace-nowrap text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800`}
-        >
-            <Globe size={18} />
-            <span>{t('showcaseTitle')}</span>
-            {!isAdmin && <Lock size={12} className="ml-auto text-amber-500" />}
-        </button>
+              onClose();
+              onBecomePro();
+            }} 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-[0.98]"
+          >
+            <Crown size={18} fill="currentColor" className="shrink-0" />
+            <span className="flex-1 text-left"> {t('becomePro')}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 pb-2">
-         {/* RATING WIDGET - RESTORED TO SIDEBAR */}
-         <div className="mx-1 mb-4 p-3 bg-[#0b1221] rounded-xl border border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
-            <div className="flex gap-1 mb-1.5">
+      <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2 pb-2">
+         <NavButton onClick={onClose} view={view} setView={setView} target="support" icon={<Coffee size={18} className="text-amber-500" />} label={t('supportTitle')} className={view !== 'support' ? "bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}/>
+         
+         <div className="flex items-center gap-1 group">
+            <NavButton onClick={onClose} view={view} setView={setView} target="settings" icon={<SettingsIcon size={18} className="text-slate-500 dark:text-slate-400" />} label={t('settings')} />
+            {isAdmin && (
+              <button 
+                onClick={() => { onClose(); setView('admin'); }}
+                className={`p-2 rounded-lg transition-all flex-shrink-0 ${view === 'admin' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10'}`}
+                title={t('admin')}
+              >
+                <ShieldCheck size={20} />
+                {adminBadgeCount > 0 && <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-900"></div>}
+              </button>
+            )}
+         </div>
+         
+         <div className="mx-1 mt-2 p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
+            <div className="flex gap-1 mb-1">
                {[1, 2, 3, 4, 5].map(s => (
-                  <Star key={s} size={14} fill={s <= Math.round(avgRating) ? "#fbbf24" : "none"} className={s <= Math.round(avgRating) ? "text-amber-400" : "text-slate-700"} />
+                  <Star key={s} size={14} fill={s <= Math.round(avgRating || 5) ? "#fbbf24" : "none"} className={s <= Math.round(avgRating || 5) ? "text-amber-400" : "text-slate-300 dark:text-slate-700"} />
                ))}
             </div>
-            <p className="text-[10px] text-slate-400 font-bold leading-tight">
-               Gebruikers beoordelen ons met een <span className="text-amber-400 ml-0.5">{avgRating.toFixed(1)}</span>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-tight">
+               {t('userRatingText')} <span className="text-amber-500 dark:text-amber-400 ml-0.5">{(avgRating || 5.0).toFixed(1)}</span>
             </p>
          </div>
 
-         {!isAdmin && (
-            <button onClick={onBecomePro} className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-95">
-               <Crown size={18} fill="currentColor" />
-               <span>{t('becomePro')}</span>
-            </button>
-         )}
-         
-         <NavButton onClick={onClose} view={view} setView={setView} target="support" icon={<Coffee size={18} className="text-amber-500" />} label={t('supportTitle')} className={view !== 'support' ? "bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}/>
-         <NavButton onClick={onClose} view={view} setView={setView} target="help" icon={<LifeBuoy size={18} className="text-purple-500" />} label={t('help')} className={view !== 'help' ? "bg-purple-50 dark:bg-purple-900/10 hover:bg-purple-100 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-400" : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"}/>
-         
-         {isAdmin && (
-            <NavButton onClick={onClose} view={view} setView={setView} target="admin" icon={<ShieldCheck size={18} />} label={t('admin')} count={adminBadgeCount} className={view !== 'admin' ? "bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"}/>
-         )}
-         <NavButton onClick={onClose} view={view} setView={setView} target="settings" icon={<SettingsIcon size={18} />} label={t('settings')} />
-         
-        <div className="flex flex-col items-center pt-2">
-          <CreatorLogo className="h-10 w-auto text-slate-800 dark:text-white" />
+        <div className="flex flex-col items-center pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest opacity-80 text-center">
+          <span>{t('madeBy')}</span>
+          <span>Tim_of_Tom</span>
         </div>
       </div>
     </div>
@@ -150,11 +218,48 @@ const AppContent = () => {
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [isSnowEnabled, setIsSnowEnabled] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
+  
+  // Showcase States
+  const [showShowcaseModal, setShowShowcaseModal] = useState(false);
+  const [showShowcasePreview, setShowShowcasePreview] = useState(false);
+  const [previewFilters, setPreviewFilters] = useState<string[]>([]);
+  const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
 
   const isAdmin = useMemo(() => {
      const email = session?.user?.email?.toLowerCase();
      return email && ADMIN_EMAILS.includes(email);
   }, [session]);
+
+  // Handle Public Shop Links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shopId = params.get('shop');
+    if (shopId) {
+      const fetchPublicStock = async () => {
+        setIsLoading(true);
+        try {
+          // Fetch filaments for this specific user
+          const { data: fData } = await supabase.from('filaments').select('*').eq('user_id', shopId);
+          // Fetch their public name from global_settings or profiles (simplified here)
+          const { data: sData } = await supabase.from('profiles').select('showcase_name').eq('id', shopId).single();
+          
+          if (fData) {
+            const filters = params.get('materials')?.split(',') || [];
+            setPublicViewData({
+              filaments: fData,
+              name: sData?.showcase_name || 'Gedeelde Voorraad',
+              filters: filters
+            });
+          }
+        } catch (e) {
+          console.error("Public fetch error", e);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchPublicStock();
+    }
+  }, []);
 
   const fetchData = async (uid?: string) => {
     const userId = uid || session?.user?.id;
@@ -225,23 +330,60 @@ const AppContent = () => {
   const totalLowStock = lowStockFilaments.length + lowStockMaterials.length;
 
   if (isLoading) return <div className="h-screen w-full flex items-center justify-center dark:bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div></div>;
+  
+  // Public Showcase View
+  if (publicViewData) {
+    return (
+      <ShowcasePreview 
+        filaments={publicViewData.filaments} 
+        onClose={() => setPublicViewData(null)} 
+        publicName={publicViewData.name}
+        initialFilters={publicViewData.filters}
+      />
+    );
+  }
+
   if (!session) return <AuthScreen onOfflineLogin={() => {}} />;
 
   return (
     <div className="h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-900 flex">
       <aside className={`hidden lg:flex flex-col w-72 bg-white dark:bg-slate-950 border-r dark:border-slate-800 transition-all duration-300 ${isDesktopSidebarOpen ? 'translate-x-0' : '-translate-x-full w-0 overflow-hidden'}`}>
         <div className="h-16 flex items-center gap-3 px-6 border-b dark:border-slate-800">
-          <Logo className="w-8 h-8" />
+          <Logo className="w-8 h-8 shrink-0" />
           <span className="font-bold text-lg dark:text-white truncate">Filament Manager</span>
         </div>
-        <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} />
+        <SidebarContent 
+          view={view} 
+          setView={setView} 
+          filaments={filaments} 
+          lowStockCount={totalLowStock} 
+          onClose={() => {}} 
+          t={t} 
+          isAdmin={isAdmin} 
+          onBecomePro={() => setShowProModal(true)} 
+          onOpenShowcase={() => setShowShowcaseModal(true)} 
+          adminBadgeCount={adminBadgeCount} 
+          avgRating={avgRating} 
+        />
       </aside>
 
       {isSidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
           <div className="relative w-80 bg-white dark:bg-slate-950 h-full">
-            <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} />
+            <SidebarContent 
+              view={view} 
+              setView={setView} 
+              filaments={filaments} 
+              lowStockCount={totalLowStock} 
+              onClose={() => setSidebarOpen(false)} 
+              t={t} 
+              isAdmin={isAdmin} 
+              onBecomePro={() => setShowProModal(true)} 
+              onOpenShowcase={() => setShowShowcaseModal(true)}
+              adminBadgeCount={adminBadgeCount} 
+              avgRating={avgRating} 
+            />
           </div>
         </div>
       )}
@@ -249,22 +391,47 @@ const AppContent = () => {
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white dark:bg-slate-950 border-b dark:border-slate-800 flex items-center px-4 justify-between">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
-          <h1 className="font-bold dark:text-white truncate">{t(view)}</h1>
+          <h1 className="font-bold dark:text-white flex-1 px-2">{t(view)}</h1>
           <button onClick={() => setIsSnowEnabled(!isSnowEnabled)} className={`p-2 rounded-full ${isSnowEnabled ? 'bg-sky-100 text-sky-600' : 'text-slate-400'}`}><Snowflake size={20} /></button>
         </header>
 
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 overflow-auto p-4 md:p-8">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isAdmin} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} />}
-           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={(id, amt) => fetchData()} onMaterialAdjust={(id, amt) => fetchData()} onDelete={() => {}} onNavigate={setView} onShowLabel={() => {}} threshold={settings.lowStockThreshold} activeGroupKey={null} onSetActiveGroupKey={() => {}} isAdmin={isAdmin} onAddClick={(type) => type === 'filament' ? setShowModal(true) : setShowMaterialModal(true)} />}
-           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} isAdmin={isAdmin} />}
-           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isAdmin} />}
+           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={(id, amt) => fetchData()} onMaterialAdjust={(id, amt) => fetchData()} onDelete={() => {}} onNavigate={setView} onShowLabel={() => {}} threshold={settings.lowStockThreshold} activeGroupKey={null} onSetActiveGroupKey={() => {}} isAdmin={isAdmin} onAddClick={(type) => type === 'filament' ? setShowModal(true) : setShowMaterialModal(true)} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} isAdmin={isAdmin} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isAdmin} onLimitReached={() => setShowProModal(true)} />}
+           {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'admin' && isAdmin && <AdminPanel />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => {}} onDeleteLocation={() => {}} onSaveSupplier={() => {}} onDeleteSupplier={() => {}} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => {}} onDeleteLocation={() => {}} onSaveSupplier={() => {}} onDeleteSupplier={() => {}} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
-           {view === 'help' && <HelpPage />}
         </PullToRefresh>
       </main>
-      {showProModal && <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-900 p-8 rounded-2xl max-w-sm text-center shadow-2xl"><Crown size={48} className="mx-auto text-amber-500 mb-4" /><h3 className="text-xl font-bold dark:text-white">Word PRO</h3><p className="text-slate-500 my-4">Deze functie is binnenkort beschikbaar!</p><button onClick={() => setShowProModal(false)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Sluiten</button></div></div>}
+      
+      {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
+      
+      {showShowcaseModal && isAdmin && (
+        <ShowcaseModal 
+          filaments={filaments} 
+          settings={settings} 
+          onUpdateSettings={setSettings} 
+          onClose={() => setShowShowcaseModal(false)} 
+          onPreview={(filters) => { 
+            setPreviewFilters(filters); 
+            setShowShowcasePreview(true); 
+          }} 
+          userId={session.user.id}
+        />
+      )}
+
+      {showShowcasePreview && (
+        <ShowcasePreview 
+          filaments={filaments} 
+          onClose={() => setShowShowcasePreview(false)} 
+          publicName={settings.showcasePublicName}
+          initialFilters={previewFilters}
+          isAdminPreview={true}
+        />
+      )}
     </div>
   );
 };

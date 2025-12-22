@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'nl' | 'en' | 'de' | 'fr' | 'es';
@@ -201,7 +200,7 @@ const translations = {
     suggestSpool: "Staat jouw spoel er niet tussen?",
     
     // Public / Showcase
-    showcaseTitle: "Showcase (Publieke Pagina)",
+    showcaseTitle: "Showcase",
     showcaseDesc: "Deel je voorraad met klanten (zonder prijzen/gewichten).",
     showcaseName: "Jouw Publieke Naam",
     enableShowcase: "Activeer Showcase Link",
@@ -287,7 +286,7 @@ const translations = {
     supportPageSubtitle: "Jouw steun houdt de servers draaiende.",
     whySupport: "Waarom steunen?",
     serverCosts: "Serverkosten",
-    serverCostsDesc: "Database en hosting kosten geld.",
+    serverCostsDesc: "Database and hosting kosten geld.",
     development: "Ontwikkeling",
     developmentDesc: "Nieuwe functies bouwen kost tijd.",
     adFree: "Altijd Reclamevrij",
@@ -495,7 +494,7 @@ const translations = {
     apply: "Apply",
     suggestSpool: "Spool not listed?",
     
-    showcaseTitle: "Showcase (Public Page)",
+    showcaseTitle: "Showcase",
     showcaseDesc: "Share your inventory with customers.",
     showcaseName: "Your Public Name",
     enableShowcase: "Enable Showcase Link",

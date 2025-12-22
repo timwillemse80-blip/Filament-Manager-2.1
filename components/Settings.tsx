@@ -1,13 +1,13 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { AppSettings, Filament, Location, Supplier } from '../types';
-import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Languages, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2 } from 'lucide-react';
+import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Languages, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2, LifeBuoy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../services/supabase';
 import { DISCORD_INVITE_URL } from '../constants';
 import { LocationManager } from './LocationManager';
 import { SupplierManager } from './SupplierManager';
+import { HelpPage } from './HelpPage';
 
 interface SettingsProps {
   settings: AppSettings;
@@ -38,7 +38,7 @@ interface SettingsProps {
   onDeleteSupplier: (id: string) => void;
 }
 
-type TabKey = 'general' | 'notifications' | 'data' | 'account' | 'management' | 'pro';
+type TabKey = 'general' | 'notifications' | 'account' | 'management' | 'pro';
 
 const BUY_ME_A_COFFEE_URL = "https://buymeacoffee.com/filamentmanager";
 
@@ -50,7 +50,7 @@ const DiscordIcon = ({ size = 20 }: { size?: number }) => (
 
 const DELETE_REASONS = [
   "Ik gebruik de app niet meer",
-  "Ik mis functionaliteiten",
+  "Ik miss functionaliteiten",
   "De app is te ingewikkeld",
   "Ik heb een andere app gevonden",
   "Technische problemen",
@@ -67,10 +67,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const { language, setLanguage, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabKey>('general');
   const [isDownloading, setIsDownloading] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-  
-  // Link Filter State - Now an Array
-  const [selectedLinkMaterials, setSelectedLinkMaterials] = useState<string[]>([]);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   
   // Deletion Request State
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
@@ -88,12 +85,6 @@ export const Settings: React.FC<SettingsProps> = ({
      { code: 'fr', label: 'FR', name: 'Français' },
      { code: 'es', label: 'ES', name: 'Español' },
   ];
-
-  // Extract unique materials for filter selection
-  const uniqueMaterials = useMemo(() => {
-     const materials = new Set(filaments.map(f => f.material).filter(Boolean));
-     return Array.from(materials).sort();
-  }, [filaments]);
 
   useEffect(() => {
      const checkPendingRequest = async () => {
@@ -150,51 +141,6 @@ export const Settings: React.FC<SettingsProps> = ({
     } else {
        window.open(DISCORD_INVITE_URL, '_blank');
     }
-  };
-
-  const generatePublicLink = () => {
-     if (!userId) return "";
-     let url = `${window.location.origin}/?shop=${userId}`;
-     
-     // Support multi-select logic in URL: &materials=PLA,PETG
-     if (selectedLinkMaterials.length > 0) {
-        // Encode each material, join by comma
-        const joined = selectedLinkMaterials.map(m => encodeURIComponent(m)).join(',');
-        url += `&materials=${joined}`;
-     }
-     return url;
-  };
-
-  const copyPublicLink = () => {
-     const link = generatePublicLink();
-     if (link) {
-        navigator.clipboard.writeText(link);
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 2000);
-     }
-  };
-
-  const toggleLinkMaterial = (mat: string) => {
-     setSelectedLinkMaterials(prev => {
-        if (prev.includes(mat)) {
-           return prev.filter(m => m !== mat);
-        } else {
-           return [...prev, mat];
-        }
-     });
-  };
-
-  const handleToggleShowcase = () => {
-     if (!isAdmin) return; // Prevent toggle if locked
-     if (!settings.showcaseEnabled) {
-        // Turning ON: Show warning
-        if (confirm(t('showcasePrivacyWarning'))) {
-           onUpdate({...settings, showcaseEnabled: true});
-        }
-     } else {
-        // Turning OFF: Just do it
-        onUpdate({...settings, showcaseEnabled: false});
-     }
   };
 
   // Initial handler for button click
@@ -309,12 +255,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   <Settings2 size={16} /> {t('tabManagement')}
                </button>
                <button 
-                  onClick={() => setActiveTab('data')}
-                  className={`px-4 py-2 rounded-t-lg font-medium flex items-center gap-2 transition-all text-sm whitespace-nowrap border-b-2 ${activeTab === 'data' ? 'border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-               >
-                  <Database size={16} /> {t('tabData')}
-               </button>
-               <button 
                   onClick={() => setActiveTab('account')}
                   className={`px-4 py-2 rounded-t-lg font-medium flex items-center gap-2 transition-all text-sm whitespace-nowrap border-b-2 ${activeTab === 'account' ? 'border-red-500 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                >
@@ -405,7 +345,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
 
                   {/* App Version & Links */}
-                  <div className="flex flex-col gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-col gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                            <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full text-slate-600 dark:text-slate-300">
@@ -426,6 +366,28 @@ export const Settings: React.FC<SettingsProps> = ({
                               {isDownloading ? <Loader2 size={14} className="animate-spin"/> : <Smartphone size={14} />}
                               APK
                            </button>
+                        )}
+                     </div>
+
+                     {/* Help & Contact Expandable Section */}
+                     <div className="border-t border-slate-100 dark:border-slate-700/50 pt-4">
+                        <button 
+                           onClick={() => setIsHelpOpen(!isHelpOpen)}
+                           className="w-full flex items-center justify-between p-3 bg-blue-50/50 dark:bg-blue-900/5 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors group"
+                        >
+                           <div className="flex items-center gap-3">
+                              <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg text-blue-600 dark:text-blue-400">
+                                 <LifeBuoy size={18} />
+                              </div>
+                              <span className="font-bold text-sm text-slate-800 dark:text-white">{t('help')}</span>
+                           </div>
+                           {isHelpOpen ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                        </button>
+
+                        {isHelpOpen && (
+                           <div className="mt-4 animate-fade-in border-l-2 border-blue-500/20 ml-5 pl-4">
+                              <HelpPage />
+                           </div>
                         )}
                      </div>
                      
@@ -463,15 +425,15 @@ export const Settings: React.FC<SettingsProps> = ({
                     <div>
                         <LocationManager 
                             locations={locations} 
-                            onSave={onSaveLocation} 
-                            onDelete={onDeleteLocation} 
+                            onSaveLocation={onSaveLocation} 
+                            onDeleteLocation={onDeleteLocation} 
                         />
                     </div>
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                         <SupplierManager 
                             suppliers={suppliers} 
-                            onSave={onSaveSupplier} 
-                            onDelete={onDeleteSupplier} 
+                            onSaveSupplier={onSaveSupplier} 
+                            onDeleteSupplier={onDeleteSupplier} 
                         />
                     </div>
                 </div>
@@ -521,48 +483,6 @@ export const Settings: React.FC<SettingsProps> = ({
                </div>
             )}
 
-            {activeTab === 'data' && (
-               <div className="space-y-6 animate-fade-in">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <button
-                        onClick={onExport}
-                        className="flex items-center justify-center gap-3 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
-                        title="Download al je data als backup bestand"
-                     >
-                        <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                           <Download size={24} />
-                        </div>
-                        <div className="text-left">
-                           <div className="font-bold text-slate-800 dark:text-white">{t('backupCreate')}</div>
-                           <div className="text-xs text-slate-500">.json export</div>
-                        </div>
-                     </button>
-
-                     <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center justify-center gap-3 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 bg-white dark:bg-slate-800 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all group"
-                        title="Herstel data vanuit een backup bestand"
-                     >
-                        <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-full text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
-                           <Upload size={24} />
-                        </div>
-                        <div className="text-left">
-                           <div className="font-bold text-slate-800 dark:text-white">{t('backupRestore')}</div>
-                           <div className="text-xs text-slate-500">.json import</div>
-                        </div>
-                     </button>
-                     
-                     <input 
-                        type="file" 
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept=".json"
-                        className="hidden"
-                     />
-                  </div>
-               </div>
-            )}
-
             {activeTab === 'account' && (
                <div className="space-y-6 animate-fade-in">
                   
@@ -581,6 +501,54 @@ export const Settings: React.FC<SettingsProps> = ({
                      >
                         <LogOut size={18} /> {t('logout')}
                      </button>
+                  </div>
+
+                  {/* Data & Backup Section - Moved here */}
+                  <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+                     <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600 dark:text-green-400">
+                           <Database size={20} />
+                        </div>
+                        <h4 className="font-bold text-lg text-slate-800 dark:text-white">{t('tabData')}</h4>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                           onClick={onExport}
+                           className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
+                           title="Download al je data als backup bestand"
+                        >
+                           <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                              <Download size={20} />
+                           </div>
+                           <div className="text-left">
+                              <div className="font-bold text-slate-800 dark:text-white text-sm">{t('backupCreate')}</div>
+                              <div className="text-[10px] text-slate-500">.json export</div>
+                           </div>
+                        </button>
+
+                        <button
+                           onClick={() => fileInputRef.current?.click()}
+                           className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 bg-white dark:bg-slate-800 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all group"
+                           title="Herstel data vanuit een backup bestand"
+                        >
+                           <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
+                              <Upload size={20} />
+                           </div>
+                           <div className="text-left">
+                              <div className="font-bold text-slate-800 dark:text-white text-sm">{t('backupRestore')}</div>
+                              <div className="text-[10px] text-slate-500">.json import</div>
+                           </div>
+                        </button>
+                        
+                        <input 
+                           type="file" 
+                           ref={fileInputRef}
+                           onChange={handleFileChange}
+                           accept=".json"
+                           className="hidden"
+                        />
+                     </div>
                   </div>
 
                   {/* Danger Zone */}
@@ -679,89 +647,6 @@ export const Settings: React.FC<SettingsProps> = ({
                            Bijv. €1,46 &rarr; €1,49 | €2,71 &rarr; €2,79
                         </p>
                      </div>
-                  </div>
-
-                  {/* --- SHOWCASE CARD --- */}
-                  <div className={`bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30 relative overflow-hidden transition-all ${!isAdmin ? 'blur-[2px] pointer-events-none select-none' : ''}`}>
-                     {/* PRO Badge */}
-                     <div className="absolute top-0 right-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-bl-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 z-10 border-b border-l border-amber-200 dark:border-amber-800">
-                        <Crown size={12} fill="currentColor" /> PRO
-                     </div>
-
-                     <h5 className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2 mb-2">
-                        <Globe size={18} /> {t('showcaseTitle')}
-                     </h5>
-                     <p className="text-sm text-slate-500 mb-4">{t('showcaseDesc')}</p>
-                     
-                     <div className="flex items-center justify-between mb-4">
-                        <span className="text-sm font-medium dark:text-slate-300">{t('enableShowcase')}</span>
-                        <button 
-                           onClick={handleToggleShowcase}
-                           className={`w-12 h-6 rounded-full transition-colors relative ${settings.showcaseEnabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-                        >
-                           <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.showcaseEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
-                     </div>
-
-                     {settings.showcaseEnabled && (
-                        <div className="space-y-4">
-                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('showcaseName')}</label>
-                              <input 
-                                 type="text" 
-                                 value={settings.showcasePublicName || ''} 
-                                 onChange={e => onUpdate({...settings, showcasePublicName: e.target.value})}
-                                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
-                                 placeholder={t('exampleShowcaseName')}
-                              />
-                           </div>
-                           
-                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase block mb-2 flex items-center gap-2">
-                                 <Filter size={12} /> Filter Link (Optioneel)
-                              </label>
-                              
-                              <div className="flex flex-wrap gap-2 mb-1">
-                                 {uniqueMaterials.map(m => {
-                                    const isSelected = selectedLinkMaterials.includes(m);
-                                    return (
-                                       <button 
-                                          key={m}
-                                          onClick={() => toggleLinkMaterial(m)}
-                                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-1 ${isSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-400'}`}
-                                       >
-                                          {isSelected && <Check size={12} strokeWidth={3} />}
-                                          {m}
-                                       </button>
-                                    );
-                                 })}
-                              </div>
-                              <p className="text-[10px] text-slate-400 mt-1">
-                                 Klik om materialen te selecteren. Alleen deze worden standaard getoond in de link.
-                              </p>
-                           </div>
-                           
-                           <div className="flex gap-2">
-                              <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 flex items-center overflow-hidden">
-                                 <span className="text-xs text-slate-500 truncate select-all">{generatePublicLink()}</span>
-                              </div>
-                              <button 
-                                 onClick={copyPublicLink}
-                                 className={`px-3 rounded-lg flex items-center justify-center transition-colors ${copiedLink ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
-                                 title="Kopieer Link"
-                              >
-                                 {copiedLink ? <Check size={16}/> : <Copy size={16}/>}
-                              </button>
-                           </div>
-
-                           <button 
-                              onClick={() => onOpenShowcase && onOpenShowcase(selectedLinkMaterials)}
-                              className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                           >
-                              <Eye size={18} /> {t('previewShowcase')}
-                           </button>
-                        </div>
-                     )}
                   </div>
 
                   {/* --- LOCKED OVERLAY --- */}

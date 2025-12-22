@@ -14,17 +14,19 @@ const cleanJsonString = (str: string): string => {
 
 export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggestion> => {
   try {
+    // Always use new GoogleGenAI({apiKey: process.env.API_KEY})
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
     
+    // Using the recommended contents object structure with parts
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{
+      contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
           { text: "Analyseer deze filament spoel afbeelding. Geef JSON terug met: brand, material, colorName (NL), colorHex, tempNozzle (number), tempBed (number)." }
         ]
-      }],
+      },
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
@@ -41,6 +43,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
       }
     });
 
+    // Access response.text directly as a property
     return JSON.parse(cleanJsonString(response.text || "{}"));
   } catch (error: any) {
     console.error("Gemini Error:", error);
@@ -50,6 +53,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
 
 export const suggestSettings = async (brand: string, material: string): Promise<AiSuggestion> => {
   try {
+    // Always use new GoogleGenAI({apiKey: process.env.API_KEY})
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -65,6 +69,7 @@ export const suggestSettings = async (brand: string, material: string): Promise<
         }
       }
     });
+    // Access response.text directly as a property
     return JSON.parse(cleanJsonString(response.text || "{}"));
   } catch (error) {
     return {}; 
