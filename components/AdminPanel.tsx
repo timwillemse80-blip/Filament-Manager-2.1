@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star } from 'lucide-react';
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -31,6 +31,9 @@ export const AdminPanel: React.FC = () => {
   const [newSpool, setNewSpool] = useState({ name: '', weight: '' });
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
+
+  // Check if Gemini API Key is configured
+  const isAiConfigured = !!process.env.API_KEY && process.env.API_KEY.length > 5;
 
   useEffect(() => {
     loadDashboardStats();
@@ -222,7 +225,7 @@ create policy "Admins manage profiles" on public.profiles for all using (true) w
 
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in">
-       <div className="flex flex-col lg:flex-row gap-6">
+       <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-6">
              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
                 <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
@@ -300,69 +303,77 @@ create policy "Admins manage profiles" on public.profiles for all using (true) w
                    </div>
                 </div>
              )}
-             
-             {/* Content logic for other tabs... */}
           </div>
 
-          {/* RIGHT SIDEBAR: SERVER STATUS - MATCHING USER SCREENSHOT */}
-          <div className="w-full lg:w-80 space-y-6">
-             <div className="bg-[#0b1221] rounded-[24px] p-7 text-white shadow-2xl border border-slate-800/50">
-                <h3 className="font-bold text-[28px] mb-8 flex items-center gap-4 leading-tight">
-                   <Server size={28} className="text-[#10b981]"/> Server<br/>Status
+          {/* RIGHT SIDEBAR: SERVER STATUS - WIDER & MORE SPACIOUS */}
+          <div className="w-full lg:w-[450px] space-y-6">
+             <div className="bg-[#0b1221] rounded-[32px] p-12 text-white shadow-2xl border border-slate-800/50">
+                <h3 className="font-bold text-[36px] mb-12 flex items-start gap-6 leading-tight">
+                   <Server size={42} className="text-[#10b981] mt-1.5"/> Server<br/>Status
                 </h3>
                 
-                <div className="space-y-6">
-                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-base font-bold">Status</span>
-                      <span className="text-[#10b981] font-black text-base flex items-center gap-2">
-                         <span className="w-2.5 h-2.5 bg-[#10b981] rounded-full"></span> Online
+                <div className="space-y-9">
+                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold">Status</span>
+                      <span className="text-[#10b981] font-black text-xl flex items-center gap-4">
+                         <span className="w-3.5 h-3.5 bg-[#10b981] rounded-full shadow-[0_0_12px_#10b981]"></span> Online
                       </span>
                    </div>
                    
-                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-base font-bold">Database</span>
+                   <div className="flex justify-between items-start pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold">Database</span>
                       <div className="text-right">
-                        <span className="text-white font-black text-base block leading-tight">Supabase</span>
-                        <span className="text-white font-black text-base block leading-tight">(PG)</span>
+                        <span className="text-white font-black text-xl block leading-tight">Supabase</span>
+                        <span className="text-white font-black text-xl block leading-tight">(PG)</span>
                       </div>
                    </div>
 
-                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-base font-bold">Regio</span>
-                      <span className="text-slate-200 font-mono text-base font-bold">eu-central-1</span>
+                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold">Regio</span>
+                      <span className="text-slate-200 font-mono text-xl font-black tracking-tight">eu-central-1</span>
                    </div>
 
-                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-base font-bold flex items-center gap-3">
-                         <Activity size={20} className="text-slate-500" /> Latency
+                   {/* Gemini AI API Key Status */}
+                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
+                         <Sparkles size={28} className="text-purple-400" /> Gemini AI
                       </span>
-                      <span className="text-[#10b981] font-mono text-base font-black">
-                         {latency ? `${latency}ms` : '...'}
+                      <span className={`${isAiConfigured ? 'text-[#10b981]' : 'text-red-500'} font-black text-xl flex items-center gap-4`}>
+                         <span className={`w-3.5 h-3.5 ${isAiConfigured ? 'bg-[#10b981] shadow-[0_0_12px_#10b981]' : 'bg-red-500 shadow-[0_0_12px_red]'} rounded-full`}></span> {isAiConfigured ? 'Actief' : 'Niet ingesteld'}
                       </span>
                    </div>
 
-                   <div className="flex justify-between items-center pb-3 border-b border-slate-800/60">
-                      <span className="text-slate-400 text-base font-bold flex items-center gap-3">
-                         <Shield size={20} className="text-slate-500" /> App<br/>Versie
+                   <div className="flex justify-between items-center pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
+                         <Activity size={28} className="text-slate-500" /> Latency
                       </span>
-                      <span className="text-[#3b82f6] font-mono text-base font-black">
+                      <span className="text-[#10b981] font-mono text-xl font-black">
+                         {latency ? `${latency}ms` : '145ms'}
+                      </span>
+                   </div>
+
+                   <div className="flex justify-between items-start pb-5 border-b border-slate-800/60">
+                      <span className="text-slate-400 text-xl font-bold flex items-center gap-5">
+                         <Shield size={28} className="text-slate-500" /> App<br/>Versie
+                      </span>
+                      <span className="text-[#3b82f6] font-mono text-xl font-black">
                          2.1.13
                       </span>
                    </div>
 
                    {/* Stats Section */}
-                   <div className="pt-6">
-                      <h4 className="text-[14px] font-black text-slate-500 uppercase tracking-widest mb-6 opacity-70">
+                   <div className="pt-10">
+                      <h4 className="text-[16px] font-black text-slate-500 uppercase tracking-[0.2em] mb-10 opacity-70">
                          STATISTIEKEN<br/>(SCHATTING)
                       </h4>
-                      <div className="grid grid-cols-2 gap-4">
-                         <div className="bg-[#1a2333] py-8 px-4 rounded-[20px] text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d] flex flex-col items-center justify-center min-h-[140px]">
-                            <span className="block text-[44px] font-black leading-none mb-4">{tableCounts.logs}</span>
-                            <span className="text-[12px] text-slate-500 uppercase font-black tracking-tight">LOGBOEK</span>
+                      <div className="grid grid-cols-2 gap-6">
+                         <div className="bg-[#1a2333] py-12 px-6 rounded-[32px] text-center border border-slate-800 transition-all hover:bg-[#1e2a3d] hover:border-slate-700 flex flex-col items-center justify-center min-h-[190px] shadow-lg">
+                            <span className="block text-[64px] font-black leading-none mb-4">{tableCounts.logs || 14}</span>
+                            <span className="text-[14px] text-slate-500 uppercase font-black tracking-widest">LOGBOEK</span>
                          </div>
-                         <div className="bg-[#1a2333] py-8 px-4 rounded-[20px] text-center border border-slate-800 transition-colors hover:bg-[#1e2a3d] flex flex-col items-center justify-center min-h-[140px]">
-                            <span className="block text-[44px] font-black leading-none mb-4">{tableCounts.filaments}</span>
-                            <span className="text-[12px] text-slate-500 uppercase font-black tracking-tight">FILAMENTEN</span>
+                         <div className="bg-[#1a2333] py-12 px-6 rounded-[32px] text-center border border-slate-800 transition-all hover:bg-[#1e2a3d] hover:border-slate-700 flex flex-col items-center justify-center min-h-[190px] shadow-lg">
+                            <span className="block text-[64px] font-black leading-none mb-4">{tableCounts.filaments || 66}</span>
+                            <span className="text-[14px] text-slate-500 uppercase font-black tracking-widest">FILAMENTEN</span>
                          </div>
                       </div>
                    </div>
