@@ -11,8 +11,9 @@ const cleanEnvVar = (val: any): string => {
   return str.replace(/^['"]|['"]$/g, '').trim();
 };
 
-// De URL die je hebt opgegeven
+// De gegevens die je hebt opgegeven
 const USER_SUPABASE_URL = 'https://znghpqfdxulxjqzpbjss.supabase.co';
+const USER_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZ2hwcWZkeHVseGpxenBianNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMTExNDUsImV4cCI6MjA4MDg4NzE0NX0.nOn0g3gffI-zzz2kbn0SrQJHphmsGeTkQDyOHDhrP7I';
 
 // Kijk in import.meta.env (Vite) of process.env (Vite Define)
 const supabaseUrl = cleanEnvVar(
@@ -24,7 +25,7 @@ const supabaseUrl = cleanEnvVar(
 const supabaseKey = cleanEnvVar(
   (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 
   (process as any).env?.VITE_SUPABASE_ANON_KEY || 
-  ''
+  USER_SUPABASE_KEY
 );
 
 // Debug logging (alleen in dev mode zichtbaar in console)
