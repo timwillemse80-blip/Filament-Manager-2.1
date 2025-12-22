@@ -34,21 +34,16 @@ import { DISCORD_INVITE_URL } from './constants';
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
 // --- CONFIGURATION ---
-const APP_VERSION = "2.1.14"; 
+const APP_VERSION = "2.2.0"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2;
 
 // Add missing isNewerVersion helper function
-/**
- * Compares two semantic version strings.
- * Returns true if newVer is strictly greater than oldVer.
- */
 const isNewerVersion = (oldVer: string, newVer: string): boolean => {
   const oldParts = oldVer.split('.').map(Number);
   const newParts = newVer.split('.').map(Number);
   const length = Math.max(oldParts.length, newParts.length);
-  
   for (let i = 0; i < length; i++) {
     const oldP = oldParts[i] || 0;
     const newP = newParts[i] || 0;
@@ -70,7 +65,6 @@ const MissingConfigScreen = () => {
           <h1 className="text-3xl font-black mb-2">Supabase Koppelen</h1>
           <p className="text-slate-400">De app kan je database nog niet vinden. Volg deze stappen om het op te lossen:</p>
         </div>
-
         <div className="space-y-4">
           <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex gap-4">
             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center font-black shrink-0">1</div>
@@ -79,7 +73,6 @@ const MissingConfigScreen = () => {
               <p className="text-xs text-slate-400">Log in en open je project. Ga naar <strong>Settings</strong> (tandwiel) &gt; <strong>API</strong>.</p>
             </div>
           </div>
-
           <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex gap-4">
             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center font-black shrink-0">2</div>
             <div className="flex-1 min-w-0">
@@ -91,7 +84,6 @@ const MissingConfigScreen = () => {
               </div>
             </div>
           </div>
-
           <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 flex gap-4">
             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center font-black shrink-0">3</div>
             <div>
@@ -100,14 +92,12 @@ const MissingConfigScreen = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-xl flex gap-3 items-start">
           <Info size={20} className="text-blue-400 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-100 leading-relaxed">
             Nadat je de variabelen hebt toegevoegd in Vercel, moet je een <strong>Redeploy</strong> doen (bij 'Deployments') om de wijzigingen door te voeren.
           </p>
         </div>
-
         <button onClick={() => window.location.reload()} className="w-full py-4 bg-white text-slate-900 font-black rounded-xl shadow-lg hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
           <RefreshCw size={20} /> Controleer opnieuw
         </button>
@@ -145,25 +135,21 @@ const DiscordIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
-const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, appVersion, isOffline, onLogout, isAdmin, onBecomePro, onOpenShowcase, adminBadgeCount, averageRating }: any) => {
+const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, appVersion, isOffline, onLogout, isAdmin, isPro, onBecomePro, onOpenShowcase, adminBadgeCount, averageRating }: any) => {
   const usagePct = Math.min(100, (filaments.length / FREE_TIER_LIMIT) * 100);
   const isNearLimit = filaments.length >= FREE_TIER_LIMIT;
+  const isProActive = isAdmin || isPro;
 
   const handleOpenDiscord = () => {
-     if (Capacitor.isNativePlatform()) {
-        window.open(DISCORD_INVITE_URL, '_system');
-     } else {
-        window.open(DISCORD_INVITE_URL, '_blank');
-     }
+     if (Capacitor.isNativePlatform()) { window.open(DISCORD_INVITE_URL, '_system'); } 
+     else { window.open(DISCORD_INVITE_URL, '_blank'); }
   };
 
   return (
     <div className="flex flex-col h-full p-4 pb-8 lg:p-6 lg:pb-12 overflow-x-hidden">
       <div className="flex justify-between items-center mb-4 lg:hidden">
          <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Logo className="w-full h-full" />
-          </div>
+          <div className="w-8 h-8 flex items-center justify-center"><Logo className="w-full h-full" /></div>
           <h2 className="font-bold text-lg dark:text-white text-slate-800">{t('menu')}</h2>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500"><X size={24} /></button>
@@ -179,25 +165,25 @@ const SidebarContent = ({ view, setView, filaments, lowStockCount, onClose, t, a
         <button
             onClick={() => {
                 onClose();
-                if(!isAdmin) onBecomePro();
+                if(!isProActive) onBecomePro();
                 else onOpenShowcase();
             }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium whitespace-nowrap text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800`}
         >
             <Globe size={18} />
             <span>{t('showcaseTitle')}</span>
-            {!isAdmin && <Lock size={12} className="ml-auto text-amber-500" />}
+            {!isProActive && <Lock size={12} className="ml-auto text-amber-500" />}
         </button>
       </div>
 
       <div className="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 pb-2">
-         {!isAdmin && (
+         {!isProActive && (
             <button onClick={onBecomePro} className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-95">
                <Crown size={18} fill="currentColor" />
                <span>{t('becomePro')}</span>
             </button>
          )}
-         {!isAdmin && (
+         {!isProActive && (
            <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-2.5">
               <div className="flex justify-between text-xs mb-1.5 font-medium text-slate-600 dark:text-slate-400">
                  <span>{t('storageLimit')}</span>
@@ -244,6 +230,7 @@ const AppContent = () => {
   const [session, setSession] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
 
   // Data State
   const [filaments, setFilaments] = useState<Filament[]>([]);
@@ -257,10 +244,7 @@ const AppContent = () => {
   const [averageRating, setAverageRating] = useState(0);
 
   const [settings, setSettings] = useState<AppSettings>({ 
-    lowStockThreshold: 20, 
-    theme: 'dark',
-    unusedWarningDays: 90,
-    enableWeeklyEmail: false
+    lowStockThreshold: 20, theme: 'dark', unusedWarningDays: 90, enableWeeklyEmail: false
   });
   
   const [view, setView] = useState<ViewState>('dashboard');
@@ -270,9 +254,6 @@ const AppContent = () => {
   const [showMaterialModal, setShowMaterialModal] = useState(false); 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [openInLabelMode, setOpenInLabelMode] = useState(false);
-  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
-  
-  const [modalHandlesBackButton, setModalHandlesBackButton] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(() => {
     const saved = localStorage.getItem('desktop_sidebar_open');
@@ -287,23 +268,15 @@ const AppContent = () => {
     });
   };
   
-  const [isShowcaseOpen, setIsShowcaseOpen] = useState(false);
-  const [showShowcaseBuilder, setShowShowcaseBuilder] = useState(false); 
   const [publicShopMode, setPublicShopMode] = useState<string | null>(null); 
   const [publicShopFilters, setPublicShopFilters] = useState<string[]>([]);
-  const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState<any>(null);
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const [showPostUpdateModal, setShowPostUpdateModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isSnowEnabled, setIsSnowEnabled] = useState(() => {
     const saved = localStorage.getItem('snow_enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
   const [showExitToast, setShowExitToast] = useState(false);
 
@@ -316,39 +289,30 @@ const AppContent = () => {
   };
 
   const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    cancelLabel?: string;
-    confirmLabel?: string;
-    onConfirm: () => void;
+    isOpen: boolean; title: string; message: string; cancelLabel?: string; confirmLabel?: string; onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-
-  const [limitDialogType, setLimitDialogType] = useState<'filament' | 'printer' | null>(null);
 
   // Refs for Event Listener
   const viewRef = useRef(view);
   const sidebarRef = useRef(isSidebarOpen);
   const notificationsRef = useRef(showNotifications);
-  const modalHandlesRef = useRef(modalHandlesBackButton);
   const modalOpenRef = useRef(showModal || showMaterialModal || showProModal);
 
   useEffect(() => { viewRef.current = view; }, [view]);
   useEffect(() => { sidebarRef.current = isSidebarOpen; }, [isSidebarOpen]);
   useEffect(() => { notificationsRef.current = showNotifications; }, [showNotifications]);
-  useEffect(() => { modalHandlesRef.current = modalHandlesBackButton; }, [modalHandlesBackButton]);
   useEffect(() => { modalOpenRef.current = showModal || showMaterialModal || showProModal; }, [showModal, showMaterialModal, showProModal]);
 
   // Check if Supabase config is valid
-  if (!isSupabaseConfigured) {
-    return <MissingConfigScreen />;
-  }
+  if (!isSupabaseConfigured) { return <MissingConfigScreen />; }
 
   const isAdmin = useMemo(() => {
      const userEmail = session?.user?.email;
      if (!userEmail) return false;
      return ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === userEmail.toLowerCase());
   }, [session]);
+
+  const isProActive = isAdmin || isPro;
 
   const handleUpdateSettings = (newSettings: AppSettings) => {
      setSettings(newSettings);
@@ -358,46 +322,23 @@ const AppContent = () => {
   // Back Button Logic
   useEffect(() => {
     let lastBackPressTime = 0;
-
     const setupBackButton = async () => {
       await CapacitorApp.removeAllListeners();
-      
       CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-        if (modalHandlesRef.current) return;
         if (modalOpenRef.current) {
-           setShowModal(false);
-           setShowMaterialModal(false);
-           setShowProModal(false);
-           setEditingId(null);
-           setOpenInLabelMode(false);
-           setIsShowcaseOpen(false); 
-           setShowShowcaseBuilder(false); 
-           if (showPostUpdateModal) setShowPostUpdateModal(false); 
+           setShowModal(false); setShowMaterialModal(false); setShowProModal(false);
+           setEditingId(null); setOpenInLabelMode(false);
            return;
         }
-        if (showShowcaseBuilder) { setShowShowcaseBuilder(false); return; }
-        if (isShowcaseOpen) { setIsShowcaseOpen(false); setShowShowcaseBuilder(true); return; }
         if (sidebarRef.current) { setSidebarOpen(false); return; }
         if (notificationsRef.current) { setShowNotifications(false); return; }
         if (viewRef.current !== 'dashboard') { setView('dashboard'); return; }
-
         const now = Date.now();
-        if (now - lastBackPressTime < 2000) {
-          CapacitorApp.exitApp();
-        } else {
-          lastBackPressTime = now;
-          setShowExitToast(true);
-          setTimeout(() => setShowExitToast(false), 2000);
-        }
+        if (now - lastBackPressTime < 2000) { CapacitorApp.exitApp(); } 
+        else { lastBackPressTime = now; setShowExitToast(true); setTimeout(() => setShowExitToast(false), 2000); }
       });
     };
     setupBackButton();
-  }, [showShowcaseBuilder, isShowcaseOpen]);
-
-  useEffect(() => {
-      localStorage.setItem('app_version', APP_VERSION);
-      localStorage.setItem('last_seen_version', APP_VERSION);
-      setShowPostUpdateModal(false);
   }, []);
 
   useEffect(() => {
@@ -425,9 +366,7 @@ const AppContent = () => {
         try {
             const res = await fetch('/version.json');
             const data = await res.json();
-            if (isNewerVersion(APP_VERSION, data.version)) {
-                setUpdateAvailable(data);
-            }
+            if (isNewerVersion(APP_VERSION, data.version)) { setUpdateAvailable(data); }
         } catch(e) {}
     };
     checkUpdate();
@@ -442,31 +381,32 @@ const AppContent = () => {
            const matParam = params.get('materials');
            if (matParam) setPublicShopFilters(matParam.split(',').map(decodeURIComponent));
            await fetchData(false, shopUser); 
-           setIsLoading(false);
-           return; 
+           setIsLoading(false); return; 
        }
        const offlinePref = localStorage.getItem('filament_offline_mode');
        if (offlinePref === 'true') {
-          setIsOffline(true);
-          fetchData(true);
-          setIsLoading(false);
-          return;
+          setIsOffline(true); fetchData(true); setIsLoading(false); return;
        }
        const keepLoggedIn = localStorage.getItem('filament_keep_logged_in');
        const { data: { session: localSession } } = await supabase.auth.getSession();
        if (localSession) {
           if (keepLoggedIn === null) { await supabase.auth.signOut(); setSession(null); } 
-          else { setSession(localSession); fetchData(false, localSession.user.id); }
+          else { setSession(localSession); await fetchProStatus(localSession.user.id); fetchData(false, localSession.user.id); }
        } else { setSession(null); }
        setIsLoading(false);
     };
     initializeAuth();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (_event === 'SIGNED_OUT') { setSession(null); setIsOffline(false); setFilaments([]); } 
-      else if (session) { setSession(session); setIsOffline(false); fetchData(false, session.user.id); }
+      if (_event === 'SIGNED_OUT') { setSession(null); setIsOffline(false); setFilaments([]); setIsPro(false); } 
+      else if (session) { setSession(session); setIsOffline(false); await fetchProStatus(session.user.id); fetchData(false, session.user.id); }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchProStatus = async (uid: string) => {
+     const { data, error } = await supabase.from('profiles').select('is_pro').eq('id', uid).single();
+     if (data) setIsPro(!!data.is_pro);
+  };
 
   const fetchData = async (offline = isOffline, explicitUserId?: string) => {
     try {
@@ -489,14 +429,14 @@ const AppContent = () => {
     } catch (error) { console.error('Error fetching data:', error); }
   };
 
-  const handleRefresh = async () => { await fetchData(isOffline); };
+  const handleRefresh = async () => { await fetchData(isOffline); if (session) fetchProStatus(session.user.id); };
   
   const handleLogout = async () => {
     try {
         localStorage.removeItem('filament_keep_logged_in');
         sessionStorage.removeItem('filament_session_active');
         await supabase.auth.signOut();
-        setSession(null); setFilaments([]); setMaterials([]); setPrintJobs([]); setPrinters([]); setLocations([]); setSuppliers([]);
+        setSession(null); setFilaments([]); setMaterials([]); setPrintJobs([]); setPrinters([]); setLocations([]); setSuppliers([]); setIsPro(false);
     } catch (e) { console.error("Logout error", e); }
   };
 
@@ -508,7 +448,7 @@ const AppContent = () => {
   const handleSaveFilament = async (data: Filament | Filament[]) => {
     if (!session && !isOffline) return;
     const itemsToAdd = Array.isArray(data) ? data.length : 1;
-    if (!isAdmin && !editingId && (filaments.length + itemsToAdd) > FREE_TIER_LIMIT) { setShowModal(false); setShowProModal(true); return; }
+    if (!isProActive && !editingId && (filaments.length + itemsToAdd) > FREE_TIER_LIMIT) { setShowModal(false); setShowProModal(true); return; }
     const items = Array.isArray(data) ? data : [data];
     const processedItems = items.map(f => ({ ...f, user_id: session ? session.user.id : 'offline-user', shortId: f.shortId || generateShortId() }));
     try {
@@ -586,7 +526,7 @@ const AppContent = () => {
   const handleSavePrinter = async (printer: Printer) => {
     if (!session && !isOffline) return;
     const isNew = !printers.some(p => p.id === printer.id);
-    if (!isAdmin && isNew && printers.length >= FREE_PRINTER_LIMIT) { setShowProModal(true); return; }
+    if (!isProActive && isNew && printers.length >= FREE_PRINTER_LIMIT) { setShowProModal(true); return; }
     const processed = { ...printer, user_id: session ? session.user.id : 'offline-user' };
     try {
         if (isOffline) {
@@ -727,12 +667,12 @@ const AppContent = () => {
                 <div className="w-8 h-8 flex items-center justify-center"><Logo className="w-full h-full" /></div>
                 <span className="font-bold text-lg truncate">Filament Manager</span>
             </div>
-            <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} appVersion={APP_VERSION} isOffline={isOffline} onLogout={handleLogout} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowShowcaseBuilder(true)} adminBadgeCount={adminBadgeCount} averageRating={averageRating}/>
+            <SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} appVersion={APP_VERSION} isOffline={isOffline} onLogout={handleLogout} isAdmin={isAdmin} isPro={isPro} onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowModal(true)} adminBadgeCount={adminBadgeCount} averageRating={averageRating}/>
           </aside>
           {isSidebarOpen && (
             <div className="lg:hidden fixed inset-0 z-40 flex">
               <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
-              <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-950"><SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} appVersion={APP_VERSION} isOffline={isOffline} onLogout={handleLogout} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowShowcaseBuilder(true)} adminBadgeCount={adminBadgeCount} averageRating={averageRating}/></div>
+              <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-950"><SidebarContent view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} appVersion={APP_VERSION} isOffline={isOffline} onLogout={handleLogout} isAdmin={isAdmin} isPro={isPro} onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowModal(true)} adminBadgeCount={adminBadgeCount} averageRating={averageRating}/></div>
             </div>
           )}
           <main className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-all ${isDesktopSidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
@@ -749,18 +689,18 @@ const AppContent = () => {
                 </div>
              </div>
              <PullToRefresh onRefresh={handleRefresh} className="flex-1 overflow-auto p-4 md:p-8">
-                {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isAdmin} history={printJobs} isSnowEnabled={isSnowEnabled} onInspectItem={(id) => { setEditingId(id); setShowModal(true); }} onBecomePro={() => setShowProModal(true)} />}
-                {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setOpenInLabelMode(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isAdmin} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
-                {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSavePrintJob} onDeleteJob={handleDeletePrintJob} settings={settings} isAdmin={isAdmin} onUnlockPro={() => setShowProModal(true)} />}
-                {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isAdmin} onLimitReached={() => setShowProModal(true)} />}
+                {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isProActive} history={printJobs} isSnowEnabled={isSnowEnabled} onInspectItem={(id) => { setEditingId(id); setShowModal(true); }} onBecomePro={() => setShowProModal(true)} />}
+                {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setOpenInLabelMode(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isProActive} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
+                {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSavePrintJob} onDeleteJob={handleDeletePrintJob} settings={settings} isAdmin={isProActive} onUnlockPro={() => setShowProModal(true)} />}
+                {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isProActive} onLimitReached={() => setShowProModal(true)} />}
                 {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
-                {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={handleUpdateSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={handleLogout} isAdmin={isAdmin} onBecomePro={() => setShowProModal(true)} currentVersion={APP_VERSION} />}
+                {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={handleUpdateSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={handleLogout} isAdmin={isProActive} onBecomePro={() => setShowProModal(true)} currentVersion={APP_VERSION} />}
                 {view === 'support' && <SupportPage isAdmin={isAdmin} />}
                 {view === 'help' && <HelpPage />}
                 {view === 'admin' && isAdmin && <AdminPanel />}
              </PullToRefresh>
           </main>
-          {showModal && <FilamentForm initialData={editingId ? filaments.find(f => f.id === editingId) : undefined} locations={locations} suppliers={suppliers} existingBrands={uniqueBrands} onSave={handleSaveFilament} onSaveLocation={handleSaveLocation} onSaveSupplier={handleSaveSupplier} onCancel={() => { setShowModal(false); setEditingId(null); setOpenInLabelMode(false); }} initialShowLabel={openInLabelMode} onSetHandlesBackButton={(handles) => setModalHandlesBackButton(handles)} />}
+          {showModal && <FilamentForm initialData={editingId ? filaments.find(f => f.id === editingId) : undefined} locations={locations} suppliers={suppliers} existingBrands={uniqueBrands} onSave={handleSaveFilament} onSaveLocation={handleSaveLocation} onSaveSupplier={handleSaveSupplier} onCancel={() => { setShowModal(false); setEditingId(null); setOpenInLabelMode(false); }} initialShowLabel={openInLabelMode} onSetHandlesBackButton={(handles) => {}} />}
           {showMaterialModal && <MaterialForm initialData={editingId ? materials.find(m => m.id === editingId) : undefined} locations={locations} suppliers={suppliers} onSave={handleSaveMaterial} onCancel={() => { setShowMaterialModal(false); setEditingId(null); }} />}
           {showProModal && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 animate-fade-in"><div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full border text-center relative"><button onClick={() => setShowProModal(false)} className="absolute top-4 right-4 text-slate-400"><X size={20} /></button><div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600"><HardHat size={32} /></div><h3 className="text-xl font-bold mb-2">{t('proComingSoonTitle')}</h3><p className="text-sm text-slate-500 mb-6 leading-relaxed">{t('proComingSoonMsg')}</p><button onClick={() => setShowProModal(false)} className="w-full py-3 bg-amber-500 text-white font-bold rounded-xl">{t('close')}</button></div></div>}
           {confirmDialog.isOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 animate-fade-in"><div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full border"><h3 className="text-xl font-bold mb-2">{confirmDialog.title}</h3><p className="text-sm text-slate-500 mb-6">{confirmDialog.message}</p><div className="flex justify-end gap-3"><button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="px-4 py-2 font-bold">{confirmDialog.cancelLabel || t('cancel')}</button><button onClick={confirmDialog.onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold">{confirmDialog.confirmLabel || 'OK'}</button></div></div></div>}

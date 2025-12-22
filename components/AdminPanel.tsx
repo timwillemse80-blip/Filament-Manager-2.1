@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare } from 'lucide-react';
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Crown, Star, Search } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
-type AdminTab = 'dashboard' | 'sql' | 'logo' | 'spools' | 'data' | 'feedback' | 'requests';
+type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'feedback' | 'requests';
 
 export const AdminPanel: React.FC = () => {
   const { refreshLogo } = useLogo();
@@ -18,15 +18,20 @@ export const AdminPanel: React.FC = () => {
   const [logoMsg, setLogoMsg] = useState('');
   const [cropScale, setCropScale] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Data States
+  const [users, setUsers] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [spoolWeights, setSpoolWeights] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [tableCounts, setTableCounts] = useState({ users: 0, filaments: 0, storage: '0 MB' });
+  const [tableCounts, setTableCounts] = useState({ users: 0, filaments: 0, totalAccounts: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
+  
   const [newSpool, setNewSpool] = useState({ name: '', weight: '' });
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
@@ -34,6 +39,7 @@ export const AdminPanel: React.FC = () => {
   useEffect(() => {
     loadDashboardStats();
     checkLatency();
+    if (activeTab === 'users') loadUsers();
     if (activeTab === 'feedback') loadFeedback();
     if (activeTab === 'requests') loadRequests();
     if (activeTab === 'spools') loadSpoolWeights();
@@ -48,9 +54,26 @@ export const AdminPanel: React.FC = () => {
   };
 
   const loadDashboardStats = async () => {
-     const { count: uCount } = await supabase.from('print_jobs').select('*', { count: 'exact', head: true }); 
+     const { count: uCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }); 
      const { count: fCount } = await supabase.from('filaments').select('*', { count: 'exact', head: true });
-     setTableCounts({ users: uCount || 0, filaments: fCount || 0, storage: 'Check Supabase' });
+     const { count: jCount } = await supabase.from('print_jobs').select('*', { count: 'exact', head: true });
+     setTableCounts({ totalAccounts: uCount || 0, filaments: fCount || 0, users: jCount || 0 });
+  };
+
+  const loadUsers = async () => {
+     setIsLoading(true);
+     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+     if (data) setUsers(data);
+     setIsLoading(false);
+  };
+
+  const toggleProStatus = async (userId: string, currentStatus: boolean) => {
+     const { error } = await supabase.from('profiles').update({ is_pro: !currentStatus }).eq('id', userId);
+     if (!error) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_pro: !currentStatus } : u));
+     } else {
+        alert("Fout bij bijwerken status: " + error.message);
+     }
   };
 
   const loadFeedback = async () => { setIsLoading(true); const { data } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }); if (data) setFeedbacks(data); setIsLoading(false); };
@@ -72,10 +95,37 @@ export const AdminPanel: React.FC = () => {
   const deleteFeedback = async (id: number) => { if(!confirm("Verwijderen?")) return; await supabase.from('feedback').delete().eq('id', id); setFeedbacks(prev => prev.filter(f => f.id !== id)); };
   const toggleFeedbackRead = async (id: number, currentStatus: boolean) => { try { const { error } = await supabase.from('feedback').update({ is_read: !currentStatus }).eq('id', id); if (error) throw error; setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, is_read: !currentStatus } : f)); } catch (e: any) { alert("Fout bij updaten: " + e.message); } };
 
+  const filteredUsers = users.filter(u => u.email?.toLowerCase().includes(userSearch.toLowerCase()));
+
   const sqlSetupCode = `-- MASTER SQL SCRIPT - Filament Manager
 -- Voer dit script uit in de Supabase SQL Editor
 
--- 1. LOCATIES
+-- 1. PROFIELEN (Voor PRO status)
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  is_pro boolean default false,
+  created_at timestamptz default now()
+);
+alter table public.profiles enable row level security;
+drop policy if exists "Users view own profile" on public.profiles;
+create policy "Users view own profile" on public.profiles for select using (auth.uid() = id);
+drop policy if exists "Admins manage all profiles" on public.profiles;
+create policy "Admins manage all profiles" on public.profiles for all using (true);
+
+-- TRIGGER: Maak profiel bij signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, is_pro)
+  values (new.id, new.email, false);
+  return new;
+end;
+$$ language plpgsql security definer;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();
+
+-- 2. LOCATIES
 create table if not exists public.locations (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -87,7 +137,7 @@ alter table public.locations enable row level security;
 drop policy if exists "Users manage own locations" on public.locations;
 create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
 
--- 2. LEVERANCIERS
+-- 3. LEVERANCIERS
 create table if not exists public.suppliers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -99,7 +149,7 @@ alter table public.suppliers enable row level security;
 drop policy if exists "Users manage own suppliers" on public.suppliers;
 create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
 
--- 3. FILAMENTEN
+-- 4. FILAMENTEN
 create table if not exists public.filaments (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -123,7 +173,7 @@ alter table public.filaments enable row level security;
 drop policy if exists "Users manage own filaments" on public.filaments;
 create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
 
--- 4. OVERIGE MATERIALEN
+-- 5. OVERIGE MATERIALEN
 create table if not exists public.other_materials (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -144,7 +194,7 @@ alter table public.other_materials enable row level security;
 drop policy if exists "Users manage own materials" on public.other_materials;
 create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
 
--- 5. PRINTERS
+-- 6. PRINTERS
 create table if not exists public.printers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -165,7 +215,7 @@ alter table public.printers enable row level security;
 drop policy if exists "Users manage own printers" on public.printers;
 create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
 
--- 6. PRINT LOGBOEK
+-- 7. PRINT LOGBOEK
 create table if not exists public.print_jobs (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -185,7 +235,7 @@ alter table public.print_jobs enable row level security;
 drop policy if exists "Users manage own prints" on public.print_jobs;
 create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
 
--- 7. FEEDBACK & VERZOEKEN
+-- 8. FEEDBACK & VERZOEKEN
 create table if not exists public.feedback (
   id bigint generated by default as identity primary key,
   created_at timestamptz default now(),
@@ -223,7 +273,7 @@ create policy "Users delete own requests" on public.deletion_requests for delete
 drop policy if exists "Admins see all requests" on public.deletion_requests;
 create policy "Admins see all requests" on public.deletion_requests for select using (true);
 
--- 8. GLOBAL SETTINGS
+-- 9. GLOBAL SETTINGS
 create table if not exists public.global_settings (key text primary key, value text);
 alter table public.global_settings enable row level security;
 drop policy if exists "Everyone can read global" on public.global_settings;
@@ -231,7 +281,7 @@ create policy "Everyone can read global" on public.global_settings for select us
 drop policy if exists "Admins can manage global" on public.global_settings;
 create policy "Admins can manage global" on public.global_settings for all using (true);
 
--- 9. BRANDS & MATERIALS
+-- 10. BRANDS & MATERIALS
 create table if not exists public.brands (id bigint generated by default as identity primary key, name text unique);
 create table if not exists public.materials (id bigint generated by default as identity primary key, name text unique);
 create table if not exists public.spool_weights (id bigint generated by default as identity primary key, name text, weight numeric);
@@ -254,7 +304,8 @@ create policy "Spools read" on public.spool_weights for select using (true);
           <div className="flex-1 space-y-6">
              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
                 <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
-                <button onClick={() => setActiveTab('sql')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'sql' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Database size={18}/> SQL Setup</button>
+                <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
+                <button onClick={() => setActiveTab('sql')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'sql' ? 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Database size={18}/> SQL Setup</button>
                 <button onClick={() => setActiveTab('logo')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'logo' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><ImageIcon size={18}/> Logo</button>
                 <button onClick={() => setActiveTab('spools')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'spools' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Weight size={18}/> Spoel Gewichten</button>
                 <button onClick={() => setActiveTab('data')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'data' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Layers size={18}/> Merken & Materialen</button>
@@ -264,15 +315,87 @@ create policy "Spools read" on public.spool_weights for select using (true);
 
              {activeTab === 'dashboard' && (
                 <div className="space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Filamenten in Database</h3>
-                         <p className="text-3xl font-black text-slate-800 dark:text-white">~{tableCounts.filaments}</p>
+                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Totaal Accounts</h3>
+                         <p className="text-3xl font-black text-slate-800 dark:text-white">{tableCounts.totalAccounts}</p>
                       </div>
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Openstaande Feedback</h3>
-                         <p className="text-3xl font-black text-purple-600">{feedbacks.length > 0 ? feedbacks.filter(f => !f.is_read).length : '-'}</p>
+                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Filamenten</h3>
+                         <p className="text-3xl font-black text-blue-600">{tableCounts.filaments}</p>
                       </div>
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                         <h3 className="text-slate-500 text-sm font-bold uppercase mb-2">Logs</h3>
+                         <p className="text-3xl font-black text-emerald-600">{tableCounts.users}</p>
+                      </div>
+                   </div>
+                </div>
+             )}
+
+             {activeTab === 'users' && (
+                <div className="space-y-4 animate-fade-in">
+                   <div className="flex gap-4">
+                      <div className="relative flex-1">
+                         <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+                         <input 
+                            type="text" 
+                            placeholder="Zoek gebruiker op email..." 
+                            value={userSearch}
+                            onChange={e => setUserSearch(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-10 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                         />
+                      </div>
+                      <button onClick={loadUsers} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-500 transition-colors">
+                         <RefreshCw size={20} className={isLoading ? "animate-spin" : ""}/>
+                      </button>
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                      <table className="w-full text-left">
+                         <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                               <th className="p-4 text-xs font-bold text-slate-500 uppercase">Gebruiker</th>
+                               <th className="p-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                               <th className="p-4 text-xs font-bold text-slate-500 uppercase">Geregistreerd</th>
+                               <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actie</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {filteredUsers.map(user => (
+                               <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                  <td className="p-4">
+                                     <div className="font-bold text-slate-800 dark:text-white">{user.email}</div>
+                                     <div className="text-[10px] text-slate-400 font-mono">{user.id}</div>
+                                  </td>
+                                  <td className="p-4">
+                                     {user.is_pro ? (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                           <Crown size={12} fill="currentColor" /> PRO
+                                        </span>
+                                     ) : (
+                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
+                                           Gebruiker
+                                        </span>
+                                     )}
+                                  </td>
+                                  <td className="p-4 text-sm text-slate-500">
+                                     {new Date(user.created_at).toLocaleDateString()}
+                                  </td>
+                                  <td className="p-4 text-right">
+                                     <button 
+                                        onClick={() => toggleProStatus(user.id, user.is_pro)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${user.is_pro ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' : 'bg-amber-500 text-white shadow-amber-500/20'}`}
+                                     >
+                                        {user.is_pro ? 'Maak Normaal' : 'Upgrade naar PRO'}
+                                     </button>
+                                  </td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                      {filteredUsers.length === 0 && (
+                         <div className="p-8 text-center text-slate-500">Geen gebruikers gevonden.</div>
+                      )}
                    </div>
                 </div>
              )}
@@ -305,7 +428,7 @@ create policy "Spools read" on public.spool_weights for select using (true);
              {activeTab === 'logo' && (<div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"><div className="flex flex-col md:flex-row gap-6 items-start"><div onClick={() => fileInputRef.current?.click()} className="w-full md:w-64 h-64 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all bg-slate-50 dark:bg-slate-900/50 overflow-hidden relative">{previewUrl ? (<div className="w-full h-full flex items-center justify-center overflow-hidden relative"><img src={previewUrl} style={{ transform: `scale(${cropScale})`, maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.1s ease-out' }} alt="Preview" /></div>) : (<><Upload size={32} className="text-slate-400 mb-2" /><span className="text-xs text-slate-500 font-medium">Klik om te uploaden</span></>)}<input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} /></div><div className="flex-1 space-y-4 w-full">{previewUrl && (<div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700"><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Schalen (Zoom)</label><div className="flex items-center gap-4"><ZoomOut size={18} className="text-slate-400" /><input type="range" min="0.1" max="3" step="0.05" value={cropScale} onChange={(e) => setCropScale(parseFloat(e.target.value))} className="flex-1 h-2 bg-slate-300 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"/><ZoomIn size={18} className="text-slate-400" /></div></div>)}{logoStatus === 'success' && <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 p-3 rounded-lg flex items-center gap-2 text-sm"><CheckCircle2 size={16} /> {logoMsg}</div>}<div className="flex gap-2"><button onClick={handleSaveLogo} disabled={!previewUrl || isUploading} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50"><Save size={18} /> Opslaan</button>{previewUrl && <button onClick={() => { setPreviewUrl(null); setLogoFile(null); setLogoStatus('idle'); }} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg font-bold">Annuleren</button>}</div></div></div></div>)}
              {(activeTab === 'feedback' || activeTab === 'requests') && (<div className="space-y-4"><div className="flex justify-between items-center"><h3 className="font-bold text-lg dark:text-white">{activeTab === 'feedback' ? 'Feedback' : 'Verzoeken'}</h3><button onClick={activeTab === 'feedback' ? loadFeedback : loadRequests} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500"><RefreshCw size={18}/></button></div>{activeTab === 'feedback' && feedbacks.map(f => (<div key={f.id} className={`bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 shadow-sm relative transition-opacity ${f.is_read ? 'opacity-60 border-slate-100 bg-slate-50 dark:bg-slate-900' : 'border-slate-200'}`}><div className="flex justify-between items-start mb-2"><div className="font-bold text-yellow-500 flex items-center gap-1">{f.rating}/5</div><div className="flex gap-2"><button onClick={() => toggleFeedbackRead(f.id, f.is_read)} className={`p-1.5 rounded transition-colors ${f.is_read ? 'text-green-600 bg-green-100 dark:bg-green-900/30' : 'text-slate-400 hover:text-green-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title={f.is_read ? t('markAsUnread') : t('markAsRead')}>{f.is_read ? <CheckSquare size={16} /> : <Square size={16} />}</button><button onClick={() => deleteFeedback(f.id)} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"><Trash2 size={16}/></button></div></div><p className="text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap">{f.message}</p><div className="mt-2 text-xs text-slate-400">{new Date(f.created_at).toLocaleString()} • {f.platform}</div></div>))}{activeTab === 'requests' && requests.map(r => (<div key={r.id} className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-200 dark:border-red-900/30 flex justify-between items-center"><div><div className="font-bold text-red-800 dark:text-red-200">{r.email}</div><div className="text-xs text-red-600 dark:text-red-400">Reden: {r.reason}</div></div><button onClick={() => handleDeleteUser(r.user_id, r.id)} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold">Verwijder</button></div>))}</div>)}
           </div>
-          <div className="w-full lg:w-80 space-y-6"><div className="bg-slate-900 rounded-xl p-6 text-white shadow-lg sticky top-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Server size={20} className="text-green-400"/> Server Status</h3><div className="space-y-4"><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Status</span><span className="text-green-400 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Online</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Database</span><span className="font-mono text-sm">Supabase (PG)</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Regio</span><span className="font-mono text-sm">eu-central-1</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm flex items-center gap-2"><Activity size={14}/> Latency</span><span className={`font-mono text-sm ${latency && latency < 200 ? 'text-green-400' : 'text-yellow-400'}`}>{latency ? `${latency}ms` : '...'}</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm flex items-center gap-2"><Shield size={14}/> App Versie</span><span className="font-mono text-sm text-slate-300">{localStorage.getItem('app_version') || '2.0.2'}</span></div><div className="pt-2"><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Statistieken (Schatting)</h4><div className="grid grid-cols-2 gap-2"><div className="bg-slate-800 p-2 rounded text-center"><span className="block text-xl font-bold">{tableCounts.users || '-'}</span><span className="text-[10px] text-slate-500">Logboek</span></div><div className="bg-slate-800 p-2 rounded text-center"><span className="block text-xl font-bold">{tableCounts.filaments}</span><span className="text-[10px] text-slate-500">Filamenten</span></div></div></div></div></div></div>
+          <div className="w-full lg:w-80 space-y-6"><div className="bg-slate-900 rounded-xl p-6 text-white shadow-lg sticky top-6"><h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Server size={20} className="text-green-400"/> Server Status</h3><div className="space-y-4"><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Status</span><span className="text-green-400 font-bold text-sm flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Online</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Database</span><span className="font-mono text-sm">Supabase (PG)</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm">Regio</span><span className="font-mono text-sm">eu-central-1</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm flex items-center gap-2"><Activity size={14}/> Latency</span><span className={`font-mono text-sm ${latency && latency < 200 ? 'text-green-400' : 'text-yellow-400'}`}>{latency ? `${latency}ms` : '...'}</span></div><div className="flex justify-between items-center pb-2 border-b border-slate-800"><span className="text-slate-400 text-sm flex items-center gap-2"><Shield size={14}/> App Versie</span><span className="font-mono text-sm text-slate-300">{localStorage.getItem('app_version') || '2.0.2'}</span></div><div className="pt-2"><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Statistieken (Schatting)</h4><div className="grid grid-cols-2 gap-2"><div className="bg-slate-800 p-2 rounded text-center"><span className="block text-xl font-bold">{tableCounts.totalAccounts || '-'}</span><span className="text-[10px] text-slate-500">Accounts</span></div><div className="bg-slate-800 p-2 rounded text-center"><span className="block text-xl font-bold">{tableCounts.filaments}</span><span className="text-[10px] text-slate-500">Filamenten</span></div></div></div></div></div></div>
        </div>
     </div>
   );
