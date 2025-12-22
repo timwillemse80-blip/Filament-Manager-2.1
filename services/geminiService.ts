@@ -1,24 +1,55 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { AiSuggestion } from "../types";
 
-/**
- * Image analysis and settings suggestions using Gemini AI.
- * Follows @google/genai coding guidelines.
- */
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = (): GoogleGenAI => {
+  if (aiClient) return aiClient;
+
+  // Haal de API key op
+  let apiKey = process.env.API_KEY || "";
+  
+  // 1. Verwijder quotes als de gebruiker die per ongeluk in Vercel heeft gezet (bv "AIza...")
+  // 2. Verwijder spaties voor/achter
+  apiKey = apiKey.replace(/^['"]|['"]$/g, '').trim();
+
+  if (!apiKey) {
+    console.error("Gemini API Key missing!");
+    throw new Error("API Key is niet ingesteld. Controleer 'VITE_API_KEY' in Vercel.");
+  }
+
+  aiClient = new GoogleGenAI({ apiKey });
+  return aiClient;
+};
+
+const cleanJsonString = (str: string): string => {
+  if (!str) return "{}";
+  let cleaned = str.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  return cleaned;
+};
 
 export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggestion> => {
   try {
-    // Initialization: Must use named parameter and process.env.API_KEY directly.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAiClient();
     const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
-    
-    // Use gemini-3-flash-preview for text/vision tasks with schema.
-    const modelId = 'gemini-3-flash-preview';
+    const modelId = 'gemini-2.5-flash';
 
     const prompt = `
       Analyseer deze afbeelding van een filament spoel.
-      Extracteer de gegevens. Vertaal vreemde talen voor kleurnamen naar het Nederlands (bijv. 'Schwarz' of 'Black' -> 'Zwart').
+      Extracteer gegevens in JSON:
+      - brand: Merknaam.
+      - material: Materiaal type (PLA, PETG, etc).
+      - colorName: Kleurnaam. Vertaal vreemde talen (Duits, Engels, etc) naar het Nederlands (bijv. 'Schwarz' of 'Black' -> 'Zwart', 'Rot' -> 'Rood', 'Gelb' -> 'Geel').
+      - colorHex: Geschatte CSS Hex code.
+      - tempNozzle: Nozzle temp (getal).
+      - tempBed: Bed temp (getal).
+      - notes: Leeg laten.
+      Output alleen JSON.
     `;
 
     console.log(`Gemini: Starting analysis...`);
@@ -31,38 +62,23 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
           { text: prompt }
         ]
       },
-      config: { 
-        responseMimeType: "application/json",
-        // Recommended way to configure expected output using responseSchema and Type.
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            brand: { type: Type.STRING, description: 'Merknaam' },
-            material: { type: Type.STRING, description: 'Materiaal type (PLA, PETG, etc)' },
-            colorName: { type: Type.STRING, description: 'Kleurnaam in het Nederlands' },
-            colorHex: { type: Type.STRING, description: 'Geschatte CSS Hex code' },
-            tempNozzle: { type: Type.NUMBER, description: 'Nozzle temperatuur' },
-            tempBed: { type: Type.NUMBER, description: 'Bed temperatuur' },
-          },
-          required: ['brand', 'material', 'colorName']
-        }
-      }
+      config: { responseMimeType: "application/json" }
     });
 
-    // Directly access .text property from response.
     if (!response.text) throw new Error("Leeg antwoord van AI");
-    return JSON.parse(response.text.trim());
+    return JSON.parse(cleanJsonString(response.text));
 
   } catch (error: any) {
     console.error("Gemini Error:", error);
     const msg = error.message || JSON.stringify(error);
     
+    // Check specifiek op de "leaked key" error van Google
     if (msg.includes('leaked') || msg.includes('PERMISSION_DENIED') || msg.includes('403')) {
        throw new Error("⛔ API KEY GEBLOKKEERD\n\nGoogle heeft gedetecteerd dat je API sleutel openbaar is geworden en heeft deze geblokkeerd.\n\nOplossing:\n1. Maak direct een nieuwe sleutel aan in Google AI Studio.\n2. Update de 'API_KEY' in Vercel Environment Variables.");
     }
 
     if (msg.includes('API_KEY_INVALID') || msg.includes('400')) {
-        throw new Error("Ongeldige API Key. Controleer in Vercel of de sleutel correct is.");
+        throw new Error("Ongeldige API Key. Controleer in Vercel of de sleutel correct is en geen spaties bevat.");
     }
     
     if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
@@ -75,22 +91,13 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
 
 export const suggestSettings = async (brand: string, material: string): Promise<AiSuggestion> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Suggest recommended nozzle and bed temperatures for ${brand} ${material} filament in JSON format.`,
-      config: { 
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            tempNozzle: { type: Type.NUMBER },
-            tempBed: { type: Type.NUMBER }
-          }
-        }
-      }
+      model: 'gemini-2.5-flash',
+      contents: `Return JSON with avg tempNozzle and tempBed for ${brand} ${material} filament.`,
+      config: { responseMimeType: "application/json" }
     });
-    return JSON.parse(response.text?.trim() || "{}");
+    return JSON.parse(cleanJsonString(response.text || "{}"));
   } catch (error) {
     return {}; 
   }
