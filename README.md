@@ -30,7 +30,7 @@ alter table public.profiles enable row level security;
 drop policy if exists "Users view own profile" on public.profiles;
 create policy "Users view own profile" on public.profiles for select using (auth.uid() = id);
 drop policy if exists "Admins manage all profiles" on public.profiles;
-create policy "Admins manage all profiles" on public.profiles for all using (true); -- Admin check gebeurt in de app of via email list
+create policy "Admins manage all profiles" on public.profiles for all using (true);
 
 -- TRIGGER: Maak automatisch profiel aan bij signup
 create or replace function public.handle_new_user()
@@ -173,6 +173,10 @@ drop policy if exists "Everyone can send feedback" on public.feedback;
 create policy "Everyone can send feedback" on public.feedback for insert with check (true);
 drop policy if exists "Admins can view feedback" on public.feedback;
 create policy "Admins can view feedback" on public.feedback for select using (true);
+drop policy if exists "Admins can update feedback" on public.feedback;
+create policy "Admins can update feedback" on public.feedback for update using (true);
+drop policy if exists "Admins can delete feedback" on public.feedback;
+create policy "Admins can delete feedback" on public.feedback for delete using (true);
 
 create table if not exists public.deletion_requests (
   id uuid default gen_random_uuid() primary key,
