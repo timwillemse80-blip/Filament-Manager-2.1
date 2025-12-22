@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
       'process.env': {
         NODE_ENV: JSON.stringify(mode),
         API_KEY: JSON.stringify(env.API_KEY || env.VITE_API_KEY || ''),
-        VITE_SUPABASE_URL: JSON.stringify(env.VITE_SUPABASE_URL || ''),
-        VITE_SUPABASE_ANON_KEY: JSON.stringify(env.VITE_SUPABASE_ANON_KEY || '')
+        VITE_SUPABASE_URL: JSON.stringify(env.VITE_SUPABASE_URL || env.SUPABASE_URL || ''),
+        VITE_SUPABASE_ANON_KEY: JSON.stringify(env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || '')
       },
     },
     build: {
