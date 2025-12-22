@@ -5,12 +5,13 @@ Beheer je 3D-printer filamentvoorraad eenvoudig en modern.
 ## 🚀 Koppelen met Supabase (Stappenplan)
 
 1.  Maak een nieuw project aan op [Supabase.com](https://supabase.com).
-2.  Ga naar **Project Settings** > **API**.
-3.  Kopieer de `Project URL` en de `anon public` key.
-4.  Voeg deze in Vercel (of je `.env` bestand) toe als:
-    *   `VITE_SUPABASE_URL`
-    *   `VITE_SUPABASE_ANON_KEY`
-5.  Ga in Supabase naar de **SQL Editor** en plak het onderstaande script.
+2.  Ga naar **Project Settings** (tandwiel icoon linksonder).
+3.  Klik in het menu op **API**.
+4.  Onder het kopje **Project API Settings** vind je:
+    *   **Project URL**: Kopieer dit voor `VITE_SUPABASE_URL` (begint met https://...)
+    *   **Project API keys**: Kopieer de key met de naam `anon public` voor `VITE_SUPABASE_ANON_KEY`.
+5.  Voeg deze waarden toe in je Vercel Dashboard (Settings > Environment Variables).
+6.  Ga in Supabase naar de **SQL Editor** en voer het onderstaande script uit.
 
 ## 🛠️ Master Database Script (SQL)
 

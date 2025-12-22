@@ -1,14 +1,22 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Gebruik de variabelen die door Vite worden geïnjecteerd
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+// Haal variabelen op en verwijder eventuele onzichtbare spaties of quotes
+const rawUrl = process.env.VITE_SUPABASE_URL || '';
+const rawKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseKey || supabaseUrl === 'placeholder') {
-  console.warn("Supabase configuratie ontbreekt. De app werkt in Offline Modus.");
-}
+const supabaseUrl = rawUrl.replace(/['"]/g, '').trim();
+const supabaseKey = rawKey.replace(/['"]/g, '').trim();
 
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseKey || 'placeholder'
-);
+// Controleer of de configuratie aanwezig is
+export const isSupabaseConfigured = 
+  supabaseUrl.length > 0 && 
+  supabaseUrl.startsWith('http') && 
+  supabaseKey.length > 0 &&
+  supabaseKey !== 'no-key-configured';
+
+// Gebruik een geldige URL om de constructor niet te laten crashen
+const finalUrl = isSupabaseConfigured ? supabaseUrl : 'https://placeholder-project.supabase.co';
+const finalKey = isSupabaseConfigured ? supabaseKey : 'placeholder-key';
+
+export const supabase = createClient(finalUrl, finalKey);
