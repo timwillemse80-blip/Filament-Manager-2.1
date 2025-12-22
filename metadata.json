@@ -1,5 +1,5 @@
 {
-  "name": "Filament Manager 2.0",
+  "name": "Filament Manager 2.1",
   "description": "Beheer je 3D-printer filamentvoorraad, locaties en leveranciers.",
   "requestFramePermissions": [
     "camera"

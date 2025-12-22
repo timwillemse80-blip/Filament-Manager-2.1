@@ -1,222 +1,166 @@
-
 # Filament Manager
 
 Beheer je 3D-printer filamentvoorraad eenvoudig en modern.
 
-## 🚀 Deployen naar Vercel (Stappenplan)
+## 🚀 Koppelen met Supabase (Stappenplan)
 
-Omdat je al een Vercel account hebt, is het online zetten heel simpel.
+1.  Maak een nieuw project aan op [Supabase.com](https://supabase.com).
+2.  Ga naar **Project Settings** > **API**.
+3.  Kopieer de `Project URL` en de `anon public` key.
+4.  Voeg deze in Vercel (of je `.env` bestand) toe als:
+    *   `VITE_SUPABASE_URL`
+    *   `VITE_SUPABASE_ANON_KEY`
+5.  Ga in Supabase naar de **SQL Editor** en plak het onderstaande script.
 
-### Stap 1: GitHub
-1.  Zorg dat je deze code downloadt of in een mapje op je computer hebt.
-2.  Maak een nieuwe repository aan op [GitHub.com](https://github.com/new).
-3.  Upload al deze bestanden naar die repository.
+## 🛠️ Master Database Script (SQL)
 
-### Stap 2: Vercel Project
-1.  Log in op je [Vercel Dashboard](https://vercel.com/dashboard).
-2.  Klik op **Add New...** > **Project**.
-3.  Kies **Continue with GitHub** en selecteer de repository die je net hebt gemaakt.
-4.  Geef het project een naam (bijv. `filament-manager`).
-
-### Stap 3: Environment Variables (BELANGRIJK!)
-Voordat je op "Deploy" klikt, moet je één variabele instellen zodat de AI scanner werkt:
-
-1.  Klap het kopje **Environment Variables** open.
-2.  Vul in bij Key: `API_KEY`
-3.  Vul in bij Value: *[Jouw Google Gemini API Key]*
-4.  Klik op **Add**.
-
-*(Optioneel: Als je je eigen Supabase database wilt gebruiken in plaats van de ingebouwde test-database, voeg dan ook `VITE_SUPABASE_URL` en `VITE_SUPABASE_ANON_KEY` toe).*
-
-### Stap 4: Live!
-Klik op **Deploy**. Vercel bouwt nu je app. Binnen 1-2 minuten is je app live!
-
----
-
-## 🛠️ Database Updates (SQL)
-
-Als je de app update, moet je soms nieuwe tabellen aanmaken in Supabase.
-
-### Update 1.6: Account Verwijderen (Update & Fix)
-**BELANGRIJK:** Voer dit script uit om de functie voor account verwijdering correct in te stellen en de database helemaal up-to-date te brengen. Dit script repareert ook "policy already exists" fouten, lost het probleem op met de `user_settings` foreign key EN staat gebruikers toe hun eigen verzoek te annuleren.
+Kopieer en voer dit script uit in de Supabase SQL Editor om alle tabellen en rechten in één keer goed te zetten.
 
 ```sql
--- ================================================================
--- 1. TABELLEN VOOR FEEDBACK & ACCOUNT VERWIJDEREN
--- ================================================================
+-- 1. LOCATIES
+create table if not exists public.locations (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz default now()
+);
+alter table public.locations enable row level security;
+create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
 
--- Feedback tabel
+-- 2. LEVERANCIERS
+create table if not exists public.suppliers (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  website text,
+  created_at timestamptz default now()
+);
+alter table public.suppliers enable row level security;
+create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
+
+-- 3. FILAMENTEN
+create table if not exists public.filaments (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  brand text not null,
+  material text not null,
+  "colorName" text,
+  "colorHex" text,
+  "weightTotal" numeric default 1000,
+  "weightRemaining" numeric default 1000,
+  "tempNozzle" numeric,
+  "tempBed" numeric,
+  price numeric,
+  notes text,
+  "purchaseDate" timestamptz default now(),
+  "locationId" uuid references public.locations(id) on delete set null,
+  "supplierId" uuid references public.suppliers(id) on delete set null,
+  "shopUrl" text,
+  "shortId" text
+);
+alter table public.filaments enable row level security;
+create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
+
+-- 4. OVERIGE MATERIALEN
+create table if not exists public.other_materials (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  category text,
+  quantity numeric default 0,
+  unit text,
+  "minStock" numeric default 0,
+  price numeric,
+  "locationId" uuid references public.locations(id) on delete set null,
+  "supplierId" uuid references public.suppliers(id) on delete set null,
+  "shopUrl" text,
+  notes text,
+  "purchaseDate" timestamptz default now(),
+  image text
+);
+alter table public.other_materials enable row level security;
+create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
+
+-- 5. PRINTERS
+create table if not exists public.printers (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text,
+  brand text,
+  model text,
+  "hasAMS" boolean default false,
+  "amsCount" smallint default 0,
+  "amsSlots" jsonb default '[]'::jsonb,
+  "powerWatts" numeric default 300,
+  "purchasePrice" numeric default 0,
+  "lifespanHours" numeric default 20000,
+  "ipAddress" text,
+  "apiKey" text,
+  "webcamUrl" text
+);
+alter table public.printers enable row level security;
+create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
+
+-- 6. PRINT LOGBOEK
+create table if not exists public.print_jobs (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  date timestamptz default now(),
+  "printTime" text,
+  "totalWeight" numeric,
+  "calculatedCost" numeric,
+  status text,
+  "printerId" uuid references public.printers(id) on delete set null,
+  "assemblyTime" numeric default 0,
+  "costBreakdown" jsonb,
+  "usedFilaments" jsonb,
+  "usedOtherMaterials" jsonb
+);
+alter table public.print_jobs enable row level security;
+create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
+
+-- 7. FEEDBACK & BEHEER
 create table if not exists public.feedback (
   id bigint generated by default as identity primary key,
   created_at timestamptz default now(),
   message text not null,
-  rating smallint default 0,
-  user_id uuid default auth.uid() references auth.users(id) on delete cascade,
+  rating smallint,
+  user_id uuid references auth.users(id) on delete cascade,
+  "is_read" boolean default false,
   platform text,
   user_agent text
 );
 alter table public.feedback enable row level security;
+create policy "Everyone can send feedback" on public.feedback for insert with check (true);
+create policy "Admins can view feedback" on public.feedback for select using (true);
 
--- Oude policies wissen (voorkomt "already exists" errors)
-drop policy if exists "Iedereen mag feedback sturen" on public.feedback;
-drop policy if exists "Admins mogen lezen" on public.feedback;
-drop policy if exists "Admins mogen verwijderen" on public.feedback;
-
-create policy "Iedereen mag feedback sturen" on public.feedback for insert with check (true);
-create policy "Admins mogen lezen" on public.feedback for select using (true);
-create policy "Admins mogen verwijderen" on public.feedback for delete using (true);
-
--- Verwijder verzoeken tabel
 create table if not exists public.deletion_requests (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid default auth.uid() references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   email text,
   reason text,
   created_at timestamptz default now()
 );
 alter table public.deletion_requests enable row level security;
+create policy "Users can request deletion" on public.deletion_requests for insert with check (auth.uid() = user_id);
+create policy "Users view own request" on public.deletion_requests for select using (auth.uid() = user_id);
+create policy "Users cancel own request" on public.deletion_requests for delete using (auth.uid() = user_id);
 
--- Reset policies voor requests
-drop policy if exists "Eigen verzoek indienen" on public.deletion_requests;
-drop policy if exists "Admins mogen lezen" on public.deletion_requests;
-drop policy if exists "Admins mogen verwijderen" on public.deletion_requests;
-drop policy if exists "Eigen verzoek bekijken" on public.deletion_requests;
-drop policy if exists "Eigen verzoek annuleren" on public.deletion_requests;
+-- 8. SPOEL DATABASE & LOGO
+create table if not exists public.spool_weights (id bigint generated by default as identity primary key, name text, weight numeric);
+create table if not exists public.brands (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.materials (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.global_settings (key text primary key, value text);
 
-create policy "Eigen verzoek indienen" on public.deletion_requests for insert with check (auth.uid() = user_id);
-create policy "Admins mogen lezen" on public.deletion_requests for select using (true);
-create policy "Admins mogen verwijderen" on public.deletion_requests for delete using (true);
--- Nieuw: Gebruikers mogen hun eigen verzoek zien en intrekken
-create policy "Eigen verzoek bekijken" on public.deletion_requests for select using (auth.uid() = user_id);
-create policy "Eigen verzoek annuleren" on public.deletion_requests for delete using (auth.uid() = user_id);
-
-
--- ================================================================
--- 2. UPDATE PRINTERS TABEL (PRO FEATURES)
--- ================================================================
-
-create table if not exists public.printers (
-  "id" uuid primary key,
-  "user_id" uuid not null references auth.users(id) on delete cascade,
-  "name" text,
-  "brand" text,
-  "model" text,
-  "hasAMS" boolean,
-  "amsCount" smallint,
-  "amsSlots" jsonb
-);
-alter table public.printers enable row level security;
-
-drop policy if exists "Gebruikers beheren eigen printers" on public.printers;
-create policy "Gebruikers beheren eigen printers" on public.printers for all using (auth.uid() = user_id);
-
--- Voeg nieuwe kolommen toe als ze nog niet bestaan (voor de calculator)
-alter table public.printers add column if not exists "powerWatts" numeric;
-alter table public.printers add column if not exists "purchasePrice" numeric;
-alter table public.printers add column if not exists "lifespanHours" numeric;
-
-
--- ================================================================
--- 3. SPOEL GEWICHTEN & PRINT LOGBOEK
--- ================================================================
-
--- Lege spoelen database
-create table if not exists public.spool_weights (
-  id bigint generated by default as identity primary key,
-  name text not null,
-  weight numeric not null
-);
 alter table public.spool_weights enable row level security;
+alter table public.brands enable row level security;
+alter table public.materials enable row level security;
+alter table public.global_settings enable row level security;
 
-drop policy if exists "Iedereen mag lezen" on public.spool_weights;
-drop policy if exists "Ingelogden mogen toevoegen" on public.spool_weights;
-drop policy if exists "Ingelogden mogen wijzigen" on public.spool_weights;
-drop policy if exists "Ingelogden mogen verwijderen" on public.spool_weights;
-
-create policy "Iedereen mag lezen" on public.spool_weights for select using (true);
-create policy "Ingelogden mogen toevoegen" on public.spool_weights for insert with check (auth.role() = 'authenticated');
-create policy "Ingelogden mogen wijzigen" on public.spool_weights for update using (auth.role() = 'authenticated');
-create policy "Ingelogden mogen verwijderen" on public.spool_weights for delete using (auth.role() = 'authenticated');
-
--- Print Logboek
-create table if not exists public.print_jobs (
-  "id" uuid primary key,
-  "user_id" uuid not null references auth.users(id) on delete cascade,
-  "name" text,
-  "date" text,
-  "printTime" text,
-  "totalWeight" numeric,
-  "calculatedCost" numeric,
-  "status" text,
-  "usedFilaments" jsonb,
-  "printerId" text
-);
-alter table public.print_jobs enable row level security;
-
-drop policy if exists "Gebruikers beheren eigen prints" on public.print_jobs;
-create policy "Gebruikers beheren eigen prints" on public.print_jobs for all using (auth.uid() = user_id);
-
-
--- ================================================================
--- 4. FUNCTIE: ACCOUNT VOLLEDIG VERWIJDEREN (SUPER ADMIN)
--- ================================================================
-
--- Eerst oude functie verwijderen om conflicten te voorkomen
-drop function if exists delete_user_completely(uuid);
-
-create or replace function delete_user_completely(target_user_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public, auth, storage 
-as $$
-begin
-  -- 1. Probeer opslag te wissen (vangen fout op als storage niet actief is)
-  begin
-    delete from storage.objects where owner = target_user_id;
-  exception when others then
-    null; -- Ga door als opslag leeg/niet bestaat
-  end;
-
-  -- 2. Verwijder alle app data expliciet
-  delete from public.filaments where user_id = target_user_id;
-  delete from public.print_jobs where user_id = target_user_id;
-  delete from public.printers where user_id = target_user_id;
-  delete from public.locations where user_id = target_user_id;
-  delete from public.suppliers where user_id = target_user_id;
-  delete from public.feedback where user_id = target_user_id;
-  delete from public.deletion_requests where user_id = target_user_id;
-  
-  -- 2b. Probeer user_settings te verwijderen (lost foreign key error op)
-  -- We gebruiken een exception block voor het geval de tabel niet bestaat
-  begin
-    delete from public.user_settings where user_id = target_user_id;
-  exception when others then
-    null; 
-  end;
-
-  -- 3. Verwijder de gebruiker uit Authentication (De klapper)
-  delete from auth.users where id = target_user_id;
-end;
-$$;
-
--- Geef toegang tot deze functie
-grant execute on function delete_user_completely to authenticated;
-grant execute on function delete_user_completely to anon;
-
--- Ververs de API cache
-NOTIFY pgrst, 'reload schema';
+create policy "Public read access" on public.spool_weights for select using (true);
+create policy "Public read access brands" on public.brands for select using (true);
+create policy "Public read access materials" on public.materials for select using (true);
+create policy "Public read access global" on public.global_settings for select using (true);
 ```
-
----
-
-## 🔗 Je Domeinnaam Koppelen (Strato)
-Als je app live staat op Vercel (bijv. `filament-manager.vercel.app`):
-
-1.  Ga in Vercel naar **Settings** > **Domains**.
-2.  Voeg je Strato domeinnaam toe (bijv. `mijnfilament.nl`).
-3.  Vercel geeft je DNS gegevens (meestal een A-Record IP en een CNAME).
-4.  Log in bij Strato, ga naar **Domeinbeheer** > **DNS** en vul die gegevens in.
-5.  Wacht tot de vinkjes in Vercel groen worden.
-
-Veel plezier met je app!
