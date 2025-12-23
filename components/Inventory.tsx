@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial } from '../types';
-import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { lookupSpoolFromImage } from '../services/geminiService';
 
 interface InventoryProps {
@@ -81,6 +81,11 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  
+  // Web Camera State
+  const [showWebCamera, setShowWebCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -202,38 +207,91 @@ export const Inventory: React.FC<InventoryProps> = ({
     }
   };
 
+  const processScanResult = async (base64String: string) => {
+    setIsScanning(true);
+    try {
+       const foundId = await lookupSpoolFromImage(base64String);
+       if (foundId) {
+          setFilter(foundId);
+          onSetActiveGroupKey(null);
+          const match = filaments.find(f => f.shortId?.toLowerCase() === foundId.toLowerCase());
+          if (match) {
+             onEdit(match, 'filament');
+          }
+       } else {
+          alert(t('lookupNotFound'));
+       }
+    } catch (e: any) {
+       alert(t('failed'));
+    } finally {
+       setIsScanning(false);
+    }
+  };
+
   const handleQuickScan = async () => {
      if (isScanning) return;
-     try {
-        const image = await Camera.getPhoto({
-           quality: 85,
-           allowEditing: false,
-           resultType: CameraResultType.Base64,
-           source: CameraSource.Camera,
-           width: 1200
-        });
+     
+     if (Capacitor.isNativePlatform()) {
+        try {
+           const image = await CapacitorCamera.getPhoto({
+              quality: 85,
+              allowEditing: false,
+              resultType: CameraResultType.Base64,
+              source: CameraSource.Camera,
+              width: 1200,
+              correctOrientation: true
+           });
 
-        if (image.base64String) {
-           setIsScanning(true);
-           const foundId = await lookupSpoolFromImage(image.base64String);
-           if (foundId) {
-              setFilter(foundId);
-              onSetActiveGroupKey(null);
-              const match = filaments.find(f => f.shortId?.toLowerCase() === foundId.toLowerCase());
-              if (match) {
-                 onEdit(match, 'filament');
-              }
-           } else {
-              alert(t('lookupNotFound'));
+           if (image.base64String) {
+              await processScanResult(image.base64String);
            }
+           return;
+        } catch (e: any) {
+           if (e.message?.includes('User cancelled')) return;
+           console.warn("Native camera failed, falling back to web camera.", e);
         }
-     } catch (e: any) {
-        if (!e.message?.includes('User cancelled')) {
-           alert(t('failed'));
-        }
-     } finally {
-        setIsScanning(false);
      }
+
+     // Web Fallback
+     setShowWebCamera(true);
+     try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+           video: { 
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+           } 
+        });
+        if (videoRef.current) {
+           videoRef.current.srcObject = stream;
+        }
+     } catch (err: any) {
+        console.error("Web camera error:", err);
+        alert(t('failed') + ": Camera niet toegankelijk.");
+        setShowWebCamera(false);
+     }
+  };
+
+  const stopWebCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+       const stream = videoRef.current.srcObject as MediaStream;
+       stream.getTracks().forEach(track => track.stop());
+    }
+    setShowWebCamera(false);
+  };
+
+  const captureWebImage = () => {
+     if (!videoRef.current || !canvasRef.current) return;
+     const context = canvasRef.current.getContext('2d');
+     if (!context) return;
+     const videoWidth = videoRef.current.videoWidth;
+     const videoHeight = videoRef.current.videoHeight;
+     canvasRef.current.width = videoWidth;
+     canvasRef.current.height = videoHeight;
+     context.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
+     const base64Image = canvasRef.current.toDataURL('image/jpeg', 0.85).split(',')[1];
+     stopWebCamera();
+     processScanResult(base64Image);
   };
 
   const toggleSelection = (id: string) => {
@@ -746,6 +804,55 @@ export const Inventory: React.FC<InventoryProps> = ({
             <button onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
                <Trash2 size={16} /> {t('delete')}
             </button>
+         </div>
+      )}
+
+      {/* --- WEB CAMERA OVERLAY for Quick Scan Fallback --- */}
+      {showWebCamera && (
+         <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
+            <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden">
+               <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  className="h-full w-full object-cover"
+               />
+               
+               {/* Scanning Overlay Visual */}
+               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="w-72 h-72 border-2 border-white/50 rounded-[40px] relative overflow-hidden">
+                     <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-scanner-scan" />
+                  </div>
+               </div>
+               
+               <div className="absolute top-8 left-8 right-8 flex justify-between items-center">
+                  <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+                     <Sparkles size={18} className="text-blue-400" />
+                     <span className="text-white text-xs font-bold uppercase tracking-widest">{t('scanTitle')}</span>
+                  </div>
+                  <button 
+                    onClick={stopWebCamera}
+                    className="bg-white/10 backdrop-blur-md text-white p-3 rounded-full border border-white/20 hover:bg-white/20 transition-all active:scale-90"
+                  >
+                    <X size={24} />
+                  </button>
+               </div>
+               
+               <div className="absolute bottom-16 left-0 right-0 px-8 flex justify-center items-center gap-8">
+                  <button 
+                     onClick={captureWebImage}
+                     disabled={isScanning}
+                     className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center shadow-2xl transition-transform active:scale-90 group disabled:opacity-50"
+                  >
+                     {isScanning ? (
+                        <Loader2 className="animate-spin text-white" size={32} />
+                     ) : (
+                        <div className="w-16 h-16 rounded-full bg-white group-hover:bg-blue-50 transition-colors shadow-inner" />
+                     )}
+                  </button>
+               </div>
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
          </div>
       )}
     </div>
