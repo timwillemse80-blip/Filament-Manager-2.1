@@ -92,6 +92,7 @@ interface SidebarContentProps {
   onClose: () => void;
   t: (key: string) => string;
   isAdmin: boolean;
+  isPremium: boolean;
   onBecomePro: () => void;
   onOpenShowcase: () => void;
   adminBadgeCount: number;
@@ -99,7 +100,7 @@ interface SidebarContentProps {
 }
 
 const SidebarContent: React.FC<SidebarContentProps> = ({ 
-  view, setView, filaments, lowStockCount, onClose, t, isAdmin, 
+  view, setView, filaments, lowStockCount, onClose, t, isAdmin, isPremium,
   onBecomePro, onOpenShowcase, adminBadgeCount, avgRating 
 }) => {
   return (
@@ -134,7 +135,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           <button
               onClick={() => {
                   onClose();
-                  if(!isAdmin) onBecomePro();
+                  if(!isPremium) onBecomePro();
                   else onOpenShowcase();
               }}
               className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:white hover:bg-slate-50 dark:hover:bg-slate-800 group`}
@@ -143,20 +144,28 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <span className="flex-1 text-left break-words">{t('showcaseTitle')}</span>
               <span className="ml-2 flex items-center gap-1.5 shrink-0">
                 <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 shadow-sm uppercase tracking-tighter">PRO</span>
-                {!isAdmin && <Lock size={12} className="text-slate-400 group-hover:text-amber-500 transition-colors" />}
+                {!isPremium && <Lock size={12} className="text-slate-400 group-hover:text-amber-500 transition-colors" />}
               </span>
           </button>
 
-          <button 
-            onClick={() => {
-              onClose();
-              onBecomePro();
-            }} 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-[0.98]"
-          >
-            <Crown size={18} fill="currentColor" className="shrink-0" />
-            <span className="flex-1 text-left"> {t('becomePro')}</span>
-          </button>
+          {!isPremium && (
+            <button 
+              onClick={() => {
+                onClose();
+                onBecomePro();
+              }} 
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-md transform active:scale-[0.98]"
+            >
+              <Crown size={18} fill="currentColor" className="shrink-0" />
+              <span className="flex-1 text-left"> {t('becomePro')}</span>
+            </button>
+          )}
+          {isPremium && !isAdmin && (
+            <div className="px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+               <Crown size={16} className="text-amber-500" fill="currentColor" />
+               <span className="text-xs font-bold text-amber-700 dark:text-amber-400">PRO Lidmaatschap Actief</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -200,6 +209,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 const AppContent = () => {
   const { t, tColor } = useLanguage();
   const [session, setSession] = useState<any>(null);
+  const [isPro, setIsPro] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [materials, setMaterials] = useState<OtherMaterial[]>([]); 
@@ -212,7 +222,7 @@ const AppContent = () => {
   const [settings, setSettings] = useState<AppSettings>({ lowStockThreshold: 20, theme: 'dark', unusedWarningDays: 90, enableWeeklyEmail: false, enableUpdateNotifications: true });
   const [view, setView] = useState<ViewState>('dashboard');
   const [showModal, setShowModal] = useState(false);
-  const [showLabelOnly, setShowLabelOnly] = useState(false); // New state to trigger label preview directly
+  const [showLabelOnly, setShowLabelOnly] = useState(false); 
   const [showMaterialModal, setShowMaterialModal] = useState(false); 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
@@ -233,6 +243,8 @@ const AppContent = () => {
      return email && ADMIN_EMAILS.includes(email);
   }, [session]);
 
+  const isPremium = useMemo(() => isAdmin || isPro, [isAdmin, isPro]);
+
   const existingBrands = useMemo(() => {
     return Array.from(new Set(filaments.map(f => f.brand)));
   }, [filaments]);
@@ -243,7 +255,6 @@ const AppContent = () => {
       setShowWelcome(true);
     }
 
-    // Check for app updates
     const checkUpdates = async () => {
       try {
         const res = await fetch('/version.json');
@@ -287,7 +298,6 @@ const AppContent = () => {
       fetchPublicStock();
     }
 
-    // Deep link handling
     CapacitorApp.addListener('appUrlOpen', (data: any) => {
        const url = data.url;
        if (url.startsWith('filament://')) {
@@ -313,6 +323,10 @@ const AppContent = () => {
     const userId = uid || session?.user?.id;
     if (!userId) return;
     try {
+      // Fetch Profile for PRO status
+      const { data: pData } = await supabase.from('profiles').select('is_pro').eq('id', userId).single();
+      if (pData) setIsPro(pData.is_pro);
+
       const { data: fData } = await supabase.from('filaments').select('*').eq('user_id', userId);
       if (fData) setFilaments(fData);
       const { data: mData } = await supabase.from('other_materials').select('*').eq('user_id', userId);
@@ -323,8 +337,8 @@ const AppContent = () => {
       if (sData) setSuppliers(sData);
       const { data: jData } = await supabase.from('print_jobs').select('*').eq('user_id', userId);
       if (jData) setPrintJobs(jData);
-      const { data: pData } = await supabase.from('printers').select('*').eq('user_id', userId);
-      if (pData) setPrinters(pData);
+      const { data: prData } = await supabase.from('printers').select('*').eq('user_id', userId);
+      if (prData) setPrinters(prData);
       
       const { data: feedbackData } = await supabase.from('feedback').select('rating');
       if (feedbackData && feedbackData.length > 0) {
@@ -338,17 +352,47 @@ const AppContent = () => {
   };
 
   useEffect(() => {
+    let profileSubscription: any = null;
+
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
-      if (s) fetchData(s.user.id);
+      if (s) {
+        fetchData(s.user.id);
+        
+        // Setup realtime subscription for PRO status changes
+        profileSubscription = supabase
+          .channel(`public:profiles:id=eq.${s.user.id}`)
+          .on('postgres_changes', { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'profiles',
+            filter: `id=eq.${s.user.id}`
+          }, payload => {
+            console.log("PRO Status wijziging gedetecteerd!", payload.new.is_pro);
+            setIsPro(payload.new.is_pro);
+            if (payload.new.is_pro) {
+               alert("Gefeliciteerd! Je account is geupgrade naar PRO.");
+            }
+          })
+          .subscribe();
+      }
       setIsLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s) fetchData(s.user.id);
-      else setFilaments([]);
+      else {
+        setFilaments([]);
+        setIsPro(false);
+        if (profileSubscription) supabase.removeChannel(profileSubscription);
+      }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      if (profileSubscription) supabase.removeChannel(profileSubscription);
+    };
   }, []);
 
   const handleSaveFilament = async (filament: Filament | Filament[]) => {
@@ -483,6 +527,7 @@ const AppContent = () => {
           onClose={() => {}} 
           t={t} 
           isAdmin={isAdmin} 
+          isPremium={isPremium}
           onBecomePro={() => setShowProModal(true)} 
           onOpenShowcase={() => setShowShowcaseModal(true)} 
           adminBadgeCount={adminBadgeCount} 
@@ -502,6 +547,7 @@ const AppContent = () => {
               onClose={() => setSidebarOpen(false)} 
               t={t} 
               isAdmin={isAdmin} 
+              isPremium={isPremium}
               onBecomePro={() => setShowProModal(true)} 
               onOpenShowcase={() => setShowShowcaseModal(true)}
               adminBadgeCount={adminBadgeCount} 
@@ -541,17 +587,16 @@ const AppContent = () => {
         </header>
 
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
-           {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isAdmin} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
-           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isAdmin} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
-           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} isAdmin={isAdmin} onUnlockPro={() => setShowProModal(true)} />}
-           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isAdmin} onLimitReached={() => setShowProModal(true)} />}
+           {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
+           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            
-           {/* Print Preview View */}
            {view === 'print-preview' && (
               <PrintPreview 
                 filaments={filaments} 
@@ -562,7 +607,6 @@ const AppContent = () => {
         </PullToRefresh>
       </main>
 
-      {/* MODALS */}
       {showModal && (
         <FilamentForm 
           initialData={editingFilament}
@@ -589,7 +633,7 @@ const AppContent = () => {
       
       {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
       
-      {showShowcaseModal && isAdmin && (
+      {showShowcaseModal && isPremium && (
         <ShowcaseModal 
           filaments={filaments} 
           settings={settings} 

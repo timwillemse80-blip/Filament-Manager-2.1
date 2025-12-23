@@ -82,7 +82,6 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
-  // Handle Escape key and Scroll Lock
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setZoomedImage(null);
@@ -109,12 +108,10 @@ export const Inventory: React.FC<InventoryProps> = ({
 
   const filteredFilaments = filaments.filter(f => {
     const lowerFilter = filter.toLowerCase().trim();
-    // Als de filter begint met #, zoek dan strikt op Short ID
     if (lowerFilter.startsWith('#')) {
        const id = lowerFilter.substring(1);
        return f.shortId?.toLowerCase() === id;
     }
-    // Als de filter 4 karakters lang is en we vinden een ID match, geef die prioriteit
     if (lowerFilter.length === 4 && f.shortId?.toLowerCase() === lowerFilter) {
        return true;
     }
@@ -222,7 +219,6 @@ export const Inventory: React.FC<InventoryProps> = ({
            if (foundId) {
               setFilter(foundId);
               onSetActiveGroupKey(null);
-              // Auto edit if exactly 1 found
               const match = filaments.find(f => f.shortId?.toLowerCase() === foundId.toLowerCase());
               if (match) {
                  onEdit(match, 'filament');
@@ -257,8 +253,6 @@ export const Inventory: React.FC<InventoryProps> = ({
 
   const getLocationName = (id?: string) => locations.find(l => l.id === id)?.name || null;
   const getSupplierName = (id?: string) => suppliers.find(s => s.id === id)?.name || null;
-
-  const showAddButton = activeTab === 'filament' || (activeTab === 'material' && isAdmin);
 
   const renderFilamentCard = (filament: Filament) => {
     const percentage = Math.max(0, Math.min(100, (filament.weightRemaining / filament.weightTotal) * 100));
@@ -488,7 +482,7 @@ export const Inventory: React.FC<InventoryProps> = ({
   };
 
   const FabButton = () => {
-     if (!showAddButton) return null;
+     if (!isAdmin && activeTab === 'material') return null;
      return createPortal(
         <button
            onClick={() => onAddClick(activeTab)}
@@ -558,11 +552,9 @@ export const Inventory: React.FC<InventoryProps> = ({
                   </div>
                </div>
            </div>
-           {isAdmin && (
-              <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title="Selectie Modus">
-                 <CheckSquare size={20} />
-              </button>
-           )}
+           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title="Selectie Modus">
+              <CheckSquare size={20} />
+           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
            {sortedGroupItems.map(f => renderFilamentCard(f))}
@@ -629,21 +621,17 @@ export const Inventory: React.FC<InventoryProps> = ({
                         {isScanning ? <Loader2 size={20} className="animate-spin" /> : <ScanLine size={20} />}
                      </button>
                   </div>
-                  {showAddButton && (
-                     <button 
-                        onClick={() => onAddClick('filament')}
-                        className="p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
-                        title={t('newFilament')}
-                     >
-                        <Plus size={24} />
-                     </button>
-                  )}
+                  <button 
+                     onClick={() => onAddClick('filament')}
+                     className="p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
+                     title={t('newFilament')}
+                  >
+                     <Plus size={24} />
+                  </button>
                   
-                  {isAdmin && (
-                     <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
-                        <CheckSquare size={24} />
-                     </button>
-                  )}
+                  <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
+                     <CheckSquare size={24} />
+                  </button>
                </div>
                <div className="relative min-w-[180px]">
                   <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-full h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer text-sm">
