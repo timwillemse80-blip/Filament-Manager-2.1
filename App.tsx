@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
 import { Inventory } from './components/Inventory';
@@ -21,7 +22,7 @@ import { ProModal } from './components/ProModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { NotificationPage } from './components/NotificationPage';
 import { PrintPreview } from './components/PrintPreview';
-import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode } from 'lucide-react';
+import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -237,6 +238,94 @@ const AppContent = () => {
   const [showShowcasePreview, setShowShowcasePreview] = useState(false);
   const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
+
+  // Refs for state that backbutton handler needs without re-triggering
+  const viewRef = useRef(view);
+  const isSidebarOpenRef = useRef(isSidebarOpen);
+  const showModalRef = useRef(showModal);
+  const showMaterialModalRef = useRef(showMaterialModal);
+  const showProModalRef = useRef(showProModal);
+  const showShowcaseModalRef = useRef(showShowcaseModal);
+  const showShowcasePreviewRef = useRef(showShowcasePreview);
+  const showWelcomeRef = useRef(showWelcome);
+  const activeGroupKeyRef = useRef(activeGroupKey);
+
+  useEffect(() => {
+    viewRef.current = view;
+    isSidebarOpenRef.current = isSidebarOpen;
+    showModalRef.current = showModal;
+    showMaterialModalRef.current = showMaterialModal;
+    showProModalRef.current = showProModal;
+    showShowcaseModalRef.current = showShowcaseModal;
+    showShowcasePreviewRef.current = showShowcasePreview;
+    showWelcomeRef.current = showWelcome;
+    activeGroupKeyRef.current = activeGroupKey;
+  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, activeGroupKey]);
+
+  // Android Hardware Back Button Handler
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      // Priority 1: Closing heavy UI overlays
+      if (showWelcomeRef.current) {
+        setShowWelcome(false);
+        return;
+      }
+      if (showProModalRef.current) {
+        setShowProModal(false);
+        return;
+      }
+      if (showShowcasePreviewRef.current) {
+        setShowShowcasePreview(false);
+        return;
+      }
+      if (showShowcaseModalRef.current) {
+        setShowShowcaseModal(false);
+        return;
+      }
+
+      // Priority 2: Handling Forms (Forms often have their own 'cancel' logic)
+      if (showModalRef.current) {
+        // Ideally we would trigger the 'dirty' check here, 
+        // but for simplicity we close the modal if standard closing is allowed.
+        // Component-level handlers usually fire after global ones if not managed.
+        // We'll let the component's internal listener (if any) or state manage this.
+        return; 
+      }
+      if (showMaterialModalRef.current) {
+        setShowMaterialModal(false);
+        return;
+      }
+
+      // Priority 3: Mobile Sidebar
+      if (isSidebarOpenRef.current) {
+        setSidebarOpen(false);
+        return;
+      }
+
+      // Priority 4: Inventory Sub-view
+      if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
+        setActiveGroupKey(null);
+        return;
+      }
+
+      // Priority 5: View Navigation
+      if (viewRef.current !== 'dashboard') {
+        setView('dashboard');
+        return;
+      }
+
+      // Priority 6: Exit App if on Dashboard
+      if (viewRef.current === 'dashboard') {
+        CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      backButtonListener.then(l => l.remove());
+    };
+  }, []);
 
   const isAdmin = useMemo(() => {
      const email = session?.user?.email?.toLowerCase();

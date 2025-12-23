@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, AiSuggestion, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
@@ -295,40 +296,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       onCancel();
     }
   };
-
-  useEffect(() => {
-    if (onSetHandlesBackButton) onSetHandlesBackButton(true);
-
-    const handleBack = async () => {
-      const listener = await CapacitorApp.addListener('backButton', () => {
-        if (showLabelRef.current) {
-          if (initialShowLabel) {
-            onCancel(); // Close entire modal if opened directly as label
-          } else {
-            setShowLabel(false); // Go back to form if opened from form
-          }
-          return;
-        }
-        if (showUnsavedDialogRef.current) {
-           setShowUnsavedDialog(false);
-           return;
-        }
-        if (checkIsDirty()) {
-           setShowUnsavedDialog(true);
-        } else {
-           onCancel();
-        }
-      });
-      return listener;
-    };
-
-    const cleanupPromise = handleBack();
-
-    return () => {
-      if (onSetHandlesBackButton) onSetHandlesBackButton(false);
-      cleanupPromise.then(l => l.remove());
-    };
-  }, []); 
 
   useEffect(() => {
     if (initialData) {
