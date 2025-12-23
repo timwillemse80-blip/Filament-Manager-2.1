@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, PrintJob, Printer, AppSettings, CostBreakdown, OtherMaterial } from '../types';
@@ -16,6 +15,8 @@ interface PrintHistoryProps {
   settings?: AppSettings;
   isAdmin?: boolean;
   onUnlockPro?: () => void;
+  viewingJob: PrintJob | null;
+  setViewingJob: (job: PrintJob | null) => void;
 }
 
 interface FilamentPickerProps {
@@ -78,6 +79,7 @@ const FilamentPicker: React.FC<FilamentPickerProps> = ({ filaments, selectedId, 
              filteredFilaments.map(f => (
                <div 
                  key={f.id} 
+                 // Fix: used f.id instead of id to resolve "Cannot find name 'id'" error
                  onClick={() => handleSelect(f.id)}
                  className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 flex items-center justify-between group"
                >
@@ -204,14 +206,12 @@ const getConversionFactor = (fromUnit: string, toUnit: string) => {
     return 1;
 };
 
-export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials, history, printers, onSaveJob, onDeleteJob, settings, isAdmin, onUnlockPro }) => {
+export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials, history, printers, onSaveJob, onDeleteJob, settings, isAdmin, onUnlockPro, viewingJob, setViewingJob }) => {
   const [showModal, setShowModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
   const { t } = useLanguage();
   
-  const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
-
   const [jobName, setJobName] = useState('');
   const [printTime, setPrintTime] = useState('');
   const [status, setStatus] = useState<'success' | 'fail'>('success');

@@ -33,7 +33,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.28"; 
+const APP_VERSION = "2.1.29"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -218,7 +218,6 @@ const AppContent = () => {
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
   
-  // Load initial settings from localStorage or defaults
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('filament_settings');
     if (saved) {
@@ -255,17 +254,19 @@ const AppContent = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false); 
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   
+  // Lifting state for logbook details to catch it with back button
+  const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
+
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
   const [showShowcasePreview, setShowShowcasePreview] = useState(false);
   const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
 
-  // Persistence for settings
   useEffect(() => {
     localStorage.setItem('filament_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Refs for state that backbutton handler needs without re-triggering
+  // Refs for consistent state access in the backbutton closure
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -276,6 +277,7 @@ const AppContent = () => {
   const showWelcomeRef = useRef(showWelcome);
   const showExitConfirmRef = useRef(showExitConfirm);
   const activeGroupKeyRef = useRef(activeGroupKey);
+  const viewingJobRef = useRef(viewingJob);
 
   useEffect(() => {
     viewRef.current = view;
@@ -288,17 +290,21 @@ const AppContent = () => {
     showWelcomeRef.current = showWelcome;
     showExitConfirmRef.current = showExitConfirm;
     activeGroupKeyRef.current = activeGroupKey;
-  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey]);
+    viewingJobRef.current = viewingJob;
+  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
   // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
+      // 0. Als Exit Bevestiging open is, sluit deze eerst
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
       }
+
+      // 1. Sluit zware UI overlays
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -315,6 +321,8 @@ const AppContent = () => {
         setShowShowcaseModal(false);
         return;
       }
+
+      // 2. Sluit formulieren
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
@@ -326,18 +334,32 @@ const AppContent = () => {
         setEditingId(null);
         return;
       }
+
+      // 3. Sluit detail vensters (bv. van logboek)
+      if (viewingJobRef.current) {
+        setViewingJob(null);
+        return;
+      }
+
+      // 4. Sluit mobiele zijbalk
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
+
+      // 5. Ga uit sub-inventaris weergave (groepen)
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
+
+      // 6. Navigeer terug naar Dashboard als je elders bent
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
         return;
       }
+
+      // 7. Als je al op het Dashboard bent en alles is dicht: Toon Exit Popup
       if (viewRef.current === 'dashboard') {
         setShowExitConfirm(true);
       }
@@ -716,7 +738,7 @@ const AppContent = () => {
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
-           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
