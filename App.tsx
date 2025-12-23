@@ -22,7 +22,7 @@ import { ProModal } from './components/ProModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { NotificationPage } from './components/NotificationPage';
 import { PrintPreview } from './components/PrintPreview';
-import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
+import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronLeft, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -33,7 +33,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.25"; 
+const APP_VERSION = "2.1.26"; 
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2; 
 
@@ -262,12 +262,12 @@ const AppContent = () => {
     activeGroupKeyRef.current = activeGroupKey;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, activeGroupKey]);
 
-  // Android Hardware Back Button Handler
+  // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      // Priority 1: Closing heavy UI overlays
+    const backButtonListener = CapacitorApp.addListener('backButton', () => {
+      // 1. Sluit zware UI overlays
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -285,38 +285,38 @@ const AppContent = () => {
         return;
       }
 
-      // Priority 2: Handling Forms (Forms often have their own 'cancel' logic)
+      // 2. Sluit formulieren (met respect voor hun eigen logica)
       if (showModalRef.current) {
-        // Ideally we would trigger the 'dirty' check here, 
-        // but for simplicity we close the modal if standard closing is allowed.
-        // Component-level handlers usually fire after global ones if not managed.
-        // We'll let the component's internal listener (if any) or state manage this.
+        setShowModal(false);
+        setEditingId(null);
+        setShowLabelOnly(false);
         return; 
       }
       if (showMaterialModalRef.current) {
         setShowMaterialModal(false);
+        setEditingId(null);
         return;
       }
 
-      // Priority 3: Mobile Sidebar
+      // 3. Sluit mobiele zijbalk
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
 
-      // Priority 4: Inventory Sub-view
+      // 4. Ga uit sub-inventaris weergave
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
 
-      // Priority 5: View Navigation
+      // 5. Navigeer terug naar Dashboard als je elders bent
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
         return;
       }
 
-      // Priority 6: Exit App if on Dashboard
+      // 6. Als je al op het Dashboard bent en alles is dicht: Sluit App
       if (viewRef.current === 'dashboard') {
         CapacitorApp.exitApp();
       }
@@ -656,8 +656,22 @@ const AppContent = () => {
 
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 justify-between gap-2">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
-          <h1 className="dark:text-white flex-1 font-bold px-2 truncate">{t(view)}</h1>
+          <div className="flex items-center gap-1">
+             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
+             {view !== 'dashboard' && (
+                <button 
+                  onClick={() => {
+                     if (activeGroupKey) setActiveGroupKey(null);
+                     else setView('dashboard');
+                  }}
+                  className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                  title={t('back')}
+                >
+                   <ChevronLeft size={24} strokeWidth={3} />
+                </button>
+             )}
+          </div>
+          <h1 className="dark:text-white flex-1 font-bold px-2 truncate text-center md:text-left">{t(view)}</h1>
           
           <div className="shrink-0 flex items-center gap-1">
              <button 
