@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AiSuggestion } from "../types";
 
@@ -13,35 +12,16 @@ const cleanJsonString = (str: string): string => {
   return cleaned;
 };
 
-/**
- * Schont een base64 string op door alle mogelijke 'data:...base64,' headers te verwijderen.
- */
-const getRawBase64 = (base64Image: string): string => {
-  if (!base64Image) return "";
-  // Verwijdert alles tot en met de laatste komma (bijv. "data:image/jpeg;base64,")
-  const matches = base64Image.match(/^data:.*?;base64,(.*)$/);
-  if (matches && matches[1]) return matches[1];
-  
-  // Als er geen header is, maar wel een komma (soms bij web-canvas)
-  if (base64Image.includes(',')) return base64Image.split(',')[1];
-  
-  return base64Image;
-};
-
 export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggestion> => {
   try {
-    const rawData = getRawBase64(base64Image);
-    
-    if (!rawData || rawData.length < 100) {
-      throw new Error("Ongeldige afbeeldingsdata ontvangen. Probeer het opnieuw.");
-    }
-
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: rawData } },
+          { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
           { text: "Analyseer deze filament spoel afbeelding. Geef JSON terug met: brand, material, colorName (NL), colorHex, tempNozzle (number), tempBed (number), shortId (zoek naar een 4-cijferige code beginnend met # of losstaand)." }
         ]
       },
@@ -71,15 +51,14 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
 
 export const lookupSpoolFromImage = async (base64Image: string): Promise<string | null> => {
   try {
-    const rawData = getRawBase64(base64Image);
-    if (!rawData) return null;
-
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: rawData } },
+          { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
           { text: "Zoek op dit label naar een unieke 4-cijferige ID (Short ID). Geef enkel de code terug in JSON formaat." }
         ]
       },
