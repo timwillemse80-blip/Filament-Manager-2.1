@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial } from '../types';
-import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles } from 'lucide-react';
+import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles, Construction } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -81,6 +81,7 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [showAiMaintenance, setShowAiMaintenance] = useState(false);
   
   // Web Camera State
   const [showWebCamera, setShowWebCamera] = useState(false);
@@ -229,6 +230,11 @@ export const Inventory: React.FC<InventoryProps> = ({
   };
 
   const handleQuickScan = async () => {
+     // INTERCEPT: Show maintenance alert
+     setShowAiMaintenance(true);
+     return;
+     
+     /*
      if (isScanning) return;
      
      if (Capacitor.isNativePlatform()) {
@@ -270,6 +276,7 @@ export const Inventory: React.FC<InventoryProps> = ({
         alert(t('failed') + ": Camera niet toegankelijk.");
         setShowWebCamera(false);
      }
+     */
   };
 
   const stopWebCamera = () => {
@@ -807,7 +814,28 @@ export const Inventory: React.FC<InventoryProps> = ({
          </div>
       )}
 
-      {/* --- WEB CAMERA OVERLAY for Quick Scan Fallback --- */}
+      {/* --- UNDER MAINTENANCE ALERT for Quick Scan --- */}
+      {showAiMaintenance && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
+               <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <Construction size={40} className="text-amber-600 dark:text-amber-400" />
+               </div>
+               <h2 className="text-xl font-black dark:text-white mb-2">{t('aiCameraUnavailable')}</h2>
+               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
+                  {t('aiCameraUnavailableDesc')}
+               </p>
+               <button 
+                  onClick={() => setShowAiMaintenance(false)}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98]"
+               >
+                  {t('close')}
+               </button>
+            </div>
+         </div>
+      )}
+
+      {/* --- WEB CAMERA OVERLAY for Quick Scan Fallback (Currently Bypassed) --- */}
       {showWebCamera && (
          <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
             <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden">

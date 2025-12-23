@@ -4,6 +4,10 @@ type Language = 'nl' | 'en' | 'de' | 'fr' | 'es';
 
 const translations: Record<Language, Record<string, string>> = {
   nl: {
+    // AI Alert
+    aiCameraUnavailable: "AI-camera tijdelijk niet beschikbaar",
+    aiCameraUnavailableDesc: "We werken er hard aan om de AI-functies te verbeteren. Deze functie is binnenkort weer volledig beschikbaar in een volgende update!",
+    
     // Menu & Tabs
     inventory: "Voorraad",
     filaments: "Filamenten",
@@ -226,7 +230,7 @@ const translations: Record<Language, Record<string, string>> = {
     darkMode: "Donker",
     lightMode: "Licht",
     language: "Taal",
-    lowStockWarning: "Laag Voorraad Waarschuwing",
+    lowStockThreshold: "Laag Voorraad Waarschuwing",
     unusedWarning: "Lang niet gebruikt",
     days: "dagen",
     backupCreate: "Backup Maken",
@@ -337,6 +341,8 @@ const translations: Record<Language, Record<string, string>> = {
     "naturel": "Naturel"
   },
   en: {
+    aiCameraUnavailable: "AI camera temporarily unavailable",
+    aiCameraUnavailableDesc: "We are working hard to improve the AI features. This function will be fully available again in a future update!",
     feedbackTitle: "Your opinion matters!",
     feedbackSubtitle: "Help us improve the app by sharing your experience.",
     feedbackPlaceholder: "Write your comment, compliment or suggestion here...",
@@ -370,6 +376,8 @@ const translations: Record<Language, Record<string, string>> = {
     analyzingFilament: "Analyzing Label..."
   },
   de: {
+    aiCameraUnavailable: "KI-Kamera vorübergehend nicht verfügbar",
+    aiCameraUnavailableDesc: "Wir arbeiten hart daran, die KI-Funktionen zu verbessern. Diese Funktion wird in einem zukünftigen Update wieder vollständig verfügbar sein!",
     feedbackTitle: "Ihre Meinung zählt!",
     feedbackSubtitle: "Helfen Sie uns, die App zu verbessern, indem Sie Ihre Erfahrungen teilen.",
     feedbackPlaceholder: "Schreiben Sie hier Ihren Kommentar, Ihr Kompliment oder Ihren Vorschlag...",
@@ -399,6 +407,8 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Aus Vorraad laden"
   },
   fr: {
+    aiCameraUnavailable: "Caméra IA temporairement indisponible",
+    aiCameraUnavailableDesc: "Nous travaillons dur pour améliorer les fonctionnalités de l'IA. Cette fonction sera à nouveau pleinement disponible dans une future mise à jour !",
     feedbackTitle: "Votre avis compte !",
     feedbackSubtitle: "Aidez-nous à améliorer l'application en partageant votre expérience.",
     feedbackPlaceholder: "Écrivez ici votre commentaire, compliment ou suggestion...",
@@ -428,6 +438,8 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Charger depuis le stock"
   },
   es: {
+    aiCameraUnavailable: "Cámara IA temporalmente no disponible",
+    aiCameraUnavailableDesc: "Estamos trabajando duro para mejorar las funciones de IA. ¡Esta función volverá a estar plenamente disponible en una futura actualización!",
     feedbackTitle: "¡Tu opinión cuenta!",
     feedbackSubtitle: "Ayúdanos a mejorar la aplicación compartiendo tu experiencia.",
     feedbackPlaceholder: "Escribe aquí tu comentario, cumplido o sugerencia...",
