@@ -298,6 +298,13 @@ const AppContent = () => {
       fetchPublicStock();
     }
 
+    // App Resume handling to refresh PRO status
+    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && session?.user?.id) {
+        fetchData(session.user.id);
+      }
+    });
+
     CapacitorApp.addListener('appUrlOpen', (data: any) => {
        const url = data.url;
        if (url.startsWith('filament://')) {
@@ -308,7 +315,7 @@ const AppContent = () => {
        }
     });
 
-  }, []);
+  }, [session]);
 
   const handleSpoolDeepLink = (shortId: string) => {
      const spool = filaments.find(f => f.shortId?.toLowerCase() === shortId.toLowerCase());
@@ -369,9 +376,10 @@ const AppContent = () => {
             filter: `id=eq.${s.user.id}`
           }, payload => {
             console.log("PRO Status wijziging gedetecteerd!", payload.new.is_pro);
+            const wasPro = isPro;
             setIsPro(payload.new.is_pro);
-            if (payload.new.is_pro) {
-               alert("Gefeliciteerd! Je account is geupgrade naar PRO.");
+            if (payload.new.is_pro && !wasPro) {
+               alert("Gefeliciteerd! Je account is zojuist geupgrade naar PRO. Alle functies zijn nu ontgrendeld.");
             }
           })
           .subscribe();
@@ -393,7 +401,7 @@ const AppContent = () => {
       subscription.unsubscribe();
       if (profileSubscription) supabase.removeChannel(profileSubscription);
     };
-  }, []);
+  }, [isPro]);
 
   const handleSaveFilament = async (filament: Filament | Filament[]) => {
     const userId = session?.user?.id;
