@@ -479,12 +479,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       const result: any = await analyzeSpoolImage(safeBase64);
       
       if (!result.brand && !result.material && !result.colorName && !result.notes) {
-         alert("Scanner: Geen leesbare tekst gevonden. Zorg voor goed licht op het etiket.");
+         alert(t('none'));
          return; 
-      }
-
-      if (!result.brand && !result.material && result.notes) {
-         alert("Kon specifieke velden niet vinden, maar heb de tekst in 'Notities' gezet.");
       }
 
       let aiBrand = result.brand;
@@ -539,7 +535,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
     } catch (error: any) {
       console.error("Processing failed:", error);
-      alert(`AI Foutmelding:\n${error.message}`);
+      alert(`${t('failed')}:\n${error.message}`);
     } finally {
       setIsScanning(false);
       setIsAnalyzing(false);
@@ -564,7 +560,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       } catch (error: any) {
         if (error?.message?.includes('User cancelled')) return;
         console.error("Camera error:", error);
-        alert(`Camera Fout:\n${error?.message || JSON.stringify(error)}`);
+        alert(`${t('failed')}:\n${error?.message || JSON.stringify(error)}`);
       }
       return;
     }
@@ -577,7 +573,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Kan camera niet openen.");
+      alert(t('failed'));
       setShowCamera(false);
     }
   };
@@ -606,7 +602,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const handleAutoSettings = async () => {
     if (!formData.brand || !formData.material) {
-      alert("Vul eerst Merk en Materiaal in.");
+      alert(t('failed'));
       return;
     }
     setIsAnalyzing(true);
@@ -687,40 +683,24 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       format: [40, 20] 
     });
 
-    // 1. QR Code (Left) - 15x15mm
     doc.addImage(qrCodeUrl, 'PNG', 1.5, 2.5, 15, 15);
-
-    // 2. Right Side
     const textX = 17.5;
-    
-    // Logo OR Text
     if (logoUrl) {
-       try {
-         doc.text(formData.brand.substring(0, 16), textX, 5);
-       } catch(e) {
-         doc.text(formData.brand.substring(0, 16), textX, 5);
-       }
+       try { doc.text(formData.brand.substring(0, 16), textX, 5); } catch(e) { doc.text(formData.brand.substring(0, 16), textX, 5); }
     } else {
        doc.setFontSize(7);
        doc.setFont("helvetica", "bold");
        doc.text(formData.brand.substring(0, 16), textX, 5);
     }
-
-    // Material & Color
     doc.setFontSize(6);
     doc.setFont("helvetica", "normal");
     const info = `${formData.material} ${tColor(formData.colorName || '')}`;
     doc.text(info.substring(0, 18), textX, 9);
-    
-    // Temp
     doc.setFontSize(5);
     doc.text(`N:${formData.tempNozzle} B:${formData.tempBed}`, textX, 12);
-
-    // ID
     doc.setFontSize(9);
     doc.setFont("courier", "bold");
     doc.text(formData.shortId || "", textX, 17);
-
     doc.autoPrint();
     const blobUrl = doc.output('bloburl');
     window.open(blobUrl, '_blank');
@@ -750,27 +730,19 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               });
               await Share.share({ files: [result.uri] });
            } catch (e: any) {
-              alert("Fout bij delen: " + e.message);
+              alert(t('failed') + ": " + e.message);
            }
         } else {
            try {
               try { await Filesystem.requestPermissions(); } catch (e) {}
               const path = `Pictures/FilamentManager/${fileName}`; 
               try {
-                await Filesystem.mkdir({
-                    path: 'Pictures/FilamentManager',
-                    directory: Directory.ExternalStorage,
-                    recursive: true
-                });
+                await Filesystem.mkdir({ path: 'Pictures/FilamentManager', directory: Directory.ExternalStorage, recursive: true });
               } catch(e) {}
-              await Filesystem.writeFile({
-                path: path,
-                data: data,
-                directory: Directory.ExternalStorage
-              });
-              alert(`Label opgeslagen in je Galerij.`);
+              await Filesystem.writeFile({ path: path, data: data, directory: Directory.ExternalStorage });
+              alert(t('success'));
            } catch (e: any) {
-              alert("Opslaan mislukt: " + e.message);
+              alert(t('failed') + ": " + e.message);
            }
         }
       } else {
@@ -781,7 +753,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       }
     } catch (e) {
       console.error("Image generation failed", e);
-      alert("Kon afbeelding niet genereren.");
+      alert(t('failed'));
     }
   };
 
@@ -798,14 +770,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                fontFamily: 'Arial, sans-serif', color: 'black', boxSizing: 'border-box'
              }}
           >
-             {/* Left: QR */}
              <div style={{ width: '160px', height: '160px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               {qrCodeUrl && (
-                 <img src={qrCodeUrl} alt="QR" style={{ width: '100%', height: '100%' }} />
-               )}
+               {qrCodeUrl && ( <img src={qrCodeUrl} alt="QR" style={{ width: '100%', height: '100%' }} /> )}
              </div>
-             
-             {/* Right: Info */}
              <div style={{ flex: 1, height: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-start', paddingLeft: '15px', boxSizing: 'border-box', overflow: 'hidden' }}>
                 <div style={{ width: '100%' }}>
                    {logoUrl ? (
@@ -822,27 +789,17 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
              </div>
           </div>
 
-          {/* UI Modal */}
           <div className="relative bg-slate-900 rounded-3xl p-8 w-full max-w-md text-center shadow-2xl border border-slate-700">
-             <button onClick={() => {
-                if (initialShowLabel) onCancel();
-                else setShowLabel(false);
-             }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
+             <button onClick={() => { if (initialShowLabel) onCancel(); else setShowLabel(false); }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
              <div className="flex flex-col items-center">
                 <h3 className="text-slate-300 font-medium text-lg mb-1">{formData.brand}</h3>
                 <h2 className="text-white font-bold text-xl mb-6">{tColor(formData.colorName || '')} {formData.material}</h2>
-                
-                {/* Visual Preview */}
                 <div className="bg-white rounded-lg p-3 mb-6 shadow-lg shadow-black/20 overflow-hidden transform border-4 border-slate-800 flex items-center justify-center gap-3" style={{ width: '100%', aspectRatio: '2/1' }}>
                      <div className="h-full aspect-square flex-shrink-0 flex items-center justify-center">
                         {qrCodeUrl ? <img src={qrCodeUrl} className="w-full h-full" /> : <Loader2 className="animate-spin text-slate-400" />}
                      </div>
                      <div className="flex flex-col items-start justify-between h-full flex-1 min-w-0 text-left py-2">
-                        {logoUrl ? (
-                            <img src={logoUrl} className="h-8 object-contain object-left mb-1" />
-                        ) : (
-                            <span className="font-bold text-2xl text-black leading-none truncate w-full">{formData.brand}</span>
-                        )}
+                        {logoUrl ? <img src={logoUrl} className="h-8 object-contain object-left mb-1" /> : <span className="font-bold text-2xl text-black leading-none truncate w-full">{formData.brand}</span>}
                         <div>
                             <span className="font-bold text-sm text-gray-800 block leading-tight">{formData.material}</span>
                             <span className="text-xs text-gray-600 block leading-tight">{tColor(formData.colorName || '')}</span>
@@ -850,22 +807,13 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         <span className="font-mono font-black text-4xl text-black leading-none mt-auto">{formData.shortId}</span>
                      </div>
                 </div>
-
-                {/* Logo Toggle */}
-                {Object.keys(BRAND_DOMAINS).some(k => k.toLowerCase() === formData.brand?.toLowerCase()) && (
-                  <div className="flex items-center gap-3 mb-6 bg-slate-800 p-1.5 rounded-lg border border-slate-700 mx-auto">
-                     <button onClick={() => setPreferLogo(false)} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${!preferLogo ? 'bg-slate-600 text-white' : 'text-slate-400'}`}><FileText size={14} /> Tekst</button>
-                     <button onClick={() => setPreferLogo(true)} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${preferLogo ? 'bg-slate-600 text-white' : 'text-slate-400'}`}><ImageIcon size={14} /> Logo</button>
-                  </div>
-                )}
-                
                 <div className="flex flex-wrap gap-3 justify-center w-full">
                    <button onClick={handlePrintLabel} className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 text-lg shadow-lg">
                      <Printer size={20} /> Print
                    </button>
                    <button onClick={() => handleDownloadImage(false)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm"><Download size={18} /> {t('save')}</button>
                    {Capacitor.isNativePlatform() && (
-                      <button onClick={() => handleDownloadImage(true)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm"><Share2 size={18} /> Delen</button>
+                      <button onClick={() => handleDownloadImage(true)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm"><Share2 size={18} /> {t('send')}</button>
                    )}
                 </div>
              </div>
@@ -874,14 +822,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     );
   }
 
-  // --- Main Form Render ---
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-6 animate-fade-in overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
         
-        {/* Left Panel: Camera */}
         {!initialData && (
-          <div className="w-full md:w-1/3 bg-slate-100 dark:bg-slate-800 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700 relative">
+          <div className="w-full md:w-1/3 bg-slate-100 dark:bg-slate-800 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700 relative text-center">
             {showCamera ? (
               <div className="absolute inset-0 bg-black flex flex-col items-center justify-center z-20 overflow-hidden rounded-t-2xl md:rounded-l-2xl">
                 <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
@@ -900,7 +846,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         <div className="flex-1 bg-black/60"></div>
                     </div>
                     <div className="flex-1 bg-black/60 w-full flex items-start justify-center pt-6">
-                        <p className="text-white font-medium text-sm drop-shadow-md bg-black/40 px-3 py-1 rounded-full">Houd het label binnen het kader</p>
+                        <p className="text-white font-medium text-sm drop-shadow-md bg-black/40 px-3 py-1 rounded-full">{t('scanInstruction')}</p>
                     </div>
                 </div>
                 <button onClick={captureWebImage} className="absolute bottom-8 w-16 h-16 bg-white rounded-full border-4 border-slate-300 shadow-lg z-30 transition-transform active:scale-95"/>
@@ -912,25 +858,19 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   {isScanning ? <Loader2 size={48} className="text-blue-600 dark:text-blue-400 animate-spin" /> : <CameraIcon size={48} className="text-blue-600 dark:text-blue-400" />}
                   {!isScanning && <div className="absolute inset-0 rounded-full border-4 border-blue-500/30 animate-ping" />}
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 text-center">{t('scanTitle')}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6 px-4">{t('scanDesc')}</p>
-                <button 
-                  onClick={startCamera} 
-                  disabled={isScanning} 
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-50"
-                  title="Scan het etiket om gegevens automatisch in te vullen"
-                >
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">{t('scanTitle')}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 px-4">{t('scanDesc')}</p>
+                <button onClick={startCamera} disabled={isScanning} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-50">
                   {isScanning ? t('processing') : <><CameraIcon size={20} /> {t('startScan')}</>}
                 </button>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={handleAutoSettings} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1" title="Laat AI temperaturen raden op basis van merk/materiaal"><Sparkles size={12} /> {t('autoSettings')}</button>
+                <div className="mt-4">
+                  <button onClick={handleAutoSettings} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1" title={t('autoSettingsDesc')}><Sparkles size={12} /> {t('autoSettings')}</button>
                 </div>
               </>
             )}
           </div>
         )}
 
-        {/* Right Panel: Form */}
         <div className={`p-6 md:p-8 overflow-y-auto ${initialData ? 'w-full' : 'flex-1'}`}>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{initialData ? t('formEditTitle') : t('formNewTitle')}</h2>
@@ -943,7 +883,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 <label className="text-xs font-bold text-slate-500 uppercase">{t('brand')}</label>
                 {isCustomBrand ? (
                    <div className="flex gap-2">
-                      <input type="text" required value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder="Naam"/>
+                      <input type="text" required value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder={t('name')}/>
                       <button type="button" onClick={() => setIsCustomBrand(false)} className="p-2 bg-slate-200 dark:bg-slate-700 rounded-lg"><RefreshCw size={18}/></button>
                    </div>
                 ) : (
@@ -958,7 +898,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 <label className="text-xs font-bold text-slate-500 uppercase">{t('material')}</label>
                 {isCustomMaterial ? (
                    <div className="flex gap-2">
-                      <input type="text" required value={formData.material} onChange={e => setFormData({...formData, material: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder="Type"/>
+                      <input type="text" required value={formData.material} onChange={e => setFormData({...formData, material: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder={t('material')}/>
                       <button type="button" onClick={() => setIsCustomMaterial(false)} className="p-2 bg-slate-200 dark:bg-slate-700 rounded-lg"><RefreshCw size={18}/></button>
                    </div>
                 ) : (
@@ -999,12 +939,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 <label className="text-xs font-bold text-slate-500 uppercase">{t('weightRemainingLabel')}</label>
                 <div className="flex gap-2">
                    <input type="number" value={formData.weightRemaining} onChange={e => setFormData({...formData, weightRemaining: Number(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"/>
-                   <button 
-                      type="button" 
-                      onClick={() => setShowWeighHelper(true)} 
-                      className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-3 rounded-lg flex items-center justify-center transition-colors"
-                      title={t('weighHelper') + " (Bereken restgewicht)"}
-                   >
+                   <button type="button" onClick={() => setShowWeighHelper(true)} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-3 rounded-lg flex items-center justify-center transition-colors">
                       <Scale size={20} />
                    </button>
                 </div>
@@ -1068,17 +1003,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">{t('shopUrl')}</label>
                 <div className="relative">
-                  <input type="url" value={formData.shopUrl || ''} onChange={e => setFormData({...formData, shopUrl: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 pl-8 pr-10 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder="https://..."/>
+                  <input type="url" value={formData.shopUrl || ''} onChange={e => setFormData({...formData, shopUrl: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" placeholder="https://..."/>
                   <div className="absolute left-3 top-3 text-slate-400"><LinkIcon size={14} /></div>
                   {formData.shopUrl && (
-                      <button 
-                        type="button"
-                        onClick={handleOpenShopUrl}
-                        className="absolute right-2 top-2 p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-slate-700 rounded transition-colors"
-                        title="Bezoek URL"
-                      >
-                        <ExternalLink size={16} />
-                      </button>
+                      <button type="button" onClick={handleOpenShopUrl} className="absolute right-2 top-2 p-1 text-blue-500 hover:bg-blue-100 dark:hover:bg-slate-700 rounded transition-colors"><ExternalLink size={16} /></button>
                   )}
                 </div>
               </div>
@@ -1102,155 +1030,42 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               </div>
             )}
 
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4">
               <Save size={20} /> {initialData ? t('saveChanges') : t('addToInventory')}
             </button>
           </form>
         </div>
       </div>
       
-      {/* Weighing Helper Modal */}
       {showWeighHelper && (
          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-700 relative">
-               <button 
-                  onClick={() => setShowWeighHelper(false)} 
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
-               >
-                  <X size={20} />
-               </button>
-               
-               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                  <Calculator size={20} className="text-blue-500" />
-                  {t('weighHelper')}
-               </h3>
-               
+               <button onClick={() => setShowWeighHelper(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"><X size={20} /></button>
+               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Calculator size={20} className="text-blue-500" /> {t('weighHelper')}</h3>
                <div className="space-y-4">
                   <div>
                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('grossWeight')}</label>
                      <div className="relative">
-                        <input 
-                           type="number" 
-                           value={grossWeight} 
-                           onChange={(e) => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-lg font-bold dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder="0"
-                           autoFocus
-                        />
+                        <input type="number" value={grossWeight} onChange={(e) => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-lg font-bold dark:text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" autoFocus/>
                         <span className="absolute right-4 top-4 text-slate-400 text-sm font-medium">gram</span>
                      </div>
                   </div>
-
                   <div>
                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('spoolType')}</label>
-                     <select 
-                        value={selectedSpoolType}
-                        onChange={(e) => {
-                           setSelectedSpoolType(e.target.value);
-                           setTareWeight(spoolWeights[e.target.value]);
-                        }}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                     >
-                        {Object.keys(spoolWeights).sort().map(key => (
-                           <option key={key} value={key}>{key} (~{spoolWeights[key]}g)</option>
-                        ))}
+                     <select value={selectedSpoolType} onChange={(e) => { setSelectedSpoolType(e.target.value); setTareWeight(spoolWeights[e.target.value]); }} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white appearance-none">
+                        {Object.keys(spoolWeights).sort().map(key => ( <option key={key} value={key}>{key} (~{spoolWeights[key]}g)</option> ))}
                      </select>
-                     {/* Suggest new spool link */}
-                     <button 
-                        onClick={() => setShowContribute(true)} 
-                        className="text-xs text-blue-500 hover:text-blue-600 hover:underline mt-1.5 flex items-center gap-1"
-                     >
-                        <Mail size={12} /> {t('suggestSpool')}
-                     </button>
+                     <button onClick={() => setShowContribute(true)} className="text-xs text-blue-500 hover:text-blue-600 hover:underline mt-1.5 flex items-center gap-1"><Mail size={12} /> {t('suggestSpool')}</button>
                   </div>
-
                   <div>
                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('tareWeight')}</label>
-                     <input 
-                        type="number" 
-                        value={tareWeight} 
-                        onChange={(e) => setTareWeight(parseFloat(e.target.value))}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-sm dark:text-white outline-none"
-                     />
+                     <input type="number" value={tareWeight} onChange={(e) => setTareWeight(parseFloat(e.target.value))} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-sm dark:text-white outline-none"/>
                   </div>
-
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl flex justify-between items-center mt-2">
-                     <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Resultaat:</span>
-                     <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                        {Math.max(0, (typeof grossWeight === 'number' ? grossWeight : 0) - tareWeight)} g
-                     </span>
+                     <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">{t('result')}:</span>
+                     <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{Math.max(0, (typeof grossWeight === 'number' ? grossWeight : 0) - tareWeight)} g</span>
                   </div>
-
-                  <button 
-                     onClick={handleApplyWeight}
-                     disabled={grossWeight === '' || grossWeight <= 0}
-                     className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                     {t('apply')}
-                  </button>
-               </div>
-            </div>
-         </div>
-      )}
-
-      {/* Contribute Modal (Not heavily localized as it sends an email in Dutch, but UI could be) */}
-      {showContribute && (
-         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-700 relative">
-               <button 
-                  onClick={() => setShowContribute(false)} 
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
-               >
-                  <X size={20} />
-               </button>
-               
-               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
-                  <Mail size={20} className="text-green-500" />
-                  Nieuwe Spoel Toevoegen
-               </h3>
-               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  Help de database groeien! Vul de gegevens in en verstuur ze direct via mail.
-               </p>
-               
-               <div className="space-y-3">
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('brand')}</label>
-                     <input 
-                        type="text" 
-                        value={contributeForm.brand}
-                        onChange={(e) => setContributeForm({...contributeForm, brand: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder={t('exampleBrand')}
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type Spoel ({t('material')})</label>
-                     <input 
-                        type="text" 
-                        value={contributeForm.type}
-                        onChange={(e) => setContributeForm({...contributeForm, type: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder={t('exampleSpoolType')}
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Leeg Gewicht (Gram)</label>
-                     <input 
-                        type="number" 
-                        value={contributeForm.weight}
-                        onChange={(e) => setContributeForm({...contributeForm, weight: e.target.value})}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:text-white outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder={t('exampleWeight')}
-                     />
-                  </div>
-
-                  <button 
-                     onClick={handleSendContribution}
-                     disabled={!contributeForm.brand || !contributeForm.weight}
-                     className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
-                  >
-                     <Send size={18} /> Verstuur Suggestie
-                  </button>
+                  <button onClick={handleApplyWeight} disabled={grossWeight === '' || grossWeight <= 0} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-[0.98] disabled:opacity-50">{t('apply')}</button>
                </div>
             </div>
          </div>
@@ -1258,16 +1073,16 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
       {showUnsavedDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-700 transform scale-100 transition-all">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-700">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-4"><AlertTriangle size={24} /></div>
               <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{t('unsavedTitle')}</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{t('unsavedMsg')}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{t('unsavedMsg')}</p>
             </div>
             <div className="flex flex-col gap-3">
-              <button onClick={triggerSubmit} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20">{t('saveAndClose')}</button>
-              <button onClick={onCancel} className="w-full py-3.5 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 rounded-xl font-bold transition-colors">{t('discard')}</button>
-              <button onClick={() => setShowUnsavedDialog(false)} className="w-full py-3 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium transition-colors">{t('keepEditing')}</button>
+              <button onClick={triggerSubmit} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold">{t('saveAndClose')}</button>
+              <button onClick={onCancel} className="w-full py-3.5 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold">{t('discard')}</button>
+              <button onClick={() => setShowUnsavedDialog(false)} className="w-full py-3 text-slate-500 dark:text-slate-400 font-medium">{t('keepEditing')}</button>
             </div>
           </div>
         </div>

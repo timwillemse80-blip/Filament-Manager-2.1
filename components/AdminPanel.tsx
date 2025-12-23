@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+/* Added ChevronRight to the lucide-react imports */
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'feedback' | 'requests';
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+
 export const AdminPanel: React.FC = () => {
-  const { refreshLogo } = useLogo();
+  const { refreshLogo, logoUrl: currentAppLogo } = useLogo();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -15,7 +19,6 @@ export const AdminPanel: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [logoStatus, setLogoStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [logoMsg, setLogoMsg] = useState('');
-  const [cropScale, setCropScale] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -23,16 +26,17 @@ export const AdminPanel: React.FC = () => {
   const [spoolWeights, setSpoolWeights] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [tableCounts, setTableCounts] = useState({ logs: 0, filaments: 0 });
+  const [tableCounts, setTableCounts] = useState({ logs: 0, filaments: 0, materials: 0, proUsers: 0, totalUsers: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [copiedSql, setCopiedSql] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
   const [newSpool, setNewSpool] = useState({ name: '', weight: '' });
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
 
-  // Check if Gemini AI API Key is configured
+  // Platform Distribution Data
+  const [platformMaterialData, setPlatformMaterialData] = useState<any[]>([]);
+
   const isAiConfigured = !!process.env.API_KEY && process.env.API_KEY.length > 5;
 
   useEffect(() => {
@@ -57,9 +61,38 @@ export const AdminPanel: React.FC = () => {
   };
 
   const loadDashboardStats = async () => {
-     const { count: lCount } = await supabase.from('print_jobs').select('*', { count: 'exact', head: true }); 
-     const { count: fCount } = await supabase.from('filaments').select('*', { count: 'exact', head: true });
-     setTableCounts({ logs: lCount || 0, filaments: fCount || 0 });
+     try {
+        const { count: lCount } = await supabase.from('print_jobs').select('*', { count: 'exact', head: true }); 
+        const { count: fCount } = await supabase.from('filaments').select('*', { count: 'exact', head: true });
+        const { count: mCount } = await supabase.from('other_materials').select('*', { count: 'exact', head: true });
+        const { count: uCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: pCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true);
+
+        setTableCounts({ 
+           logs: lCount || 0, 
+           filaments: fCount || 0, 
+           materials: mCount || 0,
+           totalUsers: uCount || 0,
+           proUsers: pCount || 0
+        });
+
+        // Load Platform Distribution (Top Materials)
+        const { data: filamentStats } = await supabase.from('filaments').select('material');
+        if (filamentStats) {
+           const counts: Record<string, number> = {};
+           filamentStats.forEach((f: any) => {
+              const mat = (f.material || 'Onbekend').toUpperCase();
+              counts[mat] = (counts[mat] || 0) + 1;
+           });
+           const formatted = Object.entries(counts)
+              .map(([name, value]) => ({ name, value }))
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 5);
+           setPlatformMaterialData(formatted);
+        }
+     } catch (e) {
+        console.error("Stats load failed", e);
+     }
   };
 
   const loadUsers = async () => {
@@ -88,29 +121,196 @@ export const AdminPanel: React.FC = () => {
       if (error) throw error;
       
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_pro: !currentStatus } : u));
+      loadDashboardStats(); // Refresh header count
     } catch (e: any) {
       console.error("Pro toggle error details:", e);
-      const errorMsg = e?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
-      alert(`Fout bij bijwerken PRO status: ${errorMsg}\n\nTip: Kopieer en voer het nieuwe SQL script uit om je database te repareren.`);
+      alert(`Fout bij bijwerken PRO status: ${e?.message}`);
     } finally {
       setUpdatingUserId(null);
     }
   };
 
-  const loadFeedback = async () => { setIsLoading(true); const { data } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }); if (data) setFeedbacks(data); setIsLoading(false); };
-  const loadRequests = async () => { setIsLoading(true); const { data } = await supabase.from('deletion_requests').select('*').order('created_at', { ascending: false }); if (data) setRequests(data); setIsLoading(false); };
-  const loadSpoolWeights = async () => { const { data } = await supabase.from('spool_weights').select('*').order('name'); if (data) setSpoolWeights(data); };
-  const loadBrands = async () => { const { data } = await supabase.from('brands').select('*').order('name'); if (data) setBrands(data); };
-  const loadMaterials = async () => { const { data } = await supabase.from('materials').select('*').order('name'); if (data) setMaterials(data); };
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+        setLogoStatus('idle');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLogoUpload = async () => {
+    if (!previewUrl) return;
+    setIsUploading(true);
+    setLogoStatus('idle');
+
+    try {
+      const img = new Image();
+      img.src = previewUrl;
+      await new Promise(resolve => img.onload = resolve);
+      
+      const canvas = document.createElement('canvas');
+      const MAX_SIZE = 400; 
+      let w = img.width;
+      let h = img.height;
+      if (w > h) {
+          if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; }
+      } else {
+          if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, w, h);
+      const optimizedBase64 = canvas.toDataURL('image/png');
+
+      const { error } = await supabase
+        .from('global_settings')
+        .upsert({ key: 'app_logo', value: optimizedBase64 });
+
+      if (error) throw error;
+      
+      setLogoStatus('success');
+      setLogoMsg('Logo succesvol bijgewerkt!');
+      await refreshLogo();
+    } catch (e: any) {
+      setLogoStatus('error');
+      setLogoMsg(e.message || 'Fout bij uploaden logo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleResetLogo = async () => {
+    if (!confirm("Wil je het aangepaste logo verwijderen en teruggaan naar het standaard logo?")) return;
+    try {
+      const { error } = await supabase.from('global_settings').delete().eq('key', 'app_logo');
+      if (error) throw error;
+      setPreviewUrl(null);
+      setLogoFile(null);
+      await refreshLogo();
+      alert("Logo hersteld naar standaard.");
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const loadFeedback = async () => { 
+    setIsLoading(true); 
+    const { data } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }); 
+    if (data) setFeedbacks(data); 
+    setIsLoading(false); 
+  };
+
+  const toggleFeedbackRead = async (id: number, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase.from('feedback').update({ is_read: !currentStatus }).eq('id', id);
+      if (error) throw error;
+      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, is_read: !currentStatus } : f));
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const deleteFeedback = async (id: number) => {
+    if (!confirm("Feedback definitief verwijderen?")) return;
+    try {
+      const { error } = await supabase.from('feedback').delete().eq('id', id);
+      if (error) throw error;
+      setFeedbacks(prev => prev.filter(f => f.id !== id));
+    } catch (e: any) { alert(e.message); }
+  };
+  
+  const loadRequests = async () => { 
+    setIsLoading(true); 
+    const { data } = await supabase.from('deletion_requests').select('*').order('created_at', { ascending: false }); 
+    if (data) setRequests(data); 
+    setIsLoading(false); 
+  };
+
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("Verzoek verwijderen uit lijst?")) return;
+    try {
+      const { error } = await supabase.from('deletion_requests').delete().eq('id', id);
+      if (error) throw error;
+      loadRequests();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const loadSpoolWeights = async () => { setIsLoading(true); const { data } = await supabase.from('spool_weights').select('*').order('name'); if (data) setSpoolWeights(data); setIsLoading(false); };
+  const loadBrands = async () => { const { data } = await supabase.from('brands').select('*').order('name'); if (data) setBrands(data || []); };
+  const loadMaterials = async () => { const { data } = await supabase.from('materials').select('*').order('name'); if (data) setMaterials(data || []); };
+
+  const handleAddSpool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSpool.name || !newSpool.weight) return;
+    try {
+       const { error } = await supabase.from('spool_weights').insert({ name: newSpool.name, weight: Number(newSpool.weight) });
+       if (error) throw error;
+       setNewSpool({ name: '', weight: '' });
+       loadSpoolWeights();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleDeleteSpool = async (id: number) => {
+    if (!confirm("Zeker weten?")) return;
+    try {
+       const { error } = await supabase.from('spool_weights').delete().eq('id', id);
+       if (error) throw error;
+       loadSpoolWeights();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleAddBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBrand.trim()) return;
+    try {
+       const { error } = await supabase.from('brands').insert({ name: newBrand.trim() });
+       if (error) throw error;
+       setNewBrand('');
+       loadBrands();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleDeleteBrand = async (id: number) => {
+    if (!confirm("Zeker weten?")) return;
+    try {
+       const { error } = await supabase.from('brands').delete().eq('id', id);
+       if (error) throw error;
+       loadBrands();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleAddMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMaterial.trim()) return;
+    try {
+       const { error } = await supabase.from('materials').insert({ name: newMaterial.trim() });
+       if (error) throw error;
+       setNewMaterial('');
+       loadMaterials();
+    } catch (e: any) { alert(e.message); }
+  };
+
+  const handleDeleteMaterial = async (id: number) => {
+    if (!confirm("Zeker weten?")) return;
+    try {
+       const { error } = await supabase.from('materials').delete().eq('id', id);
+       if (error) throw error;
+       loadMaterials();
+    } catch (e: any) { alert(e.message); }
+  };
 
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in flex flex-col gap-8">
        
-       {/* TOP SECTION: MAIN ADMIN INTERFACE */}
+       {/* TOP SECTION: NAVIGATION */}
        <div className="space-y-6 w-full">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
-             <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
+             <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
              <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
+             <button onClick={() => setActiveTab('spools')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'spools' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Disc size={18}/> Spoel Database</button>
+             <button onClick={() => setActiveTab('requests')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'requests' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><AlertTriangle size={18}/> {t('requests')}</button>
              <button onClick={() => setActiveTab('data')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'data' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Tag size={18}/> Merken & Materialen</button>
              <button onClick={() => setActiveTab('logo')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'logo' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><ImageIcon size={18}/> Logo</button>
              <button onClick={() => setActiveTab('feedback')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'feedback' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><MessageSquare size={18}/> Feedback</button>
@@ -118,14 +318,110 @@ export const AdminPanel: React.FC = () => {
 
           <div className="min-h-[400px]">
              {activeTab === 'dashboard' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3">Totaal Gebruikers</h3>
-                      <p className="text-5xl font-black text-slate-800 dark:text-white">{users.length}</p>
+                <div className="space-y-6">
+                   {/* KPI Grid */}
+                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Users size={48} className="text-blue-500" />
+                         </div>
+                         <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Gebruikers</h3>
+                         <p className="text-3xl font-black text-slate-800 dark:text-white">{tableCounts.totalUsers}</p>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Crown size={48} className="text-amber-500" />
+                         </div>
+                         <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">PRO Leden</h3>
+                         <p className="text-3xl font-black text-amber-500">{tableCounts.proUsers}</p>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Disc size={48} className="text-emerald-500" />
+                         </div>
+                         <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Filaments</h3>
+                         <p className="text-3xl font-black text-slate-800 dark:text-white">{tableCounts.filaments}</p>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Box size={48} className="text-purple-500" />
+                         </div>
+                         <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Materialen</h3>
+                         <p className="text-3xl font-black text-slate-800 dark:text-white">{tableCounts.materials}</p>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <MessageSquare size={48} className="text-purple-600" />
+                         </div>
+                         <h3 className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Open Feedback</h3>
+                         <p className="text-3xl font-black text-purple-600">{feedbacks.filter(f => !f.is_read).length}</p>
+                      </div>
                    </div>
-                   <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                      <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-3">Openstaande Feedback</h3>
-                      <p className="text-5xl font-black text-purple-600">{feedbacks.filter(f => !f.is_read).length}</p>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Popular Materials Chart */}
+                      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                         <h3 className="text-slate-800 dark:text-white font-bold mb-6 flex items-center gap-2"><PieChartIcon size={20} className="text-blue-500" /> Platform Materiaal Distributie</h3>
+                         <div className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                               <PieChart>
+                                  <Pie
+                                     data={platformMaterialData}
+                                     cx="50%"
+                                     cy="50%"
+                                     innerRadius={60}
+                                     outerRadius={80}
+                                     paddingAngle={5}
+                                     dataKey="value"
+                                  >
+                                     {platformMaterialData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                     ))}
+                                  </Pie>
+                                  <Tooltip />
+                               </PieChart>
+                            </ResponsiveContainer>
+                         </div>
+                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+                            {platformMaterialData.map((entry, index) => (
+                               <div key={index} className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                  <span>{entry.name}: {entry.value}</span>
+                               </div>
+                            ))}
+                         </div>
+                      </div>
+
+                      {/* Quick Activity / Alerts */}
+                      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                         <h3 className="text-slate-800 dark:text-white font-bold mb-4 flex items-center gap-2"><Activity size={20} className="text-orange-500" /> Platform Actie Vereist</h3>
+                         <div className="space-y-3 flex-1">
+                            {requests.length > 0 && (
+                               <button onClick={() => setActiveTab('requests')} className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl hover:scale-[1.02] transition-transform group">
+                                  <div className="flex items-center gap-3 text-red-700 dark:text-red-400">
+                                     <AlertTriangle size={20} />
+                                     <span className="font-bold">{requests.length} Verwijder verzoeken</span>
+                                  </div>
+                                  <ChevronRight size={18} className="text-red-300 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            )}
+                            {feedbacks.filter(f => !f.is_read).length > 0 && (
+                               <button onClick={() => setActiveTab('feedback')} className="w-full flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-xl hover:scale-[1.02] transition-transform group">
+                                  <div className="flex items-center gap-3 text-purple-700 dark:text-purple-400">
+                                     <MessageSquare size={20} />
+                                     <span className="font-bold">{feedbacks.filter(f => !f.is_read).length} Ongelezen feedback</span>
+                                  </div>
+                                  <ChevronRight size={18} className="text-purple-300 group-hover:translate-x-1 transition-transform" />
+                               </button>
+                            )}
+                            {requests.length === 0 && feedbacks.filter(f => !f.is_read).length === 0 && (
+                               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60">
+                                  <CheckCircle2 size={48} className="mb-3 text-emerald-500" />
+                                  <p className="font-bold">Alles bijgewerkt!</p>
+                               </div>
+                            )}
+                         </div>
+                      </div>
                    </div>
                 </div>
              )}
@@ -182,6 +478,313 @@ export const AdminPanel: React.FC = () => {
                    </div>
                 </div>
              )}
+
+             {activeTab === 'logo' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                   <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <h3 className="font-bold text-xl text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                        <Upload size={24} className="text-indigo-500"/> Logo Uploaden
+                      </h3>
+                      
+                      <div 
+                         onClick={() => fileInputRef.current?.click()}
+                         className="group relative aspect-square max-w-[250px] mx-auto rounded-3xl border-4 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/30 transition-all overflow-hidden"
+                      >
+                         {previewUrl ? (
+                            <img src={previewUrl} className="w-full h-full object-contain p-4" alt="Preview" />
+                         ) : (
+                            <>
+                               <ImageIcon size={48} className="text-slate-300 group-hover:text-indigo-400 transition-colors mb-4" />
+                               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest group-hover:text-indigo-500">Klik om te uploaden</span>
+                            </>
+                         )}
+                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+                      </div>
+
+                      <div className="mt-8 space-y-3">
+                         <button 
+                            onClick={handleLogoUpload}
+                            disabled={!previewUrl || isUploading}
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                         >
+                            {isUploading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+                            Logo Opslaan
+                         </button>
+                         <button 
+                            onClick={handleResetLogo}
+                            className="w-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                         >
+                            <RefreshCw size={18} /> Herstel naar Standaard
+                         </button>
+                      </div>
+
+                      {logoStatus !== 'idle' && (
+                         <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${logoStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {logoStatus === 'success' ? <Check size={18}/> : <AlertCircle size={18}/>}
+                            <span className="text-sm font-medium">{logoMsg}</span>
+                         </div>
+                      )}
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center">
+                      <h3 className="text-slate-500 text-xs font-black uppercase tracking-widest mb-8">Huidige Live Logo</h3>
+                      <div className="w-48 h-48 bg-slate-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center border border-slate-100 dark:border-slate-700 p-8">
+                         {currentAppLogo ? (
+                            <img src={currentAppLogo} className="w-full h-full object-contain" alt="Current App Logo" />
+                         ) : (
+                            <div className="text-slate-300 italic text-sm">Geen aangepast logo ingesteld</div>
+                         )}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-6 max-w-xs">Dit logo verschijnt in de zijbalk, op het inlogscherm en als favicon in de browser.</p>
+                   </div>
+                </div>
+             )}
+
+             {activeTab === 'feedback' && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                         <MessageSquare size={24} className="text-purple-500"/> Gebruikers Feedback ({feedbacks.length})
+                      </h3>
+                   </div>
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
+                           <tr>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest w-12 text-center">Status</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Bericht</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Rating</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Datum</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Acties</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                           {feedbacks.map(f => (
+                              <tr key={f.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${!f.is_read ? 'bg-purple-50/30 dark:bg-purple-900/5' : ''}`}>
+                                 <td className="p-6 text-center">
+                                    {f.is_read ? (
+                                       <span className="text-slate-400" title="Gelezen"><Eye size={18} /></span>
+                                    ) : (
+                                       <span className="text-purple-600" title="Nieuw"><EyeOff size={18} /></span>
+                                    )}
+                                 </td>
+                                 <td className="p-6">
+                                    <p className="text-sm dark:text-white whitespace-pre-wrap max-w-lg">{f.message}</p>
+                                    <div className="text-[10px] text-slate-400 font-mono mt-2 uppercase">{f.platform || 'Onbekend'} • {f.user_id ? f.user_id.substring(0,8) : 'Anoniem'}</div>
+                                 </td>
+                                 <td className="p-6 text-center">
+                                    <div className="flex justify-center gap-0.5">
+                                       {[1,2,3,4,5].map(s => (
+                                          <Star key={s} size={12} fill={s <= (f.rating || 0) ? "#fbbf24" : "none"} className={s <= (f.rating || 0) ? "text-amber-400" : "text-slate-300 dark:text-slate-700"} />
+                                       ))}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-400 mt-1 block">{f.rating || 0}/5</span>
+                                 </td>
+                                 <td className="p-6 text-xs text-slate-400 whitespace-nowrap">
+                                    {new Date(f.created_at).toLocaleDateString()}<br/>
+                                    {new Date(f.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                 </td>
+                                 <td className="p-6 text-right">
+                                    <div className="flex justify-end gap-2">
+                                       <button 
+                                          onClick={() => toggleFeedbackRead(f.id, f.is_read)}
+                                          className={`p-2 rounded-lg transition-colors ${f.is_read ? 'text-slate-400 hover:bg-slate-100' : 'text-purple-600 bg-purple-100 hover:bg-purple-200'}`}
+                                          title={f.is_read ? t('markAsUnread') : t('markAsRead')}
+                                       >
+                                          <Check size={18}/>
+                                       </button>
+                                       <button 
+                                          onClick={() => deleteFeedback(f.id)}
+                                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                          title={t('delete')}
+                                       >
+                                          <Trash2 size={18}/>
+                                       </button>
+                                    </div>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                   </div>
+                </div>
+             )}
+
+             {activeTab === 'requests' && (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                         <AlertTriangle size={24} className="text-red-500"/> Account Verwijder Verzoeken ({requests.length})
+                      </h3>
+                   </div>
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
+                           <tr>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Gebruiker</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Reden</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Datum</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actie</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                           {requests.map(r => (
+                              <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                 <td className="p-6 font-bold dark:text-white">{r.email}</td>
+                                 <td className="p-6 text-sm text-slate-500 dark:text-slate-400 max-w-xs truncate">{r.reason}</td>
+                                 <td className="p-6 text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString()}</td>
+                                 <td className="p-6 text-right">
+                                    <button onClick={() => handleDeleteRequest(r.id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                       <Check size={18}/>
+                                    </button>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                   </div>
+                </div>
+             )}
+
+             {activeTab === 'spools' && (
+                <div className="space-y-6">
+                   <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus size={20} className="text-emerald-500"/> Nieuwe Spoel Toevoegen</h3>
+                      <form onSubmit={handleAddSpool} className="flex flex-col md:flex-row gap-4">
+                         <input 
+                           type="text" 
+                           value={newSpool.name}
+                           onChange={e => setNewSpool({...newSpool, name: e.target.value})}
+                           placeholder="Naam (bv. Bambu Lab Karton)"
+                           className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white"
+                         />
+                         <div className="relative w-full md:w-40">
+                            <input 
+                              type="number" 
+                              value={newSpool.weight}
+                              onChange={e => setNewSpool({...newSpool, weight: e.target.value})}
+                              placeholder="Gewicht"
+                              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white"
+                            />
+                            <span className="absolute right-3 top-3.5 text-slate-400 text-sm">gram</span>
+                         </div>
+                         <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg active:scale-95">Toevoegen</button>
+                      </form>
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                         <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                            <Disc size={20} className="text-emerald-500"/> Geregistreerde Spoelen ({spoolWeights.length})
+                         </h3>
+                      </div>
+                      <div className="max-h-[500px] overflow-y-auto">
+                         <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0">
+                               <tr>
+                                  <th className="p-4 text-xs font-bold text-slate-500 uppercase">Naam</th>
+                                  <th className="p-4 text-xs font-bold text-slate-500 uppercase text-center">Gewicht</th>
+                                  <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actie</th>
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                               {spoolWeights.map(s => (
+                                  <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                     <td className="p-4 font-medium dark:text-white">{s.name}</td>
+                                     <td className="p-4 text-center font-bold text-emerald-600 dark:text-emerald-400">{s.weight}g</td>
+                                     <td className="p-4 text-right">
+                                        <button onClick={() => handleDeleteSpool(s.id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+                                     </td>
+                                  </tr>
+                               ))}
+                            </tbody>
+                         </table>
+                      </div>
+                   </div>
+                </div>
+             )}
+
+             {activeTab === 'data' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   {/* BRANDS SECTION */}
+                   <div className="space-y-6">
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                         <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus size={20} className="text-amber-500"/> Nieuw Merk</h3>
+                         <form onSubmit={handleAddBrand} className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={newBrand}
+                              onChange={e => setNewBrand(e.target.value)}
+                              placeholder="Merknaam..."
+                              className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 dark:text-white"
+                            />
+                            <button type="submit" className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg active:scale-95">Voeg toe</button>
+                         </form>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col max-h-[600px]">
+                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                               <Tag size={20} className="text-amber-500"/> Merken ({brands.length})
+                            </h3>
+                         </div>
+                         <div className="overflow-y-auto">
+                            <table className="w-full text-left">
+                               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                  {brands.map(b => (
+                                     <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 group">
+                                        <td className="p-4 text-sm font-medium dark:text-white">{b.name}</td>
+                                        <td className="p-4 text-right">
+                                           <button onClick={() => handleDeleteBrand(b.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                        </td>
+                                     </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* MATERIALS SECTION */}
+                   <div className="space-y-6">
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                         <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus size={20} className="text-blue-500"/> Nieuw Materiaal Type</h3>
+                         <form onSubmit={handleAddMaterial} className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={newMaterial}
+                              onChange={e => setNewMaterial(e.target.value)}
+                              placeholder="bv. PETG-CF"
+                              className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                            />
+                            <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg active:scale-95">Voeg toe</button>
+                         </form>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col max-h-[600px]">
+                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                               <Layers size={20} className="text-blue-500"/> Materiaal Types ({materials.length})
+                            </h3>
+                         </div>
+                         <div className="overflow-y-auto">
+                            <table className="w-full text-left">
+                               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                  {materials.map(m => (
+                                     <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 group">
+                                        <td className="p-4 text-sm font-medium dark:text-white">{m.name}</td>
+                                        <td className="p-4 text-right">
+                                           <button onClick={() => handleDeleteMaterial(m.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                        </td>
+                                     </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             )}
           </div>
        </div>
 
@@ -232,7 +835,7 @@ export const AdminPanel: React.FC = () => {
 
                    <div className="space-y-1">
                       <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Shield size={12} className="text-slate-500" /> Versie</span>
-                      <span className="text-[#3b82f6] font-mono text-lg font-black">2.1.18</span>
+                      <span className={`${isAiConfigured ? 'text-[#3b82f6]' : 'text-slate-400'} font-mono text-lg font-black`}>2.1.23</span>
                    </div>
                 </div>
 

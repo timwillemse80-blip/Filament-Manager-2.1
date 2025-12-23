@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Filament, OtherMaterial } from '../types';
-import { ShoppingCart, ExternalLink, Search, Box, Tag } from 'lucide-react';
+import { ShoppingCart, ExternalLink, Search, Box, Tag, Sparkles, ArrowRight } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -58,14 +57,14 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
             <ShoppingCart size={32} />
           </div>
           <h4 className="text-lg font-bold dark:text-white text-slate-800 mb-2">{t('allStocked')}</h4>
-          <p className="text-slate-500">Er zijn geen items onder de minimum voorraad.</p>
+          <p className="text-slate-500">{t('allStockedDesc')}</p>
         </div>
       )}
 
       {/* FILAMENTS TABLE */}
       {lowStockFilaments.length > 0 && (
         <div className="space-y-3">
-           <h4 className="font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider ml-1">Filamenten</h4>
+           <h4 className="font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider ml-1">{t('filaments')}</h4>
            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
@@ -119,14 +118,14 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
       {/* MATERIALS TABLE */}
       {lowStockMaterials.length > 0 && (
          <div className="space-y-3">
-            <h4 className="font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider ml-1">Materialen</h4>
+            <h4 className="font-bold text-slate-600 dark:text-slate-300 uppercase text-xs tracking-wider ml-1">{t('materials')}</h4>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                   <tr>
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('name')}</th>
-                     <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">Categorie</th>
-                     <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">Voorraad</th>
+                     <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('category')}</th>
+                     <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('stock')}</th>
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400 text-right">{t('action')}</th>
                   </tr>
                   </thead>

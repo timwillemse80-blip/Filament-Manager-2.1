@@ -1,4 +1,3 @@
-
 export enum FilamentMaterial {
   PLA = 'PLA',
   PETG = 'PETG',
@@ -89,6 +88,7 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   unusedWarningDays: number; // Days (e.g. 90)
   enableWeeklyEmail: boolean;
+  enableUpdateNotifications: boolean; // New: Toggle for update alerts
   
   // PRO / Calculator Settings
   electricityRate?: number; // € per kWh (Global)
@@ -141,4 +141,4 @@ export interface PrintJob {
   }[];
 }
 
-export type ViewState = 'dashboard' | 'inventory' | 'locations' | 'suppliers' | 'printers' | 'shopping' | 'settings' | 'history' | 'support' | 'admin' | 'feedback' | 'install' | 'help';
+export type ViewState = 'dashboard' | 'inventory' | 'locations' | 'suppliers' | 'printers' | 'shopping' | 'settings' | 'history' | 'support' | 'admin' | 'feedback' | 'install' | 'help' | 'notifications';

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Filament, PrintJob, Printer, AppSettings, CostBreakdown, OtherMaterial } from '../types';
 import { parseGcodeFile, GCodeStats } from '../services/gcodeParser';
@@ -140,7 +139,7 @@ const MaterialPicker = ({ materials, selectedId, onChange }: { materials: OtherM
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="flex-1 bg-transparent outline-none text-sm dark:text-white"
-                  placeholder="Zoek materiaal..."
+                  placeholder={t('searchMaterial')}
                />
                <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={16} /></button>
             </div>
@@ -158,7 +157,7 @@ const MaterialPicker = ({ materials, selectedId, onChange }: { materials: OtherM
 
    return (
       <button onClick={() => setIsOpen(true)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white text-left flex items-center justify-between hover:border-slate-400 transition-colors">
-         <span className="truncate">{selected ? selected.name : <span className="text-slate-400 italic">-- Kies Materiaal --</span>}</span>
+         <span className="truncate">{selected ? selected.name : <span className="text-slate-400 italic">-- {t('selectMaterial')} --</span>}</span>
          <ChevronRight size={14} className="rotate-90 text-slate-400 flex-shrink-0"/>
       </button>
    );
@@ -490,7 +489,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
 
      if (!history.length) return;
      
-     const headers = [t('date'), t('name'), t('status'), t('printTime'), `${t('totalWeight')} (g)`, `${t('totalValue')} (€)`, "Printer", "Filamenten"];
+     const headers = [t('date'), t('name'), t('status'), t('printTime'), `${t('totalWeight')} (g)`, `${t('totalValue')} (€)`, t('printer'), "Filamenten"];
      const rows = history.map(job => {
         const date = new Date(job.date).toLocaleDateString();
         const printerName = job.printerId ? printers.find(p => p.id === job.printerId)?.name : t('unknown');
@@ -679,7 +678,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                             // Standard View
                             <div>
                                <span className="block text-4xl font-bold text-slate-800 dark:text-white">€{netCost.toFixed(2)}</span>
-                               <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">Totale Kosten</span>
+                               <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('totalCosts')}</span>
                             </div>
                          )}
                       </div>
@@ -690,34 +689,34 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                       {viewingJob.costBreakdown ? (
                          <>
                             <div className="flex justify-between items-center text-sm">
-                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Disc size={14} className="text-blue-500"/> Filament</span>
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Disc size={14} className="text-blue-500"/> {t('filament')}</span>
                                <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.filamentCost.toFixed(2)}</span>
                             </div>
                             
                             {/* Extra Materials Cost */}
                             {(viewingJob.costBreakdown.materialCost || 0) > 0 && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Box size={14} className="text-indigo-500"/> Materialen</span>
+                                    <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Box size={14} className="text-indigo-500"/> {t('materials')}</span>
                                     <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.materialCost?.toFixed(2)}</span>
                                 </div>
                             )}
 
                             <div className="flex justify-between items-center text-sm">
-                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Zap size={14} className="text-yellow-500"/> Stroom</span>
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Zap size={14} className="text-yellow-500"/> {t('electricity')}</span>
                                <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.electricityCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Coins size={14} className="text-orange-500"/> Afschrijving</span>
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Coins size={14} className="text-orange-500"/> {t('depreciation')}</span>
                                <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.depreciationCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Hammer size={14} className="text-purple-500"/> Arbeid/Opslag</span>
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Hammer size={14} className="text-purple-500"/> {t('labor')}</span>
                                <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.laborCost.toFixed(2)}</span>
                             </div>
                             {/* Margin Info Row */}
                             {profitMargin > 0 && (
                                <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
-                                  <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Percent size={14} className="text-green-500"/> Winstmarge</span>
+                                  <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Percent size={14} className="text-green-500"/> {t('profitMarginLabel')}</span>
                                   <span className="font-medium text-green-600 dark:text-green-400">{profitMargin}%</span>
                                </div>
                             )}
@@ -731,7 +730,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                          </>
                       ) : (
                          <div className="text-center text-sm text-slate-400 italic py-2">
-                            Geen gedetailleerde kosten beschikbaar voor deze print.
+                            {t('noDetailedCost')}
                          </div>
                       )}
                    </div>
@@ -739,14 +738,14 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    {/* Used Materials List */}
                    {viewingJob.usedOtherMaterials && viewingJob.usedOtherMaterials.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><Package size={12}/> Gebruikte Materialen</h4>
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><Package size={12}/> {t('usedMaterials')}</h4>
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 space-y-1">
                                 {viewingJob.usedOtherMaterials.map((um, idx) => {
                                     const mat = materials.find(m => m.id === um.materialId);
                                     const displayQty = um.quantity < 1 ? um.quantity.toFixed(2) : um.quantity; // Show decimals for partial usage
                                     return (
                                         <div key={idx} className="text-xs flex justify-between items-center dark:text-slate-300">
-                                            <span>{mat ? mat.name : 'Onbekend materiaal'}</span>
+                                            <span>{mat ? mat.name : t('unknownMaterial')}</span>
                                             <span className="font-mono text-slate-500">{displayQty} {mat?.unit || 'st'}</span>
                                         </div>
                                     );
@@ -756,20 +755,20 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    )}
 
                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Details</h4>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">{t('details')}</h4>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                          <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded">
-                            <span className="block text-slate-500">Gewicht</span>
+                            <span className="block text-slate-500">{t('weight')}</span>
                             <span className="font-bold dark:text-white">{viewingJob.totalWeight.toFixed(1)}g</span>
                          </div>
                          <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded">
-                            <span className="block text-slate-500">Duur</span>
+                            <span className="block text-slate-500">{t('duration')}</span>
                             <span className="font-bold dark:text-white">{viewingJob.printTime || '-'}</span>
                          </div>
                          {viewingJob.assemblyTime !== undefined && viewingJob.assemblyTime > 0 && (
                             <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded col-span-2 flex items-center justify-between">
-                                <span className="text-slate-500">Assemblage Tijd</span>
-                                <span className="font-bold dark:text-white">{viewingJob.assemblyTime} min</span>
+                                <span className="text-slate-500">{t('assemblyTimeLabel')}</span>
+                                <span className="font-bold dark:text-white">{viewingJob.assemblyTime} {t('minutes')}</span>
                             </div>
                          )}
                       </div>
@@ -797,14 +796,14 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    )}
 
                    <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Printer</label>
+                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('printer')}</label>
                       <div className="relative">
                          <select 
                             value={selectedPrinterId}
                             onChange={(e) => setSelectedPrinterId(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none"
                          >
-                            <option value="">{t('selectBrand')}</option>
+                            <option value="">{t('selectPrinter')}</option>
                             {printers.map(p => (
                                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
                             ))}
@@ -813,7 +812,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                       </div>
                       {selectedPrinterId && (
                          <p className="text-[10px] text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                            <CheckCircle2 size={10} /> AMS Data OK
+                            <CheckCircle2 size={10} /> {t('amsDataOk')}
                          </p>
                       )}
                    </div>
@@ -863,7 +862,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
                          <div className="flex items-center justify-between mb-2">
                             <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                               <Wrench size={14} className="text-blue-500" /> Assemblage / Nabewerking?
+                               <Wrench size={14} className="text-blue-500" /> {t('assemblyTimeLabel')}?
                             </label>
                             <input 
                                type="checkbox" 
@@ -883,7 +882,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                   onChange={e => setAssemblyTime(Number(e.target.value))}
                                   className="w-24 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white"
                                />
-                               <span className="text-sm text-slate-600 dark:text-slate-400">minuten</span>
+                               <span className="text-sm text-slate-600 dark:text-slate-400">{t('minutes')}</span>
                             </div>
                          )}
                    </div>
@@ -919,7 +918,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                      {slot.detectedColor && (
                                         <div className="w-3 h-3 rounded-full border border-slate-300" style={{ backgroundColor: slot.detectedColor }}/>
                                      )}
-                                     Slot {index + 1}: {slot.detectedType}
+                                     {t('slot')} {index + 1}: {slot.detectedType}
                                   </span>
                                   {materialSlots.length > 1 && (
                                      <button onClick={() => setMaterialSlots(materialSlots.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-500">{t('delete')}</button>
@@ -960,16 +959,16 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    {/* Other Materials Section with Unit Conversion */}
                    <div>
                         <label className="text-xs font-bold text-slate-500 uppercase mb-2 block flex justify-between items-center">
-                            <span>Overige Materialen</span>
+                            <span>{t('otherMaterials')}</span>
                             <button 
                                 onClick={() => setOtherMaterialSlots([...otherMaterialSlots, { tempId: crypto.randomUUID(), materialId: '', quantity: 1 }])}
                                 className="text-blue-500 text-xs flex items-center gap-1"
                             >
-                                <Plus size={14} /> Toevoegen
+                                <Plus size={14} /> {t('add')}
                             </button>
                         </label>
                         
-                        {otherMaterialSlots.length === 0 && <div className="text-xs text-slate-400 italic">Geen extra materialen toegevoegd.</div>}
+                        {otherMaterialSlots.length === 0 && <div className="text-xs text-slate-400 italic">{t('noExtraMaterials')}</div>}
 
                         <div className="space-y-2">
                             {otherMaterialSlots.map((slot, index) => {

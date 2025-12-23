@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { AppSettings, Filament, Location, Supplier } from '../types';
-import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Languages, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2, LifeBuoy, ChevronDown, ChevronUp } from 'lucide-react';
+import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Languages, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2, LifeBuoy, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../services/supabase';
@@ -44,17 +44,27 @@ const BUY_ME_A_COFFEE_URL = "https://buymeacoffee.com/filamentmanager";
 
 const DiscordIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.419-2.1569 2.419zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.419-2.1568 2.419z"/>
+    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0-1.3332-.946 2.419-2.1569 2.419zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.419-2.1568 2.419z"/>
   </svg>
 );
 
-const DELETE_REASONS = [
-  "Ik gebruik de app niet meer",
-  "Ik miss functionaliteiten",
-  "De app is te ingewikkeld",
-  "Ik heb een andere app gevonden",
-  "Technische problemen",
-  "Anders..."
+const DELETE_REASONS_KEYS = [
+  "reasonNotUsing",
+  "reasonMissingFeatures",
+  "reasonTooComplicated",
+  "reasonOtherApp",
+  "reasonTechnicalIssues",
+  "reasonOther"
+];
+
+// Helper for generic reasons since they are small enough
+const getDeleteReasons = (t: any) => [
+  t('reasonNotUsing') || "Ik gebruik de app niet meer",
+  t('reasonMissingFeatures') || "Ik mis functionaliteiten",
+  t('reasonTooComplicated') || "De app is te ingewikkeld",
+  t('reasonOtherApp') || "Ik heb een andere app gevonden",
+  t('reasonTechnicalIssues') || "Technische problemen",
+  t('reasonOther') || "Anders..."
 ];
 
 export const Settings: React.FC<SettingsProps> = ({ 
@@ -109,7 +119,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (confirm("Weet je het zeker? Huidige data wordt overschreven door de backup.")) {
+      if (confirm(t('confirmBackup'))) {
         onImport(file);
       }
     }
@@ -159,7 +169,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const cancelDeletionRequest = async () => {
      setIsLoadingRequest(true);
      try {
-        if (!confirm("Wil je het verwijderverzoek intrekken?")) {
+        if (!confirm(t('confirmCancelDeletion'))) {
            setIsLoadingRequest(false);
            return;
         }
@@ -183,7 +193,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const submitDeletionRequest = async () => {
      if (!deleteReason) return;
      
-     const finalReason = deleteReason === "Anders..." ? deleteReasonCustom : deleteReason;
+     const finalReason = deleteReason === t('reasonOther') ? deleteReasonCustom : deleteReason;
      
      setIsLoadingRequest(true);
      try {
@@ -220,11 +230,11 @@ export const Settings: React.FC<SettingsProps> = ({
       {installPrompt && (
          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-xl shadow-lg flex items-center justify-between text-white transform transition-transform active:scale-[0.99] mb-4">
             <div>
-               <h4 className="font-bold text-lg flex items-center gap-2"><Download size={20}/> Installeer App</h4>
-               <p className="text-xs text-blue-100 opacity-90">Voeg toe aan startscherm voor een betere ervaring.</p>
+               <h4 className="font-bold text-lg flex items-center gap-2"><Download size={20}/> {t('installApp')}</h4>
+               <p className="text-xs text-blue-100 opacity-90">{t('installAppDesc')}</p>
             </div>
             <button onClick={onInstall} className="bg-white text-blue-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-50 transition-colors">
-               Installeer
+               {t('install')}
             </button>
          </div>
       )}
@@ -261,12 +271,12 @@ export const Settings: React.FC<SettingsProps> = ({
                   <User size={16} /> {t('tabAccount')}
                </button>
                
-               {/* PRO Tab - NOW GOLD/YELLOW */}
+               {/* PRO Tab */}
                <button 
                   onClick={() => setActiveTab('pro')}
                   className={`px-4 py-2 rounded-t-lg font-bold flex items-center gap-2 transition-all text-sm whitespace-nowrap border-b-2 ${activeTab === 'pro' ? 'border-yellow-500 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : 'border-transparent text-yellow-600 dark:text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10'}`}
                >
-                  <Crown size={16} fill="currentColor" /> PRO
+                  <Crown size={16} fill="currentColor" /> {t('tabPro')}
                </button>
             </div>
          </div>
@@ -310,7 +320,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            </div>
                            <div>
                               <h4 className="font-semibold dark:text-white text-slate-800">{t('winterEdition')}</h4>
-                              <p className="text-xs text-slate-500">Laat het sneeuwen in de app!</p>
+                              <p className="text-xs text-slate-500">{t('winterEditionDesc')}</p>
                            </div>
                         </div>
                         <button 
@@ -352,7 +362,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               <Info size={20} />
                            </div>
                            <div>
-                              <h4 className="font-semibold dark:text-white text-slate-800">Over de app</h4>
+                              <h4 className="font-semibold dark:text-white text-slate-800">{t('aboutApp')}</h4>
                               <p className="text-xs text-slate-500">v{currentVersion || '1.0.0'}</p>
                            </div>
                         </div>
@@ -406,7 +416,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         </button>
                      </div>
 
-                     {/* Discord Button - AVAILABLE TO ALL */}
+                     {/* Discord Button */}
                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50">
                         <button 
                            onClick={openDiscord}
@@ -425,15 +435,15 @@ export const Settings: React.FC<SettingsProps> = ({
                     <div>
                         <LocationManager 
                             locations={locations} 
-                            onSaveLocation={onSaveLocation} 
-                            onDeleteLocation={onDeleteLocation} 
+                            onSave={onSaveLocation} 
+                            onDelete={onDeleteLocation} 
                         />
                     </div>
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                         <SupplierManager 
                             suppliers={suppliers} 
-                            onSaveSupplier={onSaveSupplier} 
-                            onDeleteSupplier={onDeleteSupplier} 
+                            onSave={onSaveSupplier} 
+                            onDelete={onDeleteSupplier} 
                         />
                     </div>
                 </div>
@@ -480,6 +490,27 @@ export const Settings: React.FC<SettingsProps> = ({
                         <span className="text-slate-600 dark:text-slate-300">{t('days')}</span>
                      </div>
                   </div>
+
+                  {/* App Updates Notifications */}
+                  <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-full text-amber-600 dark:text-amber-400">
+                              <Sparkles size={20} />
+                           </div>
+                           <div>
+                              <h4 className="font-semibold dark:text-white text-slate-800">App Updates</h4>
+                              <p className="text-xs text-slate-500">{t('enableUpdateNotifications')}</p>
+                           </div>
+                        </div>
+                        <button 
+                           onClick={() => onUpdate({ ...settings, enableUpdateNotifications: !settings.enableUpdateNotifications })}
+                           className={`w-12 h-6 rounded-full transition-colors relative ${settings.enableUpdateNotifications ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                        >
+                           <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform shadow-sm ${settings.enableUpdateNotifications ? 'left-7' : 'left-1'}`} />
+                        </button>
+                     </div>
+                  </div>
                </div>
             )}
 
@@ -503,7 +534,7 @@ export const Settings: React.FC<SettingsProps> = ({
                      </button>
                   </div>
 
-                  {/* Data & Backup Section - Moved here */}
+                  {/* Data & Backup Section */}
                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center gap-3 mb-4">
                         <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600 dark:text-green-400">
@@ -516,7 +547,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button
                            onClick={onExport}
                            className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
-                           title="Download al je data als backup bestand"
                         >
                            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                               <Download size={20} />
@@ -529,8 +559,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
                         <button
                            onClick={() => fileInputRef.current?.click()}
-                           className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 bg-white dark:bg-slate-800 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all group"
-                           title="Herstel data vanuit een backup bestand"
+                           className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-green-500 dark:hover:border-green-500 bg-white dark:bg-slate-800 hover:bg-green-50 dark:hover:bg-green-100 transition-all group"
                         >
                            <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
                               <Upload size={20} />
@@ -561,7 +590,7 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                      
                      <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
-                        {hasPendingRequest ? "Je hebt een verzoek ingediend om je account te verwijderen. De beheerder zal dit binnenkort verwerken." : t('deleteAccountDesc')}
+                        {hasPendingRequest ? t('requestSent') : t('deleteAccountDesc')}
                      </p>
 
                      <button 
@@ -595,11 +624,11 @@ export const Settings: React.FC<SettingsProps> = ({
                         <Calculator size={20} /> {t('proTools')}
                      </h4>
                      <p className="text-xs text-slate-500 mb-4 dark:text-slate-400">
-                        Vul hier je kosten in om de verkoopprijs van je prints automatisch te berekenen.
+                        {t('proToolsDesc')}
                      </p>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1" title="Prijs per kWh voor stroomverbruik">{t('electricityRate')}</label>
+                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('electricityRate')}</label>
                            <input 
                               type="number" 
                               step="0.01" 
@@ -610,7 +639,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            />
                         </div>
                         <div>
-                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1" title="Opslagkosten per uur voor montage/afschrijving">{t('hourlyRate')}</label>
+                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('hourlyRate')}</label>
                            <input 
                               type="number" 
                               value={settings.hourlyRate ?? ''} 
@@ -620,7 +649,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            />
                         </div>
                         <div>
-                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1" title="Gewenste winstmarge in procenten"><Percent size={12}/> {t('profitMargin')}</label>
+                           <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1"><Percent size={12}/> {t('profitMargin')}</label>
                            <input 
                               type="number" 
                               value={settings.profitMargin ?? ''} 
@@ -633,7 +662,7 @@ export const Settings: React.FC<SettingsProps> = ({
                      
                      <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
                         <div className="flex items-center justify-between">
-                           <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2" title="Rond prijzen af naar bijv. €1,99">
+                           <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
                               <ArrowUpFromLine size={14}/> {t('roundToNine')}
                            </label>
                            <input 
@@ -674,11 +703,11 @@ export const Settings: React.FC<SettingsProps> = ({
 
       {/* --- DELETION REQUEST MODAL --- */}
       {showDeleteModal && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
                <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50">
                   <h3 className="text-xl font-bold text-red-600 flex items-center gap-2">
-                     <AlertTriangle size={24} /> Account Verwijderen
+                     <AlertTriangle size={24} /> {t('deleteAccount')}
                   </h3>
                   <button onClick={() => setShowDeleteModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
                      <X size={20} />
@@ -700,13 +729,13 @@ export const Settings: React.FC<SettingsProps> = ({
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500"
                      >
                         <option value="">Kies een reden...</option>
-                        {DELETE_REASONS.map((r) => (
+                        {getDeleteReasons(t).map((r) => (
                            <option key={r} value={r}>{r}</option>
                         ))}
                      </select>
                   </div>
 
-                  {deleteReason === "Anders..." && (
+                  {deleteReason === t('reasonOther') && (
                      <div className="animate-fade-in">
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                            Licht je keuze toe:
@@ -714,7 +743,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <textarea 
                            value={deleteReasonCustom}
                            onChange={(e) => setDeleteReasonCustom(e.target.value)}
-                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
+                           className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
                            placeholder="Type hier..."
                         />
                      </div>
@@ -726,7 +755,7 @@ export const Settings: React.FC<SettingsProps> = ({
                      onClick={() => setShowDeleteModal(false)}
                      className="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
                   >
-                     Annuleren
+                     {t('cancel')}
                   </button>
                   <button 
                      onClick={submitDeletionRequest}

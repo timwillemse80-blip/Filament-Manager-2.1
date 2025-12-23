@@ -1,8 +1,7 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial } from '../types';
-import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight } from 'lucide-react';
+import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -12,8 +11,8 @@ interface InventoryProps {
   locations: Location[];
   suppliers: Supplier[];
   onEdit: (item: Filament | OtherMaterial, type: 'filament' | 'material') => void;
-  onQuickAdjust: (id: string, amount: number) => void; // Keeps existing for filaments
-  onMaterialAdjust: (id: string, amount: number) => void; // New for materials
+  onQuickAdjust: (id: string, amount: number) => void;
+  onMaterialAdjust: (id: string, amount: number) => void;
   onDelete: (id: string, type: 'filament' | 'material') => void;
   onBatchDelete?: (ids: string[], type: 'filament' | 'material') => void;
   onNavigate: (view: any) => void;
@@ -22,26 +21,24 @@ interface InventoryProps {
   activeGroupKey: string | null;
   onSetActiveGroupKey: (key: string | null) => void;
   isAdmin?: boolean;
-  onAddClick: (type: 'filament' | 'material') => void; // New Prop to trigger add modal
-  onUnlockPro?: () => void; // New Prop to trigger PRO modal
+  onAddClick: (type: 'filament' | 'material') => void;
+  onUnlockPro?: () => void;
 }
 
 type SortOption = 'name-asc' | 'name-desc' | 'weight-asc' | 'weight-desc' | 'date-new' | 'date-old';
 type InventoryTab = 'filament' | 'material';
 
-// Helper to normalize strings for grouping
 const normalizeForGrouping = (str: string) => {
   if (!str) return '';
   return str
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+    .replace(/[^a-z0-9\s]/g, '')
     .trim()
     .split(/\s+/) 
     .sort()       
     .join('');    
 };
 
-// Extract base material to group "PLA", "Silk PLA", "Matte PLA" together
 const getBaseMaterial = (str: string) => {
   if (!str) return '';
   const s = str.toLowerCase();
@@ -54,12 +51,9 @@ const getBaseMaterial = (str: string) => {
   if (s.includes('pc')) return 'pc';
   if (s.includes('hips')) return 'hips';
   if (s.includes('pva')) return 'pva';
-  
-  // Fallback to strict normalization if no base type found
   return normalizeForGrouping(str);
 };
 
-// Helper to extract clean domain name from URL
 const getDomain = (url?: string) => {
   if (!url) return null;
   try {
@@ -67,7 +61,7 @@ const getDomain = (url?: string) => {
     hostname = hostname.replace(/^www\./, '');
     return hostname;
   } catch (e) {
-    return url.substring(0, 20) + '...'; // Fallback if invalid URL string
+    return url.substring(0, 20) + '...';
   }
 };
 
@@ -81,11 +75,30 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
   const { t, tColor } = useLanguage();
 
-  // Batch Mode State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  // --- FILAMENT LOGIC ---
+  // Handle Escape key and Scroll Lock
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomedImage(null);
+    };
+
+    if (zoomedImage) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleEsc);
+    } else {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [zoomedImage]);
+
   const availableFilamentMaterials = useMemo(() => {
     const mats = new Set(filaments.map(f => f.material).filter(Boolean));
     return Array.from(mats).sort();
@@ -150,7 +163,6 @@ export const Inventory: React.FC<InventoryProps> = ({
     });
   };
 
-  // --- MATERIAL LOGIC ---
   const filteredMaterials = materials.filter(m => {
      const matchesSearch = 
         m.name.toLowerCase().includes(filter.toLowerCase()) || 
@@ -170,7 +182,6 @@ export const Inventory: React.FC<InventoryProps> = ({
       }
   });
 
-  // --- Common Handlers ---
   const handleOpenUrl = (url: string) => {
     if (!url) return;
     if (Capacitor.isNativePlatform()) {
@@ -198,10 +209,7 @@ export const Inventory: React.FC<InventoryProps> = ({
   const getLocationName = (id?: string) => locations.find(l => l.id === id)?.name || null;
   const getSupplierName = (id?: string) => suppliers.find(s => s.id === id)?.name || null;
 
-  // Determine if Add Button should be shown
   const showAddButton = activeTab === 'filament' || (activeTab === 'material' && isAdmin);
-
-  // --- RENDERERS ---
 
   const renderFilamentCard = (filament: Filament) => {
     const percentage = Math.max(0, Math.min(100, (filament.weightRemaining / filament.weightTotal) * 100));
@@ -303,8 +311,6 @@ export const Inventory: React.FC<InventoryProps> = ({
     const supName = getSupplierName(material.supplierId);
     const isSelected = selectedIds.has(material.id);
     const shopDomain = getDomain(material.shopUrl);
-    
-    // Status Logic
     const isLow = material.minStock !== undefined && material.quantity <= material.minStock;
     const imageUrl = material.image ? (material.image.startsWith('data:') ? material.image : `data:image/jpeg;base64,${material.image}`) : null;
 
@@ -321,10 +327,17 @@ export const Inventory: React.FC<InventoryProps> = ({
         )}
 
         <div className="flex items-start gap-4 mb-4">
-           {/* Image Container - Fixed size to match icon box */}
-           <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center flex-shrink-0 text-indigo-500 overflow-hidden relative border border-slate-100 dark:border-slate-700">
+           <div 
+              onClick={(e) => { if (imageUrl) { e.stopPropagation(); setZoomedImage(imageUrl); } }}
+              className={`w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center flex-shrink-0 text-indigo-500 overflow-hidden relative border border-slate-100 dark:border-slate-700 ${imageUrl ? 'cursor-zoom-in ring-offset-2 hover:ring-2 ring-blue-500 transition-all' : ''}`}
+           >
               {imageUrl ? (
-                 <img src={imageUrl} alt={material.name} className="w-full h-full object-cover" />
+                 <>
+                    <img src={imageUrl} alt={material.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                       <ZoomIn size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                 </>
               ) : (
                  <Box size={24} />
               )}
@@ -425,10 +438,8 @@ export const Inventory: React.FC<InventoryProps> = ({
     );
   };
 
-  // --- FAB PORTAL ---
-  // Using a portal ensures the button is outside any transform/overflow containers
   const FabButton = () => {
-     if (!showAddButton) return null; // Don't show FAB in Locked mode
+     if (!showAddButton) return null;
      return createPortal(
         <button
            onClick={() => onAddClick(activeTab)}
@@ -441,9 +452,41 @@ export const Inventory: React.FC<InventoryProps> = ({
      );
   };
 
-  // --- Main Render ---
+  const ImageZoomOverlay = () => {
+    if (!zoomedImage) return null;
+    return createPortal(
+      <div 
+         className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 cursor-zoom-out animate-fade-in"
+         onClick={() => setZoomedImage(null)}
+         style={{ height: '100dvh' }} // Use dynamic viewport height for mobile
+      >
+         <button 
+            className="absolute top-8 right-8 text-white hover:text-slate-300 p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 z-[10000]"
+            onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+            aria-label="Close"
+         >
+            <X size={32} />
+         </button>
+         <div 
+           className="relative w-full h-full flex items-center justify-center"
+           onClick={(e) => e.stopPropagation()}
+         >
+            <img 
+               src={zoomedImage} 
+               className="max-w-full max-h-[85dvh] rounded-2xl shadow-2xl border-2 border-white/5 object-contain animate-fade-in select-none" 
+               alt="Zoomed" 
+               draggable={false}
+            />
+            <div 
+               className="absolute inset-0 -z-10 w-full h-full" 
+               onClick={() => setZoomedImage(null)}
+            />
+         </div>
+      </div>,
+      document.body
+    );
+  };
 
-  // 1. Group Detail View (Filament Only)
   if (activeTab === 'filament' && activeGroupKey && groupedFilaments[activeGroupKey]) {
     const groupItems = groupedFilaments[activeGroupKey];
     const sortedGroupItems = sortItems(groupItems);
@@ -486,27 +529,23 @@ export const Inventory: React.FC<InventoryProps> = ({
     );
   }
 
-  // 2. Main List View (Tabs)
   return (
     <div className="space-y-6 animate-fade-in relative pb-16">
-      
-      {/* TABS */}
       <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl">
          <button 
             onClick={() => { setActiveTab('filament'); setIsSelectionMode(false); setSelectedIds(new Set()); }} 
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'filament' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
          >
-            <Layers size={16} /> Filamenten
+            <Layers size={16} /> {t('filaments')}
          </button>
          <button 
             onClick={() => { setActiveTab('material'); setIsSelectionMode(false); setSelectedIds(new Set()); }} 
             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'material' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
          >
-            <Box size={16} /> Materialen {!isAdmin && <Lock size={12} className="text-amber-500 ml-1" />}
+            <Box size={16} /> {t('materials')} {!isAdmin && <Lock size={12} className="text-amber-500 ml-1" />}
          </button>
       </div>
 
-      {/* FILAMENT CONTENT */}
       {activeTab === 'filament' && (
          <>
             {availableFilamentMaterials.length > 0 && (
@@ -533,25 +572,24 @@ export const Inventory: React.FC<InventoryProps> = ({
                         className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
                      />
                   </div>
-                  {/* Inline Add Button for Desktop/Backup - Hidden if Material Locked */}
                   {showAddButton && (
                      <button 
                         onClick={() => onAddClick('filament')}
                         className="p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
-                        title="Nieuw Filament"
+                        title={t('newFilament')}
                      >
                         <Plus size={24} />
                      </button>
                   )}
                   
                   {isAdmin && (
-                     <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Meerdere items selecteren">
+                     <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
                         <CheckSquare size={24} />
                      </button>
                   )}
                </div>
                <div className="relative min-w-[180px]">
-                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-full h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer">
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-full h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer text-sm">
                      <option value="name-asc">{t('sortNameAsc')}</option>
                      <option value="name-desc">{t('sortNameDesc')}</option>
                      <option value="weight-asc">{t('sortWeightAsc')}</option>
@@ -577,10 +615,8 @@ export const Inventory: React.FC<InventoryProps> = ({
          </>
       )}
 
-      {/* MATERIAL CONTENT */}
       {activeTab === 'material' && (
          <>
-            {/* LOCKED STATE FOR NON-ADMINS */}
             {!isAdmin ? (
                <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in space-y-6">
                   <div className="w-24 h-24 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center relative">
@@ -590,7 +626,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                      </div>
                   </div>
                   <div className="max-w-xs">
-                     <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Materialen Beheer (PRO)</h3>
+                     <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{t('materials')} (PRO)</h3>
                      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
                         Houd ook je voorraad bij van boutjes, moertjes, lijm, elektronica en andere onderdelen. Alles op één plek.
                      </p>
@@ -604,38 +640,36 @@ export const Inventory: React.FC<InventoryProps> = ({
                   </button>
                </div>
             ) : (
-               // NORMAL LIST FOR ADMINS
                <>
                   <div className="flex flex-col md:flex-row gap-3">
                      <div className="relative flex-1 flex gap-2">
                         <div className="relative flex-1">
                            <input 
                               type="text" 
-                              placeholder="Zoek materiaal, categorie..."
+                              placeholder={t('search')}
                               value={filter}
                               onChange={e => setFilter(e.target.value)}
                               className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-5 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
                            />
                         </div>
-                        {/* Inline Add Button for Desktop/Backup */}
                         <button 
                            onClick={() => onAddClick('material')}
                            className="p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
-                           title="Nieuw Materiaal"
+                           title={t('newMaterial')}
                         >
                            <Plus size={24} />
                         </button>
 
-                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Meerdere items selecteren">
+                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
                            <CheckSquare size={24} />
                         </button>
                      </div>
                      <div className="relative min-w-[180px]">
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-full h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer">
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="w-full h-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm appearance-none cursor-pointer text-sm">
                            <option value="name-asc">{t('sortNameAsc')}</option>
                            <option value="name-desc">{t('sortNameDesc')}</option>
-                           <option value="weight-asc">Aantal (Laag-Hoog)</option>
-                           <option value="weight-desc">Aantal (Hoog-Laag)</option>
+                           <option value="weight-asc">{t('sortWeightAsc')}</option>
+                           <option value="weight-desc">{t('sortWeightDesc')}</option>
                            <option value="date-new">{t('sortDateNew')}</option>
                            <option value="date-old">{t('sortDateOld')}</option>
                         </select>
@@ -648,17 +682,16 @@ export const Inventory: React.FC<InventoryProps> = ({
                   </div>
 
                   {filteredMaterials.length === 0 && (
-                     <div className="text-center py-20 text-slate-500"><p>Geen materialen gevonden.</p></div>
+                     <div className="text-center py-20 text-slate-500"><p>{t('noMaterials')}</p></div>
                   )}
                </>
             )}
          </>
       )}
 
-      {/* FAB rendered via Portal to escape transforms */}
       <FabButton />
+      <ImageZoomOverlay />
 
-      {/* Batch Action Bar */}
       {isSelectionMode && selectedIds.size > 0 && (
          <div className="fixed bottom-24 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-96 bg-slate-900 text-white p-3 rounded-xl shadow-2xl flex items-center justify-between z-30 animate-fade-in border border-slate-700">
             <div className="flex items-center gap-3">

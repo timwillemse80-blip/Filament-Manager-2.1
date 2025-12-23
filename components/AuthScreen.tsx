@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Mail, Lock, ArrowRight, Check, AlertCircle, ArrowLeft, Eye, EyeOff, Shield } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { PrivacyPolicy } from './PrivacyPolicy';
-import { useLanguage } from '../contexts/LanguageContext';
 
 interface AuthScreenProps {
   onOfflineLogin: () => void;
@@ -14,12 +14,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State for visibility
+  const [showPassword, setShowPassword] = useState(false); 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(true); // Default true
-  const { t } = useLanguage();
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true); 
   
   // Privacy Policy Modal State
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -44,7 +43,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
       
       // Handle Password Recovery link click (type=recovery)
       if (hash && hash.includes('type=recovery')) {
-         setMessage("Je bent ingelogd via de herstel-link. Wijzig nu je wachtwoord via Instellingen of Logboek.");
+         setMessage("You are logged in via a recovery link. Please update your password in Settings.");
       }
     };
 
@@ -64,7 +63,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
           redirectTo: window.location.origin, // Redirect back to this app
         });
         if (resetError) throw resetError;
-        setMessage("Controleer je e-mail voor de herstelinstructies.");
+        setMessage("Check your email for recovery instructions.");
         setIsResettingPassword(false); // Go back to login view to show message
       } else if (isRegistering) {
         // --- Sign Up Flow ---
@@ -78,7 +77,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
         if (signUpError) throw signUpError;
         
         if (data.user && !data.session) {
-          setMessage("Registratie gelukt! Controleer je email om je account te bevestigen.");
+          setMessage("Registration successful! Check your email to confirm your account.");
           setIsRegistering(false);
         }
       } else {
@@ -95,15 +94,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
       }
     } catch (err: any) {
       console.error("Auth error:", err);
-      let msg = err.message || "Er is een fout opgetreden.";
+      let msg = err.message || "An error occurred.";
       
-      // Translate common Supabase errors
-      if (msg.includes('Invalid login credentials')) msg = 'Ongeldig emailadres of wachtwoord.';
-      if (msg.includes('Invalid API key')) msg = 'Database configuratie fout. Neem contact op met de beheerder.';
-      if (msg.includes('Failed to fetch')) msg = 'Kan geen verbinding maken met de server.';
-      if (msg.includes('Rate limit exceeded')) msg = 'Te veel pogingen. Probeer het later opnieuw.';
-      if (msg.includes('User not found')) msg = 'Geen gebruiker gevonden met dit e-mailadres.';
-      if (msg.includes('Error sending recovery email')) msg = 'Kon email niet versturen. Mogelijk heb je de limiet bereikt (anti-spam). Wacht even en probeer het later opnieuw.';
+      // Explicit English error messages
+      if (msg.includes('Invalid login credentials')) msg = "Invalid email or password.";
+      if (msg.includes('Invalid API key')) msg = 'Database configuration error. Please contact the administrator.';
+      if (msg.includes('Failed to fetch')) msg = 'Cannot connect to the server.';
+      if (msg.includes('Rate limit exceeded')) msg = 'Too many attempts. Please try again later.';
+      if (msg.includes('User not found')) msg = 'No user found with this email address.';
+      if (msg.includes('Error sending recovery email')) msg = 'Could not send recovery email. Limit reached. Please try again later.';
       
       setError(msg);
     } finally {
@@ -114,9 +113,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
   // --- Render Logic ---
 
   const renderHeader = () => {
-    if (isResettingPassword) return 'Wachtwoord Herstellen';
-    if (isRegistering) return 'Account Aanmaken';
-    return 'Log in op je voorraad';
+    if (isResettingPassword) return 'Reset Password';
+    if (isRegistering) return 'Create Account';
+    return 'Log in to your inventory';
   };
 
   return (
@@ -150,7 +149,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-xl flex flex-col gap-2 animate-pulse-soft">
                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm">
                   <AlertCircle size={18} />
-                  <span>Let op</span>
+                  <span>Attention</span>
                </div>
                <p className="text-sm text-red-600 dark:text-red-300 pl-6.5 leading-snug">
                  {error}
@@ -173,7 +172,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-3 pl-10 pr-4 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder={t('exampleEmail')}
+                  placeholder="e.g. info@example.com"
                   required
                 />
                 <div className="absolute left-3 top-3.5 text-slate-400">
@@ -184,14 +183,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
 
             {!isResettingPassword && (
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Wachtwoord</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Password</label>
                 <div className="relative">
                   <input 
                     type={showPassword ? 'text' : 'password'} 
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg py-3 pl-10 pr-10 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder={t('passwordPlaceholder')}
+                    placeholder="Your password"
                     required={!isResettingPassword}
                   />
                   <div className="absolute left-3 top-3.5 text-slate-400">
@@ -219,7 +218,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                          checked={keepLoggedIn}
                          onChange={e => setKeepLoggedIn(e.target.checked)}
                       />
-                      <span className="text-xs text-slate-600 dark:text-slate-300 font-medium select-none">{t('stayLoggedIn')}</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-300 font-medium select-none">Stay logged in</span>
                    </label>
 
                    {!isRegistering && (
@@ -228,7 +227,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                         onClick={() => { setIsResettingPassword(true); setError(null); setMessage(null); }}
                         className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                       >
-                        Wachtwoord vergeten?
+                        Forgot password?
                       </button>
                    )}
                 </div>
@@ -244,7 +243,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  {isResettingPassword ? 'Stuur Herstel Link' : (isRegistering ? 'Account Aanmaken' : 'Inloggen')}
+                  {isResettingPassword ? 'Send Recovery Link' : (isRegistering ? 'Create Account' : 'Log In')}
                   <ArrowRight size={18} />
                 </>
               )}
@@ -256,7 +255,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
         {!isResettingPassword && (
           <div className="bg-slate-50 dark:bg-slate-900 p-4 text-center border-t border-slate-200 dark:border-slate-700 flex flex-col gap-3">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              {isRegistering ? 'Heb je al een account?' : 'Nog geen account?'}
+              {isRegistering ? 'Already have an account?' : 'No account yet?'}
               <button 
                 onClick={() => {
                   setIsRegistering(!isRegistering);
@@ -265,7 +264,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                 }}
                 className="ml-2 font-bold text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
               >
-                {isRegistering ? 'Inloggen' : 'Registreer nu'}
+                {isRegistering ? 'Log In' : 'Register now'}
               </button>
             </p>
             
@@ -274,7 +273,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                onClick={() => setShowPrivacy(true)}
                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1 hover:underline"
             >
-               <Shield size={12} /> Privacyverklaring
+               <Shield size={12} /> Privacy Policy
             </button>
           </div>
         )}
@@ -285,7 +284,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOfflineLogin }) => {
                 onClick={() => { setIsResettingPassword(false); setError(null); setMessage(null); }}
                 className="text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
              >
-               Terug naar inloggen
+               Back to login
              </button>
            </div>
         )}
