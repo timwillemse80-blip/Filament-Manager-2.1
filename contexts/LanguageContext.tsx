@@ -98,6 +98,13 @@ const translations = {
     proFeatureLocked: "PRO Functie",
     upgradeToUnlock: "Upgrade om te ontgrendelen",
     printLabel: "Print Label",
+    scanLabel: "Scan Label",
+    scanInstruction: "Scan de QR-code of het etiket op de spoel",
+    scanTitle: "Slimme Scanner",
+    scanDesc: "Scan een spoel om deze direct op te zoeken of toe te voegen.",
+    lookupMode: "Zoekmodus",
+    lookupFound: "Spoel gevonden!",
+    lookupNotFound: "Geen spoel gevonden met dit ID.",
     
     // Showcase
     showcaseSubtitle: "Deel je voorraad met anderen",
@@ -359,6 +366,13 @@ const translations = {
     proFeatureLocked: "PRO Feature",
     upgradeToUnlock: "Upgrade to unlock",
     printLabel: "Print Label",
+    scanLabel: "Scan Label",
+    scanInstruction: "Scan the QR code or spool label",
+    scanTitle: "Smart Scanner",
+    scanDesc: "Scan a spool to instantly find it or add it.",
+    lookupMode: "Lookup Mode",
+    lookupFound: "Spool found!",
+    lookupNotFound: "No spool found with this ID.",
 
     // Showcase
     showcaseSubtitle: "Share your inventory with others",
@@ -637,7 +651,7 @@ const translations = {
     notificationsSubtitle: "Bleiben Sie über neue Funktionen und Updates informiert.",
     noNotifications: "Keine neuen Benachrichtigungen",
     allCaughtUp: "Du bist auf dem neuesten Stand!",
-    newUpdate: "Neues Update!",
+    newUpdate: "New Update!",
     versionActive: "Version %v ist jetzt aktiv",
     installed: "Installiert",
     whatsNew: "Was gibt's Neues",
@@ -698,7 +712,7 @@ const translations = {
     days: "Tage",
     backupCreate: "Backup erstellen",
     backupRestore: "Backup laden",
-    dangerZone: "Gefahrenzone",
+    dangerZone: "Gevarenzone",
     deleteAccount: "Konto löschen",
     deleteAccountDesc: "Dies löscht alle Ihre Daten dauerhaft. Dies kann nicht rückgängig gemacht werden.",
     cancelDeletion: "Anfrage abbrechen",
@@ -907,7 +921,7 @@ const translations = {
     speedDesc: "Nous optimisons constamment l'application pour une expérience plus rapide.",
 
     // Logbook
-    recentActivity: "Activité récente",
+    recentActivity: "Activité recente",
     exportCsv: "Exporter CSV",
     logPrint: "Journal de bord",
     dragDrop: "Glissez votre G-code ici",

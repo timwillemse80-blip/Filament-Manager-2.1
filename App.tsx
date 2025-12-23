@@ -175,7 +175,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             )}
          </div>
          
-         <div className="mx-1 mt-2 p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
+         <div className="mx-1 mt-2 p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center">
             <div className="flex gap-1 mb-1">
                {[1, 2, 3, 4, 5].map(s => (
                   <Star key={s} size={14} fill={s <= Math.round(avgRating || 5) ? "#fbbf24" : "none"} className={s <= Math.round(avgRating || 5) ? "text-amber-400" : "text-slate-300 dark:text-slate-700"} />
@@ -279,7 +279,28 @@ const AppContent = () => {
       };
       fetchPublicStock();
     }
+
+    // Deep link handling
+    CapacitorApp.addListener('appUrlOpen', (data: any) => {
+       const url = data.url;
+       if (url.startsWith('filament://')) {
+          const shortId = url.split('filament://')[1];
+          if (shortId) {
+             handleSpoolDeepLink(shortId);
+          }
+       }
+    });
+
   }, []);
+
+  const handleSpoolDeepLink = (shortId: string) => {
+     const spool = filaments.find(f => f.shortId?.toLowerCase() === shortId.toLowerCase());
+     if (spool) {
+        setEditingId(spool.id);
+        setView('inventory');
+        setShowModal(true);
+     }
+  };
 
   const fetchData = async (uid?: string) => {
     const userId = uid || session?.user?.id;
@@ -415,7 +436,6 @@ const AppContent = () => {
   const lowStockMaterials = materials.filter(m => m.minStock !== undefined && m.minStock > 0 && m.quantity <= m.minStock);
   const totalLowStock = lowStockFilaments.length + lowStockMaterials.length;
 
-  // Split badges: Bell strictly for updates, Sidebar for shopping list
   const updateBadgeCount = (settings.enableUpdateNotifications && updateInfo) ? 1 : 0;
 
   const editingFilament = useMemo(() => filaments.find(f => f.id === editingId), [editingId, filaments]);

@@ -25,9 +25,8 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
   }, []);
 
   const handleDownloadApk = () => {
-    const repoUrl = "https://github.com/timwillemse80-blip/APK-file-FilamentManager-";
-    const directDownloadUrl = `${repoUrl}/raw/main/app-release.apk`;
-    window.open(directDownloadUrl, '_blank');
+    const releaseUrl = "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases/tag/v2.1.23";
+    window.open(releaseUrl, '_blank');
   };
 
   if (isStandalone) {

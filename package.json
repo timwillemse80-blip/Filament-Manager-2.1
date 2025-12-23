@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "android:open": "npx cap open android",
+    "android:sync": "npx cap sync android",
+    "apk:debug": "npm run build && npx cap sync android && cd android && .\\gradlew assembleDebug && cd .."
   },
   "dependencies": {
     "react": "^18.3.1",
