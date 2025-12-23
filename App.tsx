@@ -210,6 +210,7 @@ const AppContent = () => {
   const [settings, setSettings] = useState<AppSettings>({ lowStockThreshold: 20, theme: 'dark', unusedWarningDays: 90, enableWeeklyEmail: false, enableUpdateNotifications: true });
   const [view, setView] = useState<ViewState>('dashboard');
   const [showModal, setShowModal] = useState(false);
+  const [showLabelOnly, setShowLabelOnly] = useState(false); // New state to trigger label preview directly
   const [showMaterialModal, setShowMaterialModal] = useState(false); 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
@@ -535,12 +536,12 @@ const AppContent = () => {
 
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 overflow-auto p-4 md:p-8">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isAdmin} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
-           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isAdmin} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isAdmin} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} isAdmin={isAdmin} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isAdmin} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
-           {view === 'admin' && isAdmin && <AdminPanel />}
+           {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
            {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
         </PullToRefresh>
@@ -550,13 +551,14 @@ const AppContent = () => {
       {showModal && (
         <FilamentForm 
           initialData={editingFilament}
+          initialShowLabel={showLabelOnly}
           locations={locations}
           suppliers={suppliers}
           existingBrands={existingBrands}
           onSave={handleSaveFilament}
           onSaveLocation={(loc) => fetchData()}
           onSaveSupplier={(sup) => fetchData()}
-          onCancel={() => { setShowModal(false); setEditingId(null); }}
+          onCancel={() => { setShowModal(false); setEditingId(null); setShowLabelOnly(false); }}
         />
       )}
 

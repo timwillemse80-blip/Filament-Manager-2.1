@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Filament Manager',
   webDir: 'dist',
   server: {
-    // ⚠️ STAP 1: Plak hier jouw Vercel link (zonder slash aan het einde)
-    // Bijvoorbeeld: 'https://mijn-filament-app.vercel.app'
-    url: 'https://filament-manager-2-0.vercel.app', 
+    // We stellen de server URL in op je eigen domein. 
+    // Dit zorgt voor een consistente ervaring tussen de web-versie en de app.
+    url: 'https://filamentmanager.nl',
     cleartext: true,
     allowNavigation: ['*']
   },

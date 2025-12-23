@@ -1,5 +1,5 @@
 {
   "version": "2.1.23",
-  "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases/tag/v2.1.23",
-  "releaseNotes": "Our first official APK is here! 🚀 Features: Smart QR Scanning, Deep Linking, AI Spool Lookup, and Workshop Material tracking. Optimized for a smooth native mobile experience."
+  "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases/latest",
+  "releaseNotes": "Nieuwe stabiele release met eigen domein ondersteuning (filamentmanager.nl). Deze versie lost de 404-fout op Android op."
 }

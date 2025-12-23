@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-/* Added ChevronRight to the lucide-react imports */
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight } from 'lucide-react';
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
@@ -10,7 +9,11 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-export const AdminPanel: React.FC = () => {
+interface AdminPanelProps {
+  onClose?: () => void;
+}
+
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { refreshLogo, logoUrl: currentAppLogo } = useLogo();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -306,7 +309,17 @@ export const AdminPanel: React.FC = () => {
        
        {/* TOP SECTION: NAVIGATION */}
        <div className="space-y-6 w-full">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex overflow-x-auto gap-2 scrollbar-hide">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex items-center overflow-x-auto gap-2 scrollbar-hide">
+             {/* EXIT BUTTON FOR MOBILE */}
+             {onClose && (
+                <button 
+                  onClick={onClose}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 mr-2 whitespace-nowrap shadow-sm hover:bg-red-200 transition-colors"
+                >
+                   {/* Fix: Added missing ArrowLeft import to fix "Cannot find name 'ArrowLeft'" */}
+                   <ArrowLeft size={18}/> Sluit Admin
+                </button>
+             )}
              <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
              <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
              <button onClick={() => setActiveTab('spools')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'spools' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Disc size={18}/> Spoel Database</button>
@@ -412,7 +425,7 @@ export const AdminPanel: React.FC = () => {
                                      <span className="font-bold">{feedbacks.filter(f => !f.is_read).length} Ongelezen feedback</span>
                                   </div>
                                   <ChevronRight size={18} className="text-purple-300 group-hover:translate-x-1 transition-transform" />
-                               </button>
+                                </button>
                             )}
                             {requests.length === 0 && feedbacks.filter(f => !f.is_read).length === 0 && (
                                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60">

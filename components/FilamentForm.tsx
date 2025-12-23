@@ -362,9 +362,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   // QR Code Generation with App Logo Embedding
   useEffect(() => {
     const generateQr = async () => {
-      if (!initialData?.shortId) return;
+      const shortId = initialData?.shortId || formData.shortId;
+      if (!shortId) return;
 
-      const url = `filament://${initialData.shortId}`;
+      const url = `filament://${shortId}`;
       try {
         // 1. Generate Basic QR (High Error Correction)
         const qrDataUrl = await QRCode.toDataURL(url, { 
@@ -386,43 +387,52 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         if (ctx) {
            const qrImg = new Image();
            qrImg.src = qrDataUrl;
-           await new Promise((resolve) => { qrImg.onload = resolve; });
            
-           // Draw QR
+           await new Promise((resolve, reject) => { 
+             qrImg.onload = resolve; 
+             qrImg.onerror = () => reject(new Error('QR Load error'));
+           });
+           
            ctx.drawImage(qrImg, 0, 0);
 
            const logoImg = new Image();
            logoImg.src = APP_LOGO_URI;
-           await new Promise((resolve) => { logoImg.onload = resolve; });
+           
+           try {
+             await new Promise((resolve, reject) => { 
+               logoImg.onload = resolve; 
+               logoImg.onerror = reject;
+             });
 
-           // Center Logo (approx 20% of QR)
-           const logoSize = 100; 
-           const pos = (500 - logoSize) / 2;
+             // Center Logo (approx 20% of QR)
+             const logoSize = 100; 
+             const pos = (500 - logoSize) / 2;
 
-           // White background for logo
-           ctx.fillStyle = '#FFFFFF';
-           ctx.beginPath();
-           // Circle background
-           ctx.arc(250, 250, (logoSize / 2) + 5, 0, 2 * Math.PI);
-           ctx.fill();
+             // White background for logo
+             ctx.fillStyle = '#FFFFFF';
+             ctx.beginPath();
+             ctx.arc(250, 250, (logoSize / 2) + 5, 0, 2 * Math.PI);
+             ctx.fill();
 
-           // Draw Logo
-           ctx.drawImage(logoImg, pos, pos, logoSize, logoSize);
-
-           setQrCodeUrl(canvas.toDataURL());
+             // Draw Logo
+             ctx.drawImage(logoImg, pos, pos, logoSize, logoSize);
+             setQrCodeUrl(canvas.toDataURL());
+           } catch (e) {
+             // Fallback to QR without logo
+             setQrCodeUrl(qrDataUrl);
+           }
         } else {
            setQrCodeUrl(qrDataUrl);
         }
-
       } catch(e) {
-        console.error(e);
+        console.error("QR Generation failed", e);
       }
     };
 
     if (showLabel) {
       generateQr();
     }
-  }, [initialData?.shortId, showLabel]);
+  }, [initialData?.shortId, formData.shortId, showLabel]);
 
   const [isScanning, setIsScanning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -717,7 +727,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       });
       
       const image = canvas.toDataURL('image/png');
-      const fileName = `label-${formData.shortId}.png`;
+      const shortId = initialData?.shortId || formData.shortId;
+      const fileName = `label-${shortId}.png`;
 
       if (Capacitor.isNativePlatform()) {
         const data = image.replace('data:image/png;base64,', '');
@@ -758,6 +769,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   if (showLabel) {
+    const shortId = initialData?.shortId || formData.shortId;
     return (
        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           {/* Hidden Container for generation */}
@@ -784,7 +796,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                    <div style={{ fontSize: '18px', fontWeight: 'normal', color: '#555' }}>{tColor(formData.colorName || '')}</div>
                 </div>
                 <div style={{ fontSize: '48px', fontWeight: '900', fontFamily: 'monospace', lineHeight: '1', letterSpacing: '-1px', color: 'black' }}>
-                  {formData.shortId}
+                  {shortId}
                 </div>
              </div>
           </div>
@@ -804,7 +816,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                             <span className="font-bold text-sm text-gray-800 block leading-tight">{formData.material}</span>
                             <span className="text-xs text-gray-600 block leading-tight">{tColor(formData.colorName || '')}</span>
                         </div>
-                        <span className="font-mono font-black text-4xl text-black leading-none mt-auto">{formData.shortId}</span>
+                        <span className="font-mono font-black text-4xl text-black leading-none mt-auto">{shortId}</span>
                      </div>
                 </div>
                 <div className="flex flex-wrap gap-3 justify-center w-full">
@@ -860,7 +872,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 </div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">{t('scanTitle')}</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 px-4">{t('scanDesc')}</p>
-                <button onClick={startCamera} disabled={isScanning} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-50">
+                <button onClick={startCamera} disabled={isScanning} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] disabled:opacity-50">
                   {isScanning ? t('processing') : <><CameraIcon size={20} /> {t('startScan')}</>}
                 </button>
                 <div className="mt-4">
@@ -1073,7 +1085,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
       {showUnsavedDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-sm w-full border border-slate-200 dark:border-slate-700">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-4"><AlertTriangle size={24} /></div>
               <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{t('unsavedTitle')}</h3>

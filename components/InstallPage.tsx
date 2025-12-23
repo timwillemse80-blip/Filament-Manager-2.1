@@ -25,7 +25,7 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
   }, []);
 
   const handleDownloadApk = () => {
-    const releaseUrl = "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases/tag/v2.1.23";
+    const releaseUrl = "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases/latest";
     window.open(releaseUrl, '_blank');
   };
 
