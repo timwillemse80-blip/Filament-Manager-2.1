@@ -23,23 +23,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Custom Scheme voor oude QR Codes -->
+            <!-- Custom Scheme for QR Codes -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="filament" />
-            </intent-filter>
-
-            <!-- App Links voor nieuwe QR Codes (wordt herkend door systeem camera) -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-                <data android:host="filamentmanager.nl" />
-                <data android:pathPrefix="/s/" />
             </intent-filter>
 
         </activity>
