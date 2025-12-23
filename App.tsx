@@ -32,7 +32,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.23"; 
+const APP_VERSION = "2.1.24"; 
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2; 
 

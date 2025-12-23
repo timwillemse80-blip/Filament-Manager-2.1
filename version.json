@@ -1,5 +1,5 @@
 {
-  "version": "2.1.23",
-  "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases",
-  "releaseNotes": "Nieuwe stabiele release met eigen domein ondersteuning (filamentmanager.nl). Deze versie lost de 404-fout op Android op."
+  "version": "2.1.24",
+  "downloadUrl": "https://github.com/timwillemse80/Filament-Manager-2.1",
+  "releaseNotes": "Download URL voor APK hersteld. De extra '-blip' extensie is verwijderd om de 404-fout op GitHub op te lossen."
 }

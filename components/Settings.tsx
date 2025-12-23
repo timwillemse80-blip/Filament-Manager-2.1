@@ -128,7 +128,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleDownloadApk = () => {
-    const releaseUrl = updateInfo?.downloadUrl || "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases";
+    const releaseUrl = updateInfo?.downloadUrl || "https://github.com/timwillemse80/Filament-Manager-2.1";
 
     if (Capacitor.isNativePlatform()) {
       window.open(releaseUrl, '_system');
@@ -743,7 +743,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <textarea 
                            value={deleteReasonCustom}
                            onChange={(e) => setDeleteReasonCustom(e.target.value)}
-                           className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
+                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none"
                            placeholder="Type hier..."
                         />
                      </div>
