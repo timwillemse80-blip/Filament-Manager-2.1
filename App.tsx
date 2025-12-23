@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
 import { Inventory } from './components/Inventory';
@@ -13,6 +12,7 @@ import { PrintHistory } from './components/PrintHistory';
 import { Dashboard } from './components/Dashboard'; 
 import { SupportPage } from './components/SupportPage'; 
 import { HelpPage } from './components/HelpPage'; 
+import { FeedbackPage } from './components/FeedbackPage';
 import { ShowcasePreview } from './components/ShowcasePreview';
 import { ShowcaseModal } from './components/ShowcaseModal'; 
 import { AuthScreen } from './components/AuthScreen';
@@ -184,16 +184,22 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             )}
          </div>
          
-         <div className="mx-1 mt-2 p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center">
+         <button 
+            onClick={() => {
+              onClose();
+              setView('feedback');
+            }}
+            className="w-full mx-0 mt-2 p-2.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center transition-all hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-800 group"
+         >
             <div className="flex gap-1 mb-1">
                {[1, 2, 3, 4, 5].map(s => (
-                  <Star key={s} size={14} fill={s <= Math.round(avgRating || 5) ? "#fbbf24" : "none"} className={s <= Math.round(avgRating || 5) ? "text-amber-400" : "text-slate-300 dark:text-slate-700"} />
+                  <Star key={s} size={14} fill={s <= Math.round(avgRating || 5) ? "#fbbf24" : "none"} className={`transition-transform group-hover:scale-110 ${s <= Math.round(avgRating || 5) ? "text-amber-400" : "text-slate-300 dark:text-slate-700"}`} style={{ transitionDelay: `${s * 50}ms` }} />
                ))}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-tight">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                {t('userRatingText')} <span className="text-amber-500 dark:text-amber-400 ml-0.5">{(avgRating || 5.0).toFixed(1)}</span>
             </p>
-         </div>
+         </button>
 
         <div className="flex flex-col items-center pt-2 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest opacity-80 text-center">
           <span>{t('madeBy')}</span>
@@ -745,6 +751,7 @@ const AppContent = () => {
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
            {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
+           {view === 'feedback' && <FeedbackPage />}
            
            {view === 'print-preview' && (
               <PrintPreview 

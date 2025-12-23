@@ -71,6 +71,23 @@ const translations: Record<Language, Record<string, string>> = {
     slot: "Slot",
     confirmDelete: "Weet je zeker dat je dit wilt verwijderen?",
     
+    // Feedback Page Specific
+    feedbackTitle: "Jouw mening telt!",
+    feedbackSubtitle: "Help ons de app te verbeteren door je ervaring te delen.",
+    feedbackPlaceholder: "Schrijf hier je opmerking, compliment of suggestie...",
+    feedbackSend: "Verstuur Feedback",
+    feedbackSent: "Bedankt! Je feedback is succesvol verstuurd.",
+    rating: "Beoordeling",
+
+    // Help & Contact Specific
+    suggestions: "Suggesties",
+    contact: "Contact",
+    suggestionDesc: "Heb je een goed idee voor een nieuwe functie? Laat het ons weten!",
+    suggestionPlaceholder: "Beschrijf je idee zo uitgebreid mogelijk...",
+    contactDesc: "Heb je een vraag of loop je tegen een probleem aan? Stuur ons direct een bericht.",
+    contactMessagePlaceholder: "Typ hier je vraag of bericht...",
+    emailSent: "Je bericht is klaargezet in je e-mail app.",
+
     // Inventory & Form
     searchPlaceholder: "Zoek op merk, kleur, materiaal of ID...",
     newFilament: "Nieuw Filament",
@@ -104,7 +121,7 @@ const translations: Record<Language, Record<string, string>> = {
     scanInstruction: "Scan de QR-code of het etiket op de spoel",
     scanTitle: "Slimme Scanner",
     scanDesc: "Scan een spoel om deze direct op te zoeken of toe te voegen.",
-    lookupMode: "Zoekmodus",
+    lookupMode: "Label scannen",
     lookupFound: "Spoel gevonden!",
     lookupNotFound: "Geen spoel gevonden met dit ID.",
     
@@ -155,7 +172,7 @@ const translations: Record<Language, Record<string, string>> = {
     versionActive: "Versie %v is nu actief",
     installed: "Geïnstalleerd",
     whatsNew: "Wat is er nieuw",
-    autoUpdateMsg: "De app is automatisch bijgewerkt naar de nieuwste versie.",
+    autoUpdateMsg: "De app is automatisch bijgewerkt naar de hoogste versie.",
     publishedOn: "Gepubliceerd op",
     security: "Veiligheid",
     securityDesc: "Updates bevatten vaak belangrijke beveiligingsverbeteringen.",
@@ -178,7 +195,9 @@ const translations: Record<Language, Record<string, string>> = {
     addSlot: "Slot Toevoegen",
     manualEntry: "Of voer handmatig gegevens in",
     saveUpdate: "Opslaan & Voorraad Bijwerken",
-    analyzing: "G-code Analyseren...",
+    analyzing: "Analyseren...",
+    analyzingGcode: "G-code Analyseren...",
+    analyzingFilament: "Filament Analyseren...",
     overrideWeight: "Totaal Gewicht Overschrijven",
     autoCalculated: "Wordt automatisch berekend",
     details: "Details",
@@ -318,6 +337,12 @@ const translations: Record<Language, Record<string, string>> = {
     "naturel": "Naturel"
   },
   en: {
+    feedbackTitle: "Your opinion matters!",
+    feedbackSubtitle: "Help us improve the app by sharing your experience.",
+    feedbackPlaceholder: "Write your comment, compliment or suggestion here...",
+    feedbackSend: "Send Feedback",
+    feedbackSent: "Thank you! Your feedback has been sent.",
+    rating: "Rating",
     printPreview: "Print Preview",
     dropGcode: "Drop your G-code here or click to load",
     checkStock: "Stock Check",
@@ -340,9 +365,17 @@ const translations: Record<Language, Record<string, string>> = {
     proposedSlot: "Proposed Slot",
     loadFromStock: "Load from stock",
     perfectMatch: "Perfect match",
-    colorMismatch: "Color mismatch"
+    colorMismatch: "Color mismatch",
+    analyzingGcode: "Analyzing G-code...",
+    analyzingFilament: "Analyzing Label..."
   },
   de: {
+    feedbackTitle: "Ihre Meinung zählt!",
+    feedbackSubtitle: "Helfen Sie uns, die App zu verbessern, indem Sie Ihre Erfahrungen teilen.",
+    feedbackPlaceholder: "Schreiben Sie hier Ihren Kommentar, Ihr Kompliment oder Ihren Vorschlag...",
+    feedbackSend: "Feedback senden",
+    feedbackSent: "Vielen Dank! Ihr Feedback wurde gesendet.",
+    rating: "Bewertung",
     printPreview: "Druckvorschau",
     dropGcode: "G-Code hierher ziehen oder klicken",
     checkStock: "Lagerprüfung",
@@ -366,6 +399,12 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Aus Vorraad laden"
   },
   fr: {
+    feedbackTitle: "Votre avis compte !",
+    feedbackSubtitle: "Aidez-nous à améliorer l'application en partageant votre expérience.",
+    feedbackPlaceholder: "Écrivez ici votre commentaire, compliment ou suggestion...",
+    feedbackSend: "Envoyer des commentaires",
+    feedbackSent: "Merci ! Votre avis a été envoyé.",
+    rating: "Évaluation",
     printPreview: "Aperçu d'impression",
     dropGcode: "Déposez votre G-code ici ou cliquez",
     checkStock: "Vérification du stock",
@@ -389,6 +428,12 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Charger depuis le stock"
   },
   es: {
+    feedbackTitle: "¡Tu opinión cuenta!",
+    feedbackSubtitle: "Ayúdanos a mejorar la aplicación compartiendo tu experiencia.",
+    feedbackPlaceholder: "Escribe aquí tu comentario, cumplido o sugerencia...",
+    feedbackSend: "Enviar comentarios",
+    feedbackSent: "¡Gracias! Tu opinión ha sido enviada.",
+    rating: "Evaluación",
     printPreview: "Vista previa de impresión",
     dropGcode: "Arrastre su G-code aquí o haga clic",
     checkStock: "Verificación de stock",
@@ -402,7 +447,7 @@ const translations: Record<Language, Record<string, string>> = {
     checkAlertsBelow: "Revise las alertas rojas a continuación.",
     printQuantity: "Número de impresiones",
     totalRequired: "Total necesario",
-    selectPrinterFirst: "Elija una impresora primero...",
+    selectPrinterFirst: "Elija una impresora eerst...",
     noMatchingSpool: "Sin coincidencias",
     multipleMatches: "Varias coincidencias",
     configuration: "Configuración",
@@ -422,7 +467,6 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-// Fix: Export LanguageProvider
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>(() => {
     return (localStorage.getItem('app_language') as Language) || 'nl';
@@ -451,7 +495,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
-// Fix: Export useLanguage hook
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) {

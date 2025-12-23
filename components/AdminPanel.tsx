@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft } from 'lucide-react';
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft, History } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
@@ -8,6 +8,172 @@ import { useLanguage } from '../contexts/LanguageContext';
 type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'feedback' | 'requests';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+
+const MASTER_SQL = `-- 1. LOCATIES
+create table if not exists public.locations (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz default now()
+);
+alter table public.locations enable row level security;
+drop policy if exists "Users manage own locations" on public.locations;
+create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
+
+-- 2. LEVERANCIERS
+create table if not exists public.suppliers (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  website text,
+  created_at timestamptz default now()
+);
+alter table public.suppliers enable row level security;
+drop policy if exists "Users manage own suppliers" on public.suppliers;
+create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
+
+-- 3. FILAMENTEN
+create table if not exists public.filaments (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  brand text not null,
+  material text not null,
+  "colorName" text,
+  "colorHex" text,
+  "weightTotal" numeric default 1000,
+  "weightRemaining" numeric default 1000,
+  "tempNozzle" numeric,
+  "tempBed" numeric,
+  price numeric,
+  notes text,
+  "purchaseDate" timestamptz default now(),
+  "locationId" uuid references public.locations(id) on delete set null,
+  "supplierId" uuid references public.suppliers(id) on delete set null,
+  "shopUrl" text,
+  "shortId" text
+);
+alter table public.filaments enable row level security;
+drop policy if exists "Users manage own filaments" on public.filaments;
+create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
+
+-- 4. OVERIGE MATERIALEN
+create table if not exists public.other_materials (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  category text,
+  quantity numeric default 0,
+  unit text,
+  "minStock" numeric default 0,
+  price numeric,
+  "locationId" uuid references public.locations(id) on delete set null,
+  "supplierId" uuid references public.suppliers(id) on delete set null,
+  "shopUrl" text,
+  notes text,
+  "purchaseDate" timestamptz default now(),
+  image text
+);
+alter table public.other_materials enable row level security;
+drop policy if exists "Users manage own materials" on public.other_materials;
+create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
+
+-- 5. PRINTERS
+create table if not exists public.printers (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text,
+  brand text,
+  model text,
+  "hasAMS" boolean default false,
+  "amsCount" smallint default 0,
+  "amsSlots" jsonb default '[]'::jsonb,
+  "powerWatts" numeric default 300,
+  "purchasePrice" numeric default 0,
+  "lifespanHours" numeric default 20000,
+  "ipAddress" text,
+  "apiKey" text,
+  "webcamUrl" text
+);
+alter table public.printers enable row level security;
+drop policy if exists "Users manage own printers" on public.printers;
+create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
+
+-- 6. PRINT LOGBOEK
+create table if not exists public.print_jobs (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  date timestamptz default now(),
+  "printTime" text,
+  "totalWeight" numeric,
+  "calculatedCost" numeric,
+  status text,
+  "printerId" uuid references public.printers(id) on delete set null,
+  "assemblyTime" numeric default 0,
+  "costBreakdown" jsonb,
+  "usedFilaments" jsonb,
+  "usedOtherMaterials" jsonb
+);
+alter table public.print_jobs enable row level security;
+drop policy if exists "Users manage own prints" on public.print_jobs;
+create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
+
+-- 7. FEEDBACK & BEHEER
+create table if not exists public.feedback (
+  id bigint generated by default as identity primary key,
+  created_at timestamptz default now(),
+  message text not null,
+  rating smallint,
+  user_id uuid references auth.users(id) on delete cascade,
+  "is_read" boolean default false,
+  platform text,
+  user_agent text
+);
+alter table public.feedback enable row level security;
+drop policy if exists "Everyone can send feedback" on public.feedback;
+create policy "Everyone can send feedback" on public.feedback for insert with check (true);
+drop policy if exists "Admins can view feedback" on public.feedback;
+create policy "Admins can view feedback" on public.feedback for select using (true);
+drop policy if exists "Admins can update feedback" on public.feedback;
+create policy "Admins can update feedback" on public.feedback for update using (true);
+drop policy if exists "Admins can delete feedback" on public.feedback;
+create policy "Admins can delete feedback" on public.feedback for delete using (true);
+
+create table if not exists public.deletion_requests (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  email text,
+  reason text,
+  created_at timestamptz default now()
+);
+alter table public.deletion_requests enable row level security;
+drop policy if exists "Users can request deletion" on public.deletion_requests;
+create policy "Users can request deletion" on public.deletion_requests for insert with check (auth.uid() = user_id);
+drop policy if exists "Users view own request" on public.deletion_requests;
+create policy "Users view own request" on public.deletion_requests for select using (auth.uid() = user_id);
+drop policy if exists "Users cancel own request" on public.deletion_requests;
+create policy "Users cancel own request" on public.deletion_requests for delete using (auth.uid() = user_id);
+
+-- 8. SPOEL DATABASE & LOGO
+create table if not exists public.spool_weights (id bigint generated by default as identity primary key, name text, weight numeric);
+create table if not exists public.brands (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.materials (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.global_settings (key text primary key, value text);
+
+alter table public.spool_weights enable row level security;
+alter table public.brands enable row level security;
+alter table public.materials enable row level security;
+alter table public.global_settings enable row level security;
+
+drop policy if exists "Public read access" on public.spool_weights;
+create policy "Public read access" on public.spool_weights for select using (true);
+drop policy if exists "Public read access brands" on public.brands;
+create policy "Public read access brands" on public.brands for select using (true);
+drop policy if exists "Public read access materials" on public.materials;
+create policy "Public read access materials" on public.materials for select using (true);
+drop policy if exists "Public read access global" on public.global_settings;
+create policy "Public read access global" on public.global_settings for select using (true);`;
 
 interface AdminPanelProps {
   onClose?: () => void;
@@ -32,10 +198,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [tableCounts, setTableCounts] = useState({ logs: 0, filaments: 0, materials: 0, proUsers: 0, totalUsers: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [deletingFeedbackId, setDeletingFeedbackId] = useState<number | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
   const [newSpool, setNewSpool] = useState({ name: '', weight: '' });
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   // Platform Distribution Data
   const [platformMaterialData, setPlatformMaterialData] = useState<any[]>([]);
@@ -96,6 +264,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
      } catch (e) {
         console.error("Stats load failed", e);
      }
+  };
+
+  const handleCopySql = async () => {
+    await navigator.clipboard.writeText(MASTER_SQL);
+    setSqlCopied(true);
+    setTimeout(() => setSqlCopied(false), 2000);
   };
 
   const loadUsers = async () => {
@@ -217,11 +391,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   const deleteFeedback = async (id: number) => {
     if (!confirm("Feedback definitief verwijderen?")) return;
+    setDeletingFeedbackId(id);
     try {
-      const { error } = await supabase.from('feedback').delete().eq('id', id);
-      if (error) throw error;
-      setFeedbacks(prev => prev.filter(f => f.id !== id));
-    } catch (e: any) { alert(e.message); }
+       const { error } = await supabase.from('feedback').delete().eq('id', id);
+       if (error) throw error;
+       setFeedbacks(prev => prev.filter(f => f.id !== id));
+    } catch (e: any) { 
+       console.error("Verwijder fout:", e);
+       alert("Fout bij verwijderen: " + (e.message || "Onbekende fout. Controleer SQL policies.")); 
+    } finally {
+       setDeletingFeedbackId(null);
+    }
   };
   
   const loadRequests = async () => { 
@@ -310,16 +490,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
        {/* TOP SECTION: NAVIGATION */}
        <div className="space-y-6 w-full">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex items-center overflow-x-auto gap-2 scrollbar-hide">
-             {/* EXIT BUTTON FOR MOBILE */}
-             {onClose && (
-                <button 
-                  onClick={onClose}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 mr-2 whitespace-nowrap shadow-sm hover:bg-red-200 transition-colors"
-                >
-                   {/* Fix: Added missing ArrowLeft import to fix "Cannot find name 'ArrowLeft'" */}
-                   <ArrowLeft size={18}/> Sluit Admin
-                </button>
-             )}
              <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
              <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Users size={18}/> Gebruikers</button>
              <button onClick={() => setActiveTab('spools')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'spools' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><Disc size={18}/> Spoel Database</button>
@@ -372,8 +542,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                    </div>
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Database Setup Section */}
+                      <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden group border border-slate-700/50">
+                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform scale-150">
+                            <Database size={120} />
+                         </div>
+                         <div className="relative z-10 flex flex-col h-full">
+                            <div className="flex items-center gap-3 mb-6">
+                               <div className="bg-blue-500/20 p-3 rounded-2xl border border-blue-500/30">
+                                  <Database size={28} className="text-blue-400" />
+                               </div>
+                               <div>
+                                  <h3 className="text-2xl font-black tracking-tight">Database Setup</h3>
+                                  <p className="text-slate-400 text-sm font-bold">Initialiseer of update tabellen</p>
+                               </div>
+                            </div>
+                            <p className="text-slate-300 text-sm leading-relaxed mb-8 flex-1">
+                               Kopieer het volledige database script om alle tabellen, beveiligingsregels (RLS) en rechten in één keer goed te zetten in de Supabase SQL Editor.
+                            </p>
+                            <button 
+                               onClick={handleCopySql}
+                               className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg transform active:scale-[0.98] ${sqlCopied ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'}`}
+                            >
+                               {sqlCopied ? <Check size={20} /> : <Copy size={20} />}
+                               {sqlCopied ? 'SQL Gekopieerd!' : 'Installatie SQL Kopiëren'}
+                            </button>
+                         </div>
+                      </div>
+
                       {/* Popular Materials Chart */}
-                      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm">
                          <h3 className="text-slate-800 dark:text-white font-bold mb-6 flex items-center gap-2"><PieChartIcon size={20} className="text-blue-500" /> Platform Materiaal Distributie</h3>
                          <div className="h-[250px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -395,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                </PieChart>
                             </ResponsiveContainer>
                          </div>
-                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+                         <div className="flex wrap justify-center gap-x-4 gap-y-2 mt-4">
                             {platformMaterialData.map((entry, index) => (
                                <div key={index} className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
                                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
@@ -404,9 +602,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             ))}
                          </div>
                       </div>
+                   </div>
 
+                   <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                       {/* Quick Activity / Alerts */}
-                      <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+                      <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                          <h3 className="text-slate-800 dark:text-white font-bold mb-4 flex items-center gap-2"><Activity size={20} className="text-orange-500" /> Platform Actie Vereist</h3>
                          <div className="space-y-3 flex-1">
                             {requests.length > 0 && (
@@ -428,7 +628,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 </button>
                             )}
                             {requests.length === 0 && feedbacks.filter(f => !f.is_read).length === 0 && (
-                               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60">
+                               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[100px]">
                                   <CheckCircle2 size={48} className="mb-3 text-emerald-500" />
                                   <p className="font-bold">Alles bijgewerkt!</p>
                                </div>
@@ -452,7 +652,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                            <tr>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">E-mailadres / ID</th>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Voorraad</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Voorraad & Activiteit</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -478,10 +678,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                        </button>
                                     )}
                                  </td>
-                                 <td className="p-6 text-center text-sm font-bold text-slate-500">
-                                    <div className="flex flex-col items-center">
-                                       <span>{u.filament_count}f</span>
-                                       <span className="text-[10px] opacity-60 font-normal">{u.print_count} logs</span>
+                                 <td className="p-6">
+                                    <div className="flex flex-col items-center gap-2">
+                                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-xs transition-all shadow-sm ${u.filament_count > 0 ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400' : 'bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 opacity-60'}`}>
+                                          <Disc size={14} />
+                                          <span>{u.filament_count} spoelen</span>
+                                       </div>
+                                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-xs transition-all shadow-sm ${u.print_count > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' : 'bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 opacity-60'}`}>
+                                          <History size={14} />
+                                          <span>{u.print_count} logs</span>
+                                       </div>
                                     </div>
                                  </td>
                               </tr>
@@ -573,7 +779,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                            {feedbacks.map(f => (
-                              <tr key={f.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${!f.is_read ? 'bg-purple-50/30 dark:bg-purple-900/5' : ''}`}>
+                              <tr key={f.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${!f.is_read ? 'bg-purple-50/30 dark:bg-purple-900/5' : ''} ${deletingFeedbackId === f.id ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                                  <td className="p-6 text-center">
                                     {f.is_read ? (
                                        <span className="text-slate-400" title="Gelezen"><Eye size={18} /></span>
@@ -609,9 +815,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                        <button 
                                           onClick={() => deleteFeedback(f.id)}
                                           className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                          disabled={deletingFeedbackId === f.id}
                                           title={t('delete')}
                                        >
-                                          <Trash2 size={18}/>
+                                          {deletingFeedbackId === f.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18}/>}
                                        </button>
                                     </div>
                                  </td>
@@ -837,7 +1044,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                    <div className="space-y-1">
                       <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Sparkles size={12} className="text-purple-400" /> Gemini AI</span>
                       <span className={`${isAiConfigured ? 'text-[#10b981]' : 'text-red-500'} font-black text-lg flex items-center gap-2`}>
-                         <span className={`w-2.5 h-2.5 ${isAiConfigured ? 'bg-[#10b981] shadow-[0_0_10px_#10b981]' : 'bg-red-500 shadow-[0_0_10px_red]'} rounded-full`}></span> {isAiConfigured ? 'Actief' : 'Mist Sleutel'}
+                         <span className={`w-2.5 h-2.5 ${isAiConfigured ? 'bg-[#10b981] shadow-[0_0_10px_#10b981]' : 'bg-red-50 shadow-[0_0_10px_red]'} rounded-full`}></span> {isAiConfigured ? 'Actief' : 'Mist Sleutel'}
                       </span>
                    </div>
 

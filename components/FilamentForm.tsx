@@ -188,7 +188,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
      const body = encodeURIComponent(
         `Ik heb een spoel gevonden die nog niet in de lijst staat!\n\n` +
         `Merk: ${contributeForm.brand}\n` +
-        `Type Spoel: ${contributeForm.type || 'Onbekend'} (bv. plastic, karton)\n` +
+        `Type Spoel: ${contributeForm.type || 'Onbekend'} (bv. plastic, kampioen)\n` +
         `Leeg Gewicht: ${contributeForm.weight} gram\n\n` +
         `Alvast bedankt!`
      );
@@ -791,7 +791,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                        className="w-full bg-white text-blue-700 font-black py-3.5 rounded-xl shadow-md hover:bg-blue-50 transition-all flex items-center justify-center gap-3 transform active:scale-[0.98] disabled:opacity-50"
                     >
                        {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <CameraIcon size={20} />}
-                       {isAnalyzing ? t('analyzing') : t('lookupMode')}
+                       {isAnalyzing ? t('analyzingFilament') : t('lookupMode')}
                     </button>
                  </div>
               </div>
@@ -1242,7 +1242,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   </button>
                   <button 
                      onClick={onCancel}
-                     className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-red-600 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                     className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-red-600 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
                   >
                      Wijzigingen weggooien
                   </button>

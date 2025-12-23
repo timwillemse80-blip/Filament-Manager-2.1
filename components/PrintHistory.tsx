@@ -714,7 +714,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                    {parsing && (
                       <div className="flex items-center justify-center py-4 text-blue-500 gap-2">
                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent" />
-                         <span>{t('analyzing')}</span>
+                         <span>{t('analyzingGcode')}</span>
                       </div>
                    )}
 

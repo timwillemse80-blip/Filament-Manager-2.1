@@ -26,6 +26,7 @@ create table if not exists public.locations (
   created_at timestamptz default now()
 );
 alter table public.locations enable row level security;
+drop policy if exists "Users manage own locations" on public.locations;
 create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
 
 -- 2. LEVERANCIERS
@@ -37,6 +38,7 @@ create table if not exists public.suppliers (
   created_at timestamptz default now()
 );
 alter table public.suppliers enable row level security;
+drop policy if exists "Users manage own suppliers" on public.suppliers;
 create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
 
 -- 3. FILAMENTEN
@@ -60,6 +62,7 @@ create table if not exists public.filaments (
   "shortId" text
 );
 alter table public.filaments enable row level security;
+drop policy if exists "Users manage own filaments" on public.filaments;
 create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
 
 -- 4. OVERIGE MATERIALEN
@@ -80,6 +83,7 @@ create table if not exists public.other_materials (
   image text
 );
 alter table public.other_materials enable row level security;
+drop policy if exists "Users manage own materials" on public.other_materials;
 create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
 
 -- 5. PRINTERS
@@ -100,6 +104,7 @@ create table if not exists public.printers (
   "webcamUrl" text
 );
 alter table public.printers enable row level security;
+drop policy if exists "Users manage own printers" on public.printers;
 create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
 
 -- 6. PRINT LOGBOEK
@@ -119,6 +124,7 @@ create table if not exists public.print_jobs (
   "usedOtherMaterials" jsonb
 );
 alter table public.print_jobs enable row level security;
+drop policy if exists "Users manage own prints" on public.print_jobs;
 create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
 
 -- 7. FEEDBACK & BEHEER
@@ -133,8 +139,14 @@ create table if not exists public.feedback (
   user_agent text
 );
 alter table public.feedback enable row level security;
+drop policy if exists "Everyone can send feedback" on public.feedback;
 create policy "Everyone can send feedback" on public.feedback for insert with check (true);
+drop policy if exists "Admins can view feedback" on public.feedback;
 create policy "Admins can view feedback" on public.feedback for select using (true);
+drop policy if exists "Admins can update feedback" on public.feedback;
+create policy "Admins can update feedback" on public.feedback for update using (true);
+drop policy if exists "Admins can delete feedback" on public.feedback;
+create policy "Admins can delete feedback" on public.feedback for delete using (true);
 
 create table if not exists public.deletion_requests (
   id uuid default gen_random_uuid() primary key,
@@ -144,8 +156,11 @@ create table if not exists public.deletion_requests (
   created_at timestamptz default now()
 );
 alter table public.deletion_requests enable row level security;
+drop policy if exists "Users can request deletion" on public.deletion_requests;
 create policy "Users can request deletion" on public.deletion_requests for insert with check (auth.uid() = user_id);
+drop policy if exists "Users view own request" on public.deletion_requests;
 create policy "Users view own request" on public.deletion_requests for select using (auth.uid() = user_id);
+drop policy if exists "Users cancel own request" on public.deletion_requests;
 create policy "Users cancel own request" on public.deletion_requests for delete using (auth.uid() = user_id);
 
 -- 8. SPOEL DATABASE & LOGO
@@ -159,8 +174,12 @@ alter table public.brands enable row level security;
 alter table public.materials enable row level security;
 alter table public.global_settings enable row level security;
 
+drop policy if exists "Public read access" on public.spool_weights;
 create policy "Public read access" on public.spool_weights for select using (true);
+drop policy if exists "Public read access brands" on public.brands;
 create policy "Public read access brands" on public.brands for select using (true);
+drop policy if exists "Public read access materials" on public.materials;
 create policy "Public read access materials" on public.materials for select using (true);
+drop policy if exists "Public read access global" on public.global_settings;
 create policy "Public read access global" on public.global_settings for select using (true);
 ```
