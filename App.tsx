@@ -32,7 +32,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.24"; 
+const APP_VERSION = "2.1.25"; 
 const FREE_TIER_LIMIT = 50; 
 const FREE_PRINTER_LIMIT = 2; 
 
@@ -491,9 +491,9 @@ const AppContent = () => {
       </aside>
 
       {isSidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}></div>
-          <div className="relative w-80 bg-white dark:bg-slate-950 h-full">
+        <div className="lg:hidden inset-0 z-40 flex fixed">
+          <div className="bg-black/60 inset-0 backdrop-blur-sm fixed" onClick={() => setSidebarOpen(false)}></div>
+          <div className="bg-white dark:bg-slate-950 w-80 h-full relative">
             <SidebarContent 
               view={view} 
               setView={setView} 
@@ -511,12 +511,12 @@ const AppContent = () => {
         </div>
       )}
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white dark:bg-slate-950 border-b dark:border-slate-800 flex items-center px-4 justify-between gap-2">
+      <main className="flex-1 min-w-0 flex flex-col">
+        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 justify-between gap-2">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
-          <h1 className="font-bold dark:text-white flex-1 px-2 truncate">{t(view)}</h1>
+          <h1 className="dark:text-white flex-1 font-bold px-2 truncate">{t(view)}</h1>
           
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="shrink-0 flex items-center gap-1">
              <button 
                 onClick={() => setView('notifications')}
                 className={`p-2 rounded-full relative transition-colors ${updateBadgeCount > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
@@ -524,7 +524,7 @@ const AppContent = () => {
              >
                 <Bell size={20} className={updateBadgeCount > 0 ? 'animate-pulse' : ''} />
                 {updateBadgeCount > 0 && (
-                   <span className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-950">
+                   <span className="bg-blue-500 border-white dark:border-slate-950 border-2 rounded-full w-4 h-4 flex items-center justify-center font-bold text-white text-[10px] absolute top-0 right-0">
                       {updateBadgeCount}
                    </span>
                 )}
@@ -540,7 +540,7 @@ const AppContent = () => {
           </div>
         </header>
 
-        <PullToRefresh onRefresh={() => fetchData()} className="flex-1 overflow-auto p-4 md:p-8">
+        <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isAdmin} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); setShowModal(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isAdmin} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} isAdmin={isAdmin} onUnlockPro={() => setShowProModal(true)} />}

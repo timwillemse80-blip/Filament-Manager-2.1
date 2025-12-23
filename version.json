@@ -1,5 +1,5 @@
 {
-  "version": "2.1.24",
-  "downloadUrl": "https://github.com/timwillemse80/Filament-Manager-2.1",
-  "releaseNotes": "Download URL voor APK hersteld. De extra '-blip' extensie is verwijderd om de 404-fout op GitHub op te lossen."
+  "version": "2.1.25",
+  "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases",
+  "releaseNotes": "Download link hersteld naar de juiste GitHub repository (timwillemse80-blip). Dit lost de 404 melding op."
 }

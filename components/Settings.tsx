@@ -128,7 +128,7 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const handleDownloadApk = () => {
-    const releaseUrl = updateInfo?.downloadUrl || "https://github.com/timwillemse80/Filament-Manager-2.1";
+    const releaseUrl = updateInfo?.downloadUrl || "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases";
 
     if (Capacitor.isNativePlatform()) {
       window.open(releaseUrl, '_system');
