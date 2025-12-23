@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { AppSettings, Filament, Location, Supplier } from '../types';
 import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Languages, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2, LifeBuoy, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
@@ -572,7 +573,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         
                         <input 
                            type="file" 
-                           ref={fileInputRef}
+                           ref={fileInputRef} 
                            onChange={handleFileChange}
                            accept=".json"
                            className="hidden"
@@ -633,7 +634,7 @@ export const Settings: React.FC<SettingsProps> = ({
                               type="number" 
                               step="0.01" 
                               value={settings.electricityRate ?? ''} 
-                              onChange={e => onUpdate({...settings, electricityRate: parseFloat(e.target.value)})}
+                              onChange={e => onUpdate({...settings, electricityRate: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder={t('exampleElectricityRate')}
                            />
@@ -642,8 +643,9 @@ export const Settings: React.FC<SettingsProps> = ({
                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('hourlyRate')}</label>
                            <input 
                               type="number" 
+                              step="0.1"
                               value={settings.hourlyRate ?? ''} 
-                              onChange={e => onUpdate({...settings, hourlyRate: parseFloat(e.target.value)})}
+                              onChange={e => onUpdate({...settings, hourlyRate: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder={t('exampleHourlyRate')}
                            />
@@ -652,8 +654,9 @@ export const Settings: React.FC<SettingsProps> = ({
                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1"><Percent size={12}/> {t('profitMargin')}</label>
                            <input 
                               type="number" 
+                              step="1"
                               value={settings.profitMargin ?? ''} 
-                              onChange={e => onUpdate({...settings, profitMargin: parseFloat(e.target.value)})}
+                              onChange={e => onUpdate({...settings, profitMargin: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder="20"
                            />

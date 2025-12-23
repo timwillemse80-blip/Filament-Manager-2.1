@@ -33,10 +33,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.26"; 
-const FREE_TIER_LIMIT = 50; 
-const FREE_PRINTER_LIMIT = 2; 
-
+const APP_VERSION = "2.1.28"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -220,7 +217,30 @@ const AppContent = () => {
   const [printers, setPrinters] = useState<Printer[]>([]); 
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
-  const [settings, setSettings] = useState<AppSettings>({ lowStockThreshold: 20, theme: 'dark', unusedWarningDays: 90, enableWeeklyEmail: false, enableUpdateNotifications: true });
+  
+  // Load initial settings from localStorage or defaults
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('filament_settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse settings", e);
+      }
+    }
+    return { 
+      lowStockThreshold: 20, 
+      theme: 'dark', 
+      unusedWarningDays: 90, 
+      enableWeeklyEmail: false, 
+      enableUpdateNotifications: true,
+      electricityRate: 0.35,
+      hourlyRate: 2.0,
+      profitMargin: 20,
+      roundToNine: true
+    };
+  });
+
   const [view, setView] = useState<ViewState>('dashboard');
   const [showModal, setShowModal] = useState(false);
   const [showLabelOnly, setShowLabelOnly] = useState(false); 
@@ -232,12 +252,18 @@ const AppContent = () => {
   const [isSnowEnabled, setIsSnowEnabled] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false); 
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
   const [showShowcasePreview, setShowShowcasePreview] = useState(false);
   const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
+
+  // Persistence for settings
+  useEffect(() => {
+    localStorage.setItem('filament_settings', JSON.stringify(settings));
+  }, [settings]);
 
   // Refs for state that backbutton handler needs without re-triggering
   const viewRef = useRef(view);
@@ -248,6 +274,7 @@ const AppContent = () => {
   const showShowcaseModalRef = useRef(showShowcaseModal);
   const showShowcasePreviewRef = useRef(showShowcasePreview);
   const showWelcomeRef = useRef(showWelcome);
+  const showExitConfirmRef = useRef(showExitConfirm);
   const activeGroupKeyRef = useRef(activeGroupKey);
 
   useEffect(() => {
@@ -259,15 +286,19 @@ const AppContent = () => {
     showShowcaseModalRef.current = showShowcaseModal;
     showShowcasePreviewRef.current = showShowcasePreview;
     showWelcomeRef.current = showWelcome;
+    showExitConfirmRef.current = showExitConfirm;
     activeGroupKeyRef.current = activeGroupKey;
-  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, activeGroupKey]);
+  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey]);
 
   // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
-      // 1. Sluit zware UI overlays
+      if (showExitConfirmRef.current) {
+        setShowExitConfirm(false);
+        return;
+      }
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -284,8 +315,6 @@ const AppContent = () => {
         setShowShowcaseModal(false);
         return;
       }
-
-      // 2. Sluit formulieren (met respect voor hun eigen logica)
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
@@ -297,28 +326,20 @@ const AppContent = () => {
         setEditingId(null);
         return;
       }
-
-      // 3. Sluit mobiele zijbalk
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
-
-      // 4. Ga uit sub-inventaris weergave
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
-
-      // 5. Navigeer terug naar Dashboard als je elders bent
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
         return;
       }
-
-      // 6. Als je al op het Dashboard bent en alles is dicht: Sluit App
       if (viewRef.current === 'dashboard') {
-        CapacitorApp.exitApp();
+        setShowExitConfirm(true);
       }
     });
 
@@ -387,7 +408,6 @@ const AppContent = () => {
       fetchPublicStock();
     }
 
-    // App Resume handling to refresh PRO status
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive && session?.user?.id) {
         fetchData(session.user.id);
@@ -419,7 +439,6 @@ const AppContent = () => {
     const userId = uid || session?.user?.id;
     if (!userId) return;
     try {
-      // Fetch Profile for PRO status
       const { data: pData } = await supabase.from('profiles').select('is_pro').eq('id', userId).single();
       if (pData) setIsPro(pData.is_pro);
 
@@ -454,8 +473,6 @@ const AppContent = () => {
       setSession(s);
       if (s) {
         fetchData(s.user.id);
-        
-        // Setup realtime subscription for PRO status changes
         profileSubscription = supabase
           .channel(`public:profiles:id=eq.${s.user.id}`)
           .on('postgres_changes', { 
@@ -464,7 +481,6 @@ const AppContent = () => {
             table: 'profiles',
             filter: `id=eq.${s.user.id}`
           }, payload => {
-            console.log("PRO Status wijziging gedetecteerd!", payload.new.is_pro);
             const wasPro = isPro;
             setIsPro(payload.new.is_pro);
             if (payload.new.is_pro && !wasPro) {
@@ -769,6 +785,33 @@ const AppContent = () => {
       )}
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
+
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
+            <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <Logo className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">App afsluiten?</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Weet je zeker dat je de Filament Manager wilt afsluiten?</p>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => setShowExitConfirm(false)}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} /> Terug naar App
+              </button>
+              <button 
+                onClick={() => CapacitorApp.exitApp()}
+                className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
+              >
+                Afsluiten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
