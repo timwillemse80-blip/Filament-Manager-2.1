@@ -20,7 +20,8 @@ import { PullToRefresh } from './components/PullToRefresh';
 import { ProModal } from './components/ProModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { NotificationPage } from './components/NotificationPage';
-import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield } from 'lucide-react';
+import { PrintPreview } from './components/PrintPreview';
+import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronRight, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -125,6 +126,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
         <MenuHeader>{t('menuTools')}</MenuHeader>
         <div className="space-y-1">
           <NavButton onClick={onClose} view={view} setView={setView} target="shopping" icon={<ShoppingCart size={18} className="text-orange-500" />} label={t('shopping')} count={lowStockCount} />
+          <NavButton onClick={onClose} view={view} setView={setView} target="print-preview" icon={<QrCode size={18} className="text-blue-400" />} label={t('printPreview')} />
         </div>
 
         <MenuHeader>{t('menuPremium')}</MenuHeader>
@@ -196,7 +198,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 };
 
 const AppContent = () => {
-  const { t } = useLanguage();
+  const { t, tColor } = useLanguage();
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filaments, setFilaments] = useState<Filament[]>([]);
@@ -219,7 +221,7 @@ const AppContent = () => {
   const [isSnowEnabled, setIsSnowEnabled] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string } | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
   const [showShowcasePreview, setShowShowcasePreview] = useState(false);
@@ -247,7 +249,11 @@ const AppContent = () => {
         const res = await fetch('/version.json');
         const data = await res.json();
         if (data.version && data.version !== APP_VERSION) {
-          setUpdateInfo({ version: data.version, notes: data.releaseNotes });
+          setUpdateInfo({ 
+            version: data.version, 
+            notes: data.releaseNotes,
+            downloadUrl: data.downloadUrl
+          });
         }
       } catch (e) {
         console.warn("Update check failed", e);
@@ -542,8 +548,17 @@ const AppContent = () => {
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isAdmin} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
+           
+           {/* Print Preview View */}
+           {view === 'print-preview' && (
+              <PrintPreview 
+                filaments={filaments} 
+                printers={printers} 
+                onNavigate={setView}
+              />
+           )}
         </PullToRefresh>
       </main>
 

@@ -141,4 +141,4 @@ export interface PrintJob {
   }[];
 }
 
-export type ViewState = 'dashboard' | 'inventory' | 'locations' | 'suppliers' | 'printers' | 'shopping' | 'settings' | 'history' | 'support' | 'admin' | 'feedback' | 'install' | 'help' | 'notifications';
+export type ViewState = 'dashboard' | 'inventory' | 'locations' | 'suppliers' | 'printers' | 'shopping' | 'settings' | 'history' | 'support' | 'admin' | 'feedback' | 'install' | 'help' | 'notifications' | 'print-preview';
