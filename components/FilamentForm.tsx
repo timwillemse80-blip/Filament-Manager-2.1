@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2 } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, COMMON_COLORS } from '../constants';
@@ -140,27 +140,56 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       let base64Image = '';
       
       if (Capacitor.isNativePlatform()) {
-        const image = await CapacitorCamera.getPhoto({
-          quality: 85,
-          allowEditing: false,
-          resultType: CameraResultType.Base64,
-          source: CameraSource.Camera,
-          width: 1024
-        });
-        base64Image = image.base64String || '';
+        try {
+          const image = await CapacitorCamera.getPhoto({
+            quality: 85,
+            allowEditing: false,
+            resultType: CameraResultType.Base64,
+            source: CameraSource.Camera,
+            width: 1024
+          });
+          base64Image = image.base64String || '';
+        } catch (e: any) {
+          // If user cancelled, don't show an error
+          if (e.message?.toLowerCase().includes('cancelled')) {
+             setIsAiScanning(false);
+             return;
+          }
+          throw e;
+        }
       } else {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
         input.capture = 'environment';
         
-        base64Image = await new Promise((resolve) => {
+        base64Image = await new Promise((resolve, reject) => {
+          // Track if the input was closed without a file
+          let handled = false;
+          
           input.onchange = (e: any) => {
-            const file = e.target.files[0];
+            handled = true;
+            const file = e.target.files?.[0];
+            if (!file) {
+              resolve('');
+              return;
+            }
             const reader = new FileReader();
             reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onerror = (err) => reject(err);
             reader.readAsDataURL(file);
           };
+
+          // On most browsers, we can't reliably detect cancel on a file input,
+          // but if focus returns to window and handled is false, we can assume cancel.
+          const onFocus = () => {
+            window.removeEventListener('focus', onFocus);
+            setTimeout(() => {
+              if (!handled) resolve('');
+            }, 1000);
+          };
+          window.addEventListener('focus', onFocus);
+
           input.click();
         });
       }
@@ -184,8 +213,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           shortId: suggestion.shortId || prev.shortId
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Scan failed:", error);
+      // Only alert if it's an actual failure from Gemini, not a cancellation
       alert(t('aiError'));
     } finally {
       setIsAiScanning(false);

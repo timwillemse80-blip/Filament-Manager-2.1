@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Filament } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Logo } from './Logo';
 
 interface LabelModalProps {
   filament: Filament;
@@ -25,8 +26,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
         // Deep link URL for the app
         const url = `filament://${filament.shortId || filament.id.substring(0, 4)}`;
         const dataUrl = await QRCode.toDataURL(url, {
-          width: 256,
+          width: 512, // Higher resolution for cleaner logo overlay
           margin: 1,
+          errorCorrectionLevel: 'H', // High error correction is vital when placing logos in the center
           color: {
             dark: '#000000',
             light: '#ffffff',
@@ -44,7 +46,11 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     if (!labelRef.current) return;
     
     // Create a temporary window for printing to ensure high quality and correct scale
-    const canvas = await html2canvas(labelRef.current, { scale: 3, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(labelRef.current, { 
+      scale: 3, 
+      backgroundColor: '#ffffff',
+      useCORS: true // Necessary if the custom logo is from a different origin
+    });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'landscape',
@@ -61,7 +67,11 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     if (!labelRef.current || isGenerating) return;
     setIsGenerating(true);
     try {
-      const canvas = await html2canvas(labelRef.current, { scale: 3, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(labelRef.current, { 
+        scale: 3, 
+        backgroundColor: '#ffffff',
+        useCORS: true
+      });
       const link = document.createElement('a');
       link.download = `label-${filament.brand}-${filament.colorName}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -93,12 +103,13 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           {/* QR Code Section */}
           <div className="w-1/2 flex items-center justify-center">
              {qrDataUrl ? (
-               <div className="relative">
+               <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
-                 {/* Optional: Small logo in center of QR if wanted, but screenshot shows a custom circle */}
+                 
+                 {/* App Logo Overlay in center of QR */}
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border-2 border-blue-600">
-                       <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                    <div className="w-[24%] h-[24%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm border border-slate-100">
+                       <Logo className="w-full h-full" strokeWidth={3} />
                     </div>
                  </div>
                </div>
@@ -110,9 +121,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           {/* Text Content Section */}
           <div className="w-1/2 flex flex-col justify-between h-full py-1">
              <div className="space-y-0.5">
-                <h3 className="text-[#0f172a] font-black text-xl leading-none uppercase">{filament.brand}</h3>
+                <h3 className="text-[#0f172a] font-black text-xl leading-none uppercase truncate">{filament.brand}</h3>
                 <p className="text-[#0f172a] font-black text-sm leading-tight">{filament.material}</p>
-                <p className="text-slate-500 font-bold text-[10px] leading-tight">{tColor(filament.colorName)}</p>
+                <p className="text-slate-500 font-bold text-[10px] leading-tight truncate">{tColor(filament.colorName)}</p>
              </div>
              
              <div className="mt-auto self-end">
