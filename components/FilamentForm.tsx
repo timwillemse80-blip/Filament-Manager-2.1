@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, AiSuggestion, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
@@ -271,6 +270,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const startCamera = async () => {
+    // INTERCEPT: Show maintenance alert
+    setShowAiMaintenance(true);
+    return;
+    
+    // Original logic below (currently bypassed)
+    /*
     if (Capacitor.isNativePlatform()) {
       try {
         const image = await Camera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Camera, width: 1500 });
@@ -279,6 +284,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       } catch (e) {}
     }
     setShowWebCamera(true);
+    */
   };
 
   const [showWebCamera, setShowWebCamera] = useState(false);
@@ -473,6 +479,26 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   <div><label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">{t('spoolType')}</label><select value={selectedSpoolType} onChange={e => { const k=e.target.value; setSelectedSpoolType(k); setTareWeight(spoolWeights[k]||0); }} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none dark:text-white appearance-none">{Object.keys(spoolWeights).sort().map(k => <option key={k} value={k}>{k}</option>)}</select></div>
                   <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">{t('apply')}</button>
                </div>
+            </div>
+         </div>
+      )}
+
+      {showAiMaintenance && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
+               <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <Construction size={40} className="text-amber-600 dark:text-amber-400" />
+               </div>
+               <h2 className="text-xl font-black dark:text-white mb-2">{t('aiCameraUnavailable')}</h2>
+               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
+                  {t('aiCameraUnavailableDesc')}
+               </p>
+               <button 
+                  onClick={() => setShowAiMaintenance(false)}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98]"
+               >
+                  {t('close')}
+               </button>
             </div>
          </div>
       )}
