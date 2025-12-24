@@ -137,14 +137,13 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
-    // 0. Preliminary Checks
-    const apiKey = process.env.API_KEY || '';
-    if (!apiKey || apiKey.length < 5) {
-       alert("AI key is niet geconfigureerd. Neem contact op met de beheerder.");
+    // 0. CHECK API KEY FIRST to prevent silent crash
+    if (!process.env.API_KEY || process.env.API_KEY.length < 5) {
+       alert("AI sleutel is niet geconfigureerd. Neem contact op met de beheerder.");
        return;
     }
 
-    // Maintenance Intercept (Bypass for admin)
+    // Maintenance Intercept: Bypass for Admins
     const IS_MAINTENANCE = true;
     if (IS_MAINTENANCE && !isAdmin) {
       setShowAiMaintenance(true);
@@ -155,15 +154,14 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     try {
       let base64Image = '';
       
+      // Native Platform logic
       if (Capacitor.isNativePlatform()) {
         try {
-          // Explicit permission management
-          const permissions = await CapacitorCamera.checkPermissions();
-          
-          if (permissions.camera !== 'granted') {
-             const request = await CapacitorCamera.requestPermissions();
-             if (request.camera !== 'granted') {
-                alert("Cameratoegang geweigerd. Zet dit aan in je systeeminstellingen.");
+          const status = await CapacitorCamera.checkPermissions();
+          if (status.camera !== 'granted' && status.camera !== 'limited') {
+             const requestStatus = await CapacitorCamera.requestPermissions();
+             if (requestStatus.camera !== 'granted' && requestStatus.camera !== 'limited') {
+                alert("Cameratoegang is vereist voor AI-scannen.");
                 setIsAiScanning(false);
                 return;
              }
@@ -173,26 +171,20 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             quality: 85,
             allowEditing: false,
             resultType: CameraResultType.Base64,
-            source: CameraSource.Prompt, // Open prompt so user can choose
-            width: 1024,
-            saveToGallery: false
+            source: CameraSource.Camera,
+            width: 1024
           });
-          
-          if (!image || !image.base64String) {
-             throw new Error("Geen foto ontvangen.");
-          }
-          base64Image = image.base64String;
+          base64Image = image.base64String || '';
         } catch (e: any) {
-          // Don't show error if user just backed out
-          if (e.message?.toLowerCase().includes('cancel')) {
+          if (e.message?.toLowerCase().includes('cancelled')) {
              setIsAiScanning(false);
              return;
           }
-          throw new Error("Camera kon niet worden gestart: " + e.message);
+          throw e;
         }
       } 
+      // Web / PWA Fallback
       else {
-        // PWA / Browser Fallback
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -214,8 +206,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             reader.readAsDataURL(file);
           };
           
+          // Safety: Close if no file chosen
           window.addEventListener('focus', () => {
-             setTimeout(() => { if (!input.files?.length) resolve(''); }, 1500);
+             setTimeout(() => { if (!input.files?.length) resolve(''); }, 1000);
           }, { once: true });
 
           input.click();
@@ -227,10 +220,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         return;
       }
 
-      // 2. Perform AI Analysis
       const suggestion = await analyzeSpoolImage(base64Image);
       
-      if (suggestion && (suggestion.brand || suggestion.material)) {
+      if (suggestion) {
         setFormData(prev => ({
           ...prev,
           brand: suggestion.brand || prev.brand,
@@ -241,12 +233,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           tempBed: suggestion.tempBed || prev.tempBed,
           shortId: suggestion.shortId || prev.shortId
         }));
-      } else {
-        throw new Error("AI herkenning mislukt: Probeer een scherpere foto van het label.");
       }
     } catch (error: any) {
-      console.error("AI Scan process failed:", error);
-      alert(error.message || t('aiError'));
+      console.error("AI Scan failed:", error);
+      alert(t('aiError'));
     } finally {
       setIsAiScanning(false);
     }
@@ -430,7 +420,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       </div>
 
       {showAiMaintenance && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Construction size={40} className="text-blue-600 dark:text-blue-400" />
