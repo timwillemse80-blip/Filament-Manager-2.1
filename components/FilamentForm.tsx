@@ -19,10 +19,11 @@ interface FilamentFormProps {
   onSaveSupplier: (sup: Supplier) => void;
   onCancel: () => void;
   initialShowLabel?: boolean;
+  isAdmin?: boolean;
 }
 
 export const FilamentForm: React.FC<FilamentFormProps> = ({ 
-  initialData, locations, suppliers, existingBrands, onSave, onSaveLocation, onSaveSupplier, onCancel
+  initialData, locations, suppliers, existingBrands, onSave, onSaveLocation, onSaveSupplier, onCancel, isAdmin = false
 }) => {
   const { t, tColor } = useLanguage();
   
@@ -136,10 +137,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
-    // Maintenance Intercept
-    // Set this to true to enable the maintenance message
+    // Maintenance Intercept: Bypass for Admins
     const IS_MAINTENANCE = true;
-    if (IS_MAINTENANCE) {
+    if (IS_MAINTENANCE && !isAdmin) {
       setShowAiMaintenance(true);
       return;
     }
@@ -150,6 +150,18 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       
       if (Capacitor.isNativePlatform()) {
         try {
+          // EXPLICIT PERMISSION CHECK & REQUEST
+          // This fixes the issue where the camera dialog doesn't appear
+          const status = await CapacitorCamera.checkPermissions();
+          if (status.camera !== 'granted') {
+             const requestStatus = await CapacitorCamera.requestPermissions();
+             if (requestStatus.camera !== 'granted') {
+                alert("Camera access is required for AI scanning.");
+                setIsAiScanning(false);
+                return;
+             }
+          }
+
           const image = await CapacitorCamera.getPhoto({
             quality: 85,
             allowEditing: false,
@@ -173,7 +185,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         input.capture = 'environment';
         
         base64Image = await new Promise((resolve, reject) => {
-          // Track if the input was closed without a file
           let handled = false;
           
           input.onchange = (e: any) => {
@@ -189,8 +200,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             reader.readAsDataURL(file);
           };
 
-          // On most browsers, we can't reliably detect cancel on a file input,
-          // but if focus returns to window and handled is false, we can assume cancel.
           const onFocus = () => {
             window.removeEventListener('focus', onFocus);
             setTimeout(() => {
@@ -198,7 +207,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             }, 1000);
           };
           window.addEventListener('focus', onFocus);
-
           input.click();
         });
       }
@@ -224,7 +232,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       }
     } catch (error: any) {
       console.error("AI Scan failed:", error);
-      // Only alert if it's an actual failure from Gemini, not a cancellation
       alert(t('aiError'));
     } finally {
       setIsAiScanning(false);
@@ -410,7 +417,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
       {/* --- AI Maintenance Modal --- */}
       {showAiMaintenance && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Construction size={40} className="text-blue-600 dark:text-blue-400" />

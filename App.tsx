@@ -793,6 +793,7 @@ const AppContent = () => {
           onSaveLocation={(loc) => fetchData()}
           onSaveSupplier={(sup) => fetchData()}
           onCancel={() => { setShowModal(false); setEditingId(null); }}
+          isAdmin={isAdmin}
         />
       )}
 
