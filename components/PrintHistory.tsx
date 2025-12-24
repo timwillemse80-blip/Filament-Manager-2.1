@@ -3,7 +3,6 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, PrintJob, Printer, AppSettings, CostBreakdown, OtherMaterial } from '../types';
 import { parseGcodeFile, GCodeStats } from '../services/gcodeParser';
-// Added ArrowRight to the lucide-react imports
 import { Clock, Scale, Calendar, FileCode, CheckCircle2, XCircle, Plus, ChevronRight, ArrowRight, Euro, AlertCircle, Save, Trash2, Search, X, RefreshCw, Printer as PrinterIcon, FileText, Zap, Hammer, Coins, Disc, Wrench, Percent, Tag, ArrowUpFromLine, Crown, Box, Package, Ruler, Sparkles, Info, AlertTriangle, Pipette, Trash } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -153,7 +152,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
   };
 
   const handleSave = () => {
-    if (!jobName) return alert("Vul een naam in.");
+    if (!jobName) return alert(t('failed') + ": Vul een naam in.");
     const deductions: any[] = [];
     const usedFilaments: any[] = [];
     let totalCost = 0;
@@ -258,7 +257,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                       <div>
                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">{t('printer')}</label>
                          <select value={selectedPrinterId} onChange={(e) => setSelectedPrinterId(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none">
-                            <option value="">Kies printer...</option>
+                            <option value="">{t('selectPrinter')}</option>
                             {printers.map(p => <option key={p.id} value={p.id}>{p.name} ({p.brand} {p.model})</option>)}
                          </select>
                       </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial } from '../types';
@@ -230,53 +231,8 @@ export const Inventory: React.FC<InventoryProps> = ({
   };
 
   const handleQuickScan = async () => {
-     // INTERCEPT: Show maintenance alert
      setShowAiMaintenance(true);
      return;
-     
-     /*
-     if (isScanning) return;
-     
-     if (Capacitor.isNativePlatform()) {
-        try {
-           const image = await CapacitorCamera.getPhoto({
-              quality: 85,
-              allowEditing: false,
-              resultType: CameraResultType.Base64,
-              source: CameraSource.Camera,
-              width: 1200,
-              correctOrientation: true
-           });
-
-           if (image.base64String) {
-              await processScanResult(image.base64String);
-           }
-           return;
-        } catch (e: any) {
-           if (e.message?.includes('User cancelled')) return;
-           console.warn("Native camera failed, falling back to web camera.", e);
-        }
-     }
-
-     // Web Fallback
-     setShowWebCamera(true);
-     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-           video: { 
-              facingMode: 'environment',
-              width: { ideal: 1920 },
-              height: { ideal: 1080 }
-           } 
-        });
-        if (videoRef.current) {
-           videoRef.current.srcObject = stream;
-        }
-     } catch (err: any) {
-        console.error("Web camera error:", err);
-        alert(t('failed') + ": Camera niet toegankelijk.");
-        setShowWebCamera(false);
-     }
-     */
   };
 
   const stopWebCamera = () => {
@@ -552,7 +508,7 @@ export const Inventory: React.FC<InventoryProps> = ({
         <button
            onClick={() => onAddClick(activeTab)}
            className="fixed bottom-24 right-6 bg-blue-600 hover:bg-blue-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95 z-[60]"
-           title="Nieuw Item"
+           title={activeTab === 'filament' ? t('newFilament') : t('newMaterial')}
         >
            <Plus size={28} />
         </button>,
@@ -571,7 +527,7 @@ export const Inventory: React.FC<InventoryProps> = ({
          <button 
             className="absolute top-8 right-8 text-white hover:text-slate-300 p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 z-[10000]"
             onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
-            aria-label="Close"
+            aria-label={t('close')}
          >
             <X size={32} />
          </button>
@@ -584,10 +540,6 @@ export const Inventory: React.FC<InventoryProps> = ({
                className="max-w-full max-h-[85dvh] rounded-2xl shadow-2xl border-2 border-white/5 object-contain animate-fade-in select-none" 
                alt="Zoomed" 
                draggable={false}
-            />
-            <div 
-               className="absolute inset-0 -z-10 w-full h-full" 
-               onClick={() => setZoomedImage(null)}
             />
          </div>
       </div>,
@@ -617,7 +569,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                   </div>
                </div>
            </div>
-           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title="Selectie Modus">
+           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title={t('selectionMode')}>
               <CheckSquare size={20} />
            </button>
         </div>
@@ -694,7 +646,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                      <Plus size={24} />
                   </button>
                   
-                  <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
+                  <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title={t('batchSelection')}>
                      <CheckSquare size={24} />
                   </button>
                </div>
@@ -770,7 +722,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                            <Plus size={24} />
                         </button>
 
-                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
+                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title={t('batchSelection')}>
                            <CheckSquare size={24} />
                         </button>
                      </div>
@@ -814,7 +766,6 @@ export const Inventory: React.FC<InventoryProps> = ({
          </div>
       )}
 
-      {/* --- UNDER MAINTENANCE ALERT for Quick Scan --- */}
       {showAiMaintenance && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
             <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
@@ -835,7 +786,6 @@ export const Inventory: React.FC<InventoryProps> = ({
          </div>
       )}
 
-      {/* --- WEB CAMERA OVERLAY for Quick Scan Fallback (Currently Bypassed) --- */}
       {showWebCamera && (
          <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
             <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden">
@@ -846,7 +796,6 @@ export const Inventory: React.FC<InventoryProps> = ({
                   className="h-full w-full object-cover"
                />
                
-               {/* Scanning Overlay Visual */}
                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                   <div className="w-72 h-72 border-2 border-white/50 rounded-[40px] relative overflow-hidden">
                      <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-scanner-scan" />

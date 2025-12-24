@@ -13,7 +13,7 @@ import { HelpPage } from './HelpPage';
 interface SettingsProps {
   settings: AppSettings;
   filaments: Filament[];
-  onUpdate: (settings: AppSettings) => void;
+  onUpdate: (update: AppSettings | ((prev: AppSettings) => AppSettings)) => void;
   onExport: () => void;
   onImport: (file: File) => void;
   currentVersion?: string;
@@ -31,7 +31,6 @@ interface SettingsProps {
   onLogout?: () => void;
   updateInfo?: { downloadUrl?: string } | null;
   
-  // New props for Management Tab
   locations: Location[];
   suppliers: Supplier[];
   onSaveLocation: (loc: Location) => void;
@@ -59,7 +58,6 @@ const DELETE_REASONS_KEYS = [
   "reasonOther"
 ];
 
-// Helper for generic reasons since they are small enough
 const getDeleteReasons = (t: any) => [
   t('reasonNotUsing') || "Ik gebruik de app niet meer",
   t('reasonMissingFeatures') || "Ik mis functionaliteiten",
@@ -81,11 +79,9 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   
-  // Deletion Request State
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   
-  // New Deletion Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteReasonCustom, setDeleteReasonCustom] = useState("");
@@ -102,7 +98,7 @@ export const Settings: React.FC<SettingsProps> = ({
      const checkPendingRequest = async () => {
         if (!userId) return;
         try {
-           const { data, error } = await supabase
+           const { data } = await supabase
               .from('deletion_requests')
               .select('id')
               .eq('user_id', userId)
@@ -154,13 +150,10 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  // Initial handler for button click
   const handleDeletionClick = async () => {
      if (hasPendingRequest) {
-        // If already pending, just cancel directly (no modal needed)
         await cancelDeletionRequest();
      } else {
-        // If not pending, show the reason modal
         setDeleteReason("");
         setDeleteReasonCustom("");
         setShowDeleteModal(true);
@@ -224,10 +217,15 @@ export const Settings: React.FC<SettingsProps> = ({
      }
   };
 
+  // Improved Number Parsing to handle commas and empty values
+  const parseNum = (val: string): number | undefined => {
+     if (val === '') return undefined;
+     return parseFloat(val.replace(',', '.'));
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-10">
       
-      {/* Install Banner (PWA) */}
       {installPrompt && (
          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-xl shadow-lg flex items-center justify-between text-white transform transition-transform active:scale-[0.99] mb-4">
             <div>
@@ -240,12 +238,10 @@ export const Settings: React.FC<SettingsProps> = ({
          </div>
       )}
 
-      {/* --- Settings Header & Tabs --- */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden flex flex-col min-h-[600px]">
          <div className="p-6 border-b border-slate-200 dark:border-slate-700 pb-0">
             <h3 className="text-2xl font-bold mb-4 dark:text-white text-slate-800">{t('settings')}</h3>
             
-            {/* Scrollable Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                <button 
                   onClick={() => setActiveTab('general')}
@@ -272,7 +268,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   <User size={16} /> {t('tabAccount')}
                </button>
                
-               {/* PRO Tab */}
                <button 
                   onClick={() => setActiveTab('pro')}
                   className={`px-4 py-2 rounded-t-lg font-bold flex items-center gap-2 transition-all text-sm whitespace-nowrap border-b-2 ${activeTab === 'pro' ? 'border-yellow-500 text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-blue-900/20' : 'border-transparent text-yellow-600 dark:text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/10'}`}
@@ -282,13 +277,10 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
          </div>
 
-         {/* --- Tab Content --- */}
          <div className="p-6 flex-1 bg-slate-50 dark:bg-slate-900/30">
             
-            {/* === GENERAL TAB === */}
             {activeTab === 'general' && (
                <div className="space-y-6 animate-fade-in">
-                  {/* Theme */}
                   <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center gap-3">
                         <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-600 dark:text-blue-400">
@@ -298,13 +290,13 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
                         <button
-                           onClick={() => onUpdate({ ...settings, theme: 'light' })}
+                           onClick={() => onUpdate(prev => ({ ...prev, theme: 'light' }))}
                            className={`p-2 rounded-md flex items-center gap-2 transition-colors ${settings.theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                         >
                            <Sun size={18} />
                         </button>
                         <button
-                           onClick={() => onUpdate({ ...settings, theme: 'dark' })}
+                           onClick={() => onUpdate(prev => ({ ...prev, theme: 'dark' }))}
                            className={`p-2 rounded-md flex items-center gap-2 transition-colors ${settings.theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                         >
                            <Moon size={18} />
@@ -312,7 +304,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                   </div>
 
-                  {/* Winter Edition Toggle */}
                   {onToggleSnow && (
                      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                         <div className="flex items-center gap-3">
@@ -333,7 +324,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                   )}
 
-                  {/* Language */}
                   <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center gap-3 mb-2">
                         <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600 dark:text-purple-400">
@@ -355,7 +345,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                   </div>
 
-                  {/* App Version & Links */}
                   <div className="flex flex-col gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -380,7 +369,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         )}
                      </div>
 
-                     {/* Help & Contact Expandable Section */}
                      <div className="border-t border-slate-100 dark:border-slate-700/50 pt-4">
                         <button 
                            onClick={() => setIsHelpOpen(!isHelpOpen)}
@@ -417,7 +405,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         </button>
                      </div>
 
-                     {/* Discord Button */}
                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50">
                         <button 
                            onClick={openDiscord}
@@ -430,7 +417,6 @@ export const Settings: React.FC<SettingsProps> = ({
                </div>
             )}
 
-            {/* === MANAGEMENT TAB === */}
             {activeTab === 'management' && (
                 <div className="space-y-8 animate-fade-in">
                     <div>
@@ -464,7 +450,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            max="50"
                            step="5"
                            value={settings.lowStockThreshold}
-                           onChange={(e) => onUpdate({ ...settings, lowStockThreshold: Number(e.target.value) })}
+                           onChange={(e) => onUpdate(prev => ({ ...prev, lowStockThreshold: Number(e.target.value) }))}
                            className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                         <div className="w-16 text-center font-mono font-bold text-lg bg-slate-50 dark:bg-slate-900 py-1 rounded border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
@@ -485,14 +471,13 @@ export const Settings: React.FC<SettingsProps> = ({
                            max="365"
                            step="10"
                            value={settings.unusedWarningDays || 90}
-                           onChange={(e) => onUpdate({ ...settings, unusedWarningDays: Number(e.target.value) })}
+                           onChange={(e) => onUpdate(prev => ({ ...prev, unusedWarningDays: Number(e.target.value) }))}
                            className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 w-24 text-center dark:text-white text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <span className="text-slate-600 dark:text-slate-300">{t('days')}</span>
                      </div>
                   </div>
 
-                  {/* App Updates Notifications */}
                   <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -505,7 +490,7 @@ export const Settings: React.FC<SettingsProps> = ({
                            </div>
                         </div>
                         <button 
-                           onClick={() => onUpdate({ ...settings, enableUpdateNotifications: !settings.enableUpdateNotifications })}
+                           onClick={() => onUpdate(prev => ({ ...prev, enableUpdateNotifications: !prev.enableUpdateNotifications }))}
                            className={`w-12 h-6 rounded-full transition-colors relative ${settings.enableUpdateNotifications ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'}`}
                         >
                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform shadow-sm ${settings.enableUpdateNotifications ? 'left-7' : 'left-1'}`} />
@@ -518,7 +503,6 @@ export const Settings: React.FC<SettingsProps> = ({
             {activeTab === 'account' && (
                <div className="space-y-6 animate-fade-in">
                   
-                  {/* Logout Section */}
                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center gap-3 mb-4">
                         <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full text-slate-600 dark:text-slate-300">
@@ -535,7 +519,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </button>
                   </div>
 
-                  {/* Data & Backup Section */}
                   <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center gap-3 mb-4">
                         <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-600 dark:text-green-400">
@@ -581,7 +564,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                   </div>
 
-                  {/* Danger Zone */}
                   <div className={`p-6 rounded-xl border transition-colors ${hasPendingRequest ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-900/30' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30'}`}>
                      <div className="flex items-center gap-3 mb-4">
                         <div className={`p-2 rounded-full ${hasPendingRequest ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600'}`}>
@@ -614,9 +596,7 @@ export const Settings: React.FC<SettingsProps> = ({
             {activeTab === 'pro' && (
                <div className="space-y-6 animate-fade-in relative">
                   
-                  {/* --- CALCULATOR CARD --- */}
                   <div className={`bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-900/30 relative overflow-hidden transition-all ${!isAdmin ? 'blur-[2px] pointer-events-none select-none' : ''}`}>
-                     {/* PRO Badge */}
                      <div className="absolute top-0 right-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-bl-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 z-10 border-b border-l border-amber-200 dark:border-amber-800">
                         <Crown size={12} fill="currentColor" /> PRO
                      </div>
@@ -631,10 +611,10 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div>
                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('electricityRate')}</label>
                            <input 
-                              type="number" 
-                              step="0.01" 
+                              type="text" 
+                              inputMode="decimal"
                               value={settings.electricityRate ?? ''} 
-                              onChange={e => onUpdate({...settings, electricityRate: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
+                              onChange={e => onUpdate(prev => ({ ...prev, electricityRate: parseNum(e.target.value) }))}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder={t('exampleElectricityRate')}
                            />
@@ -642,10 +622,10 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div>
                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('hourlyRate')}</label>
                            <input 
-                              type="number" 
-                              step="0.1"
+                              type="text" 
+                              inputMode="decimal"
                               value={settings.hourlyRate ?? ''} 
-                              onChange={e => onUpdate({...settings, hourlyRate: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
+                              onChange={e => onUpdate(prev => ({ ...prev, hourlyRate: parseNum(e.target.value) }))}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder={t('exampleHourlyRate')}
                            />
@@ -653,10 +633,10 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div>
                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1"><Percent size={12}/> {t('profitMargin')}</label>
                            <input 
-                              type="number" 
-                              step="1"
+                              type="text" 
+                              inputMode="numeric"
                               value={settings.profitMargin ?? ''} 
-                              onChange={e => onUpdate({...settings, profitMargin: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
+                              onChange={e => onUpdate(prev => ({ ...prev, profitMargin: parseNum(e.target.value) }))}
                               className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white"
                               placeholder="20"
                            />
@@ -670,8 +650,8 @@ export const Settings: React.FC<SettingsProps> = ({
                            </label>
                            <input 
                               type="checkbox" 
-                              checked={settings.roundToNine}
-                              onChange={(e) => onUpdate({...settings, roundToNine: e.target.checked})}
+                              checked={!!settings.roundToNine}
+                              onChange={(e) => onUpdate(prev => ({ ...prev, roundToNine: e.target.checked }))}
                               className="w-5 h-5 accent-blue-600 rounded"
                            />
                         </div>
@@ -681,7 +661,6 @@ export const Settings: React.FC<SettingsProps> = ({
                      </div>
                   </div>
 
-                  {/* --- LOCKED OVERLAY --- */}
                   {!isAdmin && (
                      <div 
                         onClick={onBecomePro}
@@ -704,7 +683,6 @@ export const Settings: React.FC<SettingsProps> = ({
          </div>
       </div>
 
-      {/* --- DELETION REQUEST MODAL --- */}
       {showDeleteModal && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">

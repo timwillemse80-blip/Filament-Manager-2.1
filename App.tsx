@@ -226,15 +226,7 @@ const AppContent = () => {
   const [avgRating, setAvgRating] = useState<number>(5.0);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('filament_settings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse settings", e);
-      }
-    }
-    return { 
+    const defaultSettings: AppSettings = { 
       lowStockThreshold: 20, 
       theme: 'dark', 
       unusedWarningDays: 90, 
@@ -245,6 +237,15 @@ const AppContent = () => {
       profitMargin: 20,
       roundToNine: true
     };
+    const saved = localStorage.getItem('filament_settings');
+    if (saved) {
+      try {
+        return { ...defaultSettings, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error("Failed to parse settings", e);
+      }
+    }
+    return defaultSettings;
   });
 
   const [view, setView] = useState<ViewState>('dashboard');
@@ -262,7 +263,6 @@ const AppContent = () => {
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
   
-  // Lifting state for logbook details to catch it with back button
   const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
 
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
@@ -274,7 +274,6 @@ const AppContent = () => {
     localStorage.setItem('filament_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Refs for consistent state access in the backbutton closure
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -301,18 +300,15 @@ const AppContent = () => {
     viewingJobRef.current = viewingJob;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
-  // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
-      // 0. Als Exit Bevestiging open is, sluit deze eerst
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
       }
 
-      // 1. Sluit zware UI overlays
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -330,7 +326,6 @@ const AppContent = () => {
         return;
       }
 
-      // 2. Sluit formulieren
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
@@ -343,31 +338,26 @@ const AppContent = () => {
         return;
       }
 
-      // 3. Sluit detail vensters (bv. van logboek)
       if (viewingJobRef.current) {
         setViewingJob(null);
         return;
       }
 
-      // 4. Sluit mobiele zijbalk
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
 
-      // 5. Ga uit sub-inventaris weergave (groepen)
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
 
-      // 6. Navigeer terug naar Dashboard als je elders bent
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
         return;
       }
 
-      // 7. Als je al op het Dashboard bent en alles is dicht: Toon Exit Popup
       if (viewRef.current === 'dashboard') {
         setShowExitConfirm(true);
       }
@@ -400,7 +390,6 @@ const AppContent = () => {
         const res = await fetch('/version.json');
         const data = await res.json();
         if (data.version && data.version !== APP_VERSION) {
-          // Detect translated notes based on current app language
           const translatedNotes = typeof data.releaseNotes === 'object' 
             ? (data.releaseNotes[language] || data.releaseNotes['en'] || "")
             : data.releaseNotes;
@@ -761,7 +750,7 @@ const AppContent = () => {
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} userId={session?.user?.id} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            {view === 'feedback' && <FeedbackPage />}
            
@@ -827,7 +816,6 @@ const AppContent = () => {
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
 
-      {/* UPDATE TOAST POPUP */}
       {showUpdateToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[400] w-[90%] max-w-sm animate-bounce-in">
            <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-blue-400">
