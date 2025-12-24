@@ -1,15 +1,14 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, AiSuggestion, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { Camera as CameraIcon, Loader2, Sparkles, X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, QrCode, Edit2, Download, Image as ImageIcon, FileText, Share2, ToggleLeft, ToggleRight, ScanLine, Eraser, AlertTriangle, Printer, Calculator, Scale, Mail, Send, ExternalLink, Plus, Zap, ChevronDown, ChevronUp, Construction } from 'lucide-react';
+import { Camera as CameraIcon, Loader2, Sparkles, X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, QrCode, Edit2, Download, Image as ImageIcon, FileText, Share2, ScanLine, AlertTriangle, Printer, Calculator, Scale, Mail, Send, ExternalLink, Plus, Zap, ChevronDown, ChevronUp, MapPin, Truck, Tag } from 'lucide-react';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { App as CapacitorApp } from '@capacitor/app';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, BRAND_DOMAINS, COMMON_COLORS, ENGLISH_COLOR_MAP } from '../constants';
@@ -24,15 +23,16 @@ interface FilamentFormProps {
   onSaveSupplier: (sup: Supplier) => void;
   onCancel: () => void;
   initialShowLabel?: boolean;
-  onSetHandlesBackButton?: (handles: boolean) => void;
 }
 
 const APP_LOGO_URI = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 24 24' fill='none' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12 L21 3.5' stroke='%23F97316'/%3E%3Cpath d='M21 3.5 L15 3.5' stroke='%23F97316'/%3E%3Cpath d='M21 12a9 9 0 1 1-6.219-8.56' stroke='%233B82F6'/%3E%3Ccircle cx='12' cy='12' r='2.5' fill='%231E40AF' stroke='none'/%3E%3C/svg%3E";
 
 export const FilamentForm: React.FC<FilamentFormProps> = ({ 
-  initialData, locations, suppliers, existingBrands, onSave, onSaveLocation, onSaveSupplier, onCancel, initialShowLabel = false, onSetHandlesBackButton
+  initialData, locations, suppliers, existingBrands, onSave, onSaveLocation, onSaveSupplier, onCancel, initialShowLabel = false
 }) => {
   const { t, tColor } = useLanguage();
+  const [showLabel, setShowLabel] = useState(initialShowLabel);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formData, setFormData] = useState<Partial<Filament>>(initialData || {
     brand: '',
     material: FilamentMaterial.PLA,
@@ -55,110 +55,86 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [isCustomBrand, setIsCustomBrand] = useState(false);
   const [isCustomMaterial, setIsCustomMaterial] = useState(false);
   const [isCustomColor, setIsCustomColor] = useState(false);
-  const [isAddingLocation, setIsAddingLocation] = useState(false);
-  const [newLocationName, setNewLocationName] = useState("");
-  const [isAddingSupplier, setIsAddingSupplier] = useState(false);
-  const [newSupplierName, setNewSupplierName] = useState("");
-  const [showLabel, setShowLabel] = useState(initialShowLabel);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [preferLogo, setPreferLogo] = useState(true);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isScannerCollapsed, setIsScannerCollapsed] = useState(!!initialData);
   const [showWeighHelper, setShowWeighHelper] = useState(false);
-  const [showAiMaintenance, setShowAiMaintenance] = useState(false);
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
   const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normaal)');
   const [tareWeight, setTareWeight] = useState<number>(230);
-  const [isScannerCollapsed, setIsScannerCollapsed] = useState(!!initialData);
-
-  const [spoolWeights, setSpoolWeights] = useState<Record<string, number>>({
-    "Generic (Plastic Normaal)": 230,
-    "Generic (Karton)": 140,
-    "Generic (MasterSpool/Refill)": 0
-  });
-
-  const [dbBrands, setDbBrands] = useState<string[]>([]);
-  const [dbMaterials, setDbMaterials] = useState<string[]>([]);
-  const [showContribute, setShowContribute] = useState(false);
-  const [contributeForm, setContributeForm] = useState({ brand: '', type: '', weight: '' });
+  const [spoolWeights, setSpoolWeights] = useState<Record<string, number>>({});
 
   const labelRef = useRef<HTMLDivElement>(null); 
-  const formDataRef = useRef(formData);
-  const showLabelRef = useRef(showLabel);
-  const initialDataRef = useRef(initialData);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const availableBrands = useMemo(() => {
-    const combined = new Set([...COMMON_BRANDS, ...dbBrands, ...(existingBrands || [])]);
+    const combined = new Set([...COMMON_BRANDS, ...(existingBrands || [])]);
     return Array.from(combined).sort((a, b) => a.localeCompare(b));
-  }, [dbBrands, existingBrands]);
+  }, [existingBrands]);
 
   const availableMaterials = useMemo(() => {
-     const combined = new Set([...Object.values(FilamentMaterial), ...dbMaterials]);
-     return Array.from(combined).sort();
-  }, [dbMaterials]);
-
-  useEffect(() => {
-     const loadData = async () => {
-        try {
-           const { data: weightsData } = await supabase.from('spool_weights').select('*');
-           if (weightsData && weightsData.length > 0) {
-              const weightsMap: Record<string, number> = {};
-              weightsData.forEach((item: any) => { weightsMap[item.name] = item.weight; });
-              setSpoolWeights(prev => ({ ...prev, ...weightsMap }));
-           }
-           const { data: brandsData } = await supabase.from('brands').select('name');
-           if (brandsData) setDbBrands(brandsData.map(b => b.name));
-           const { data: materialsData } = await supabase.from('materials').select('name');
-           if (materialsData) setDbMaterials(materialsData.map(m => m.name));
-        } catch (e) { console.error(e); }
-     };
-     loadData();
+     return Object.values(FilamentMaterial).sort();
   }, []);
 
   useEffect(() => {
-     if (formData.brand && showWeighHelper) {
-        const brandLower = formData.brand.toLowerCase();
-        let bestMatch = '';
-        if (brandLower.includes('bambu')) bestMatch = "Bambu Lab (Reusable)";
-        else if (brandLower.includes('prusa')) bestMatch = "Prusament";
-        else if (brandLower.includes('esun')) bestMatch = "eSun (Zwart Plastic)";
-        else if (brandLower.includes('sunlu')) bestMatch = "Sunlu (Plastic)";
-        else if (brandLower.includes('polymaker')) bestMatch = "Polymaker (Karton)";
-        if (bestMatch && spoolWeights[bestMatch]) {
-           setSelectedSpoolType(bestMatch);
-           setTareWeight(spoolWeights[bestMatch]);
+     const loadWeights = async () => {
+        const { data } = await supabase.from('spool_weights').select('*');
+        if (data) {
+           const map: Record<string, number> = {};
+           data.forEach((item: any) => map[item.name] = item.weight);
+           setSpoolWeights(map);
         }
-     }
-  }, [formData.brand, showWeighHelper, spoolWeights]);
-
-  const handleApplyWeight = () => {
-     if (grossWeight && typeof grossWeight === 'number') {
-        const net = Math.max(0, grossWeight - tareWeight);
-        setFormData(prev => ({ ...prev, weightRemaining: net }));
-        setShowWeighHelper(false);
-     }
-  };
-
-  const handleSendContribution = () => {
-     if (!contributeForm.brand || !contributeForm.weight) return;
-     const subject = encodeURIComponent(`Nieuwe Spoel Gewicht Suggestie`);
-     const body = encodeURIComponent(`Merk: ${contributeForm.brand}\nType: ${contributeForm.type}\nGewicht: ${contributeForm.weight}g`);
-     window.open(`mailto:info@filamentmanager.nl?subject=${subject}&body=${body}`, Capacitor.isNativePlatform() ? '_system' : undefined);
-     setShowContribute(false);
-  };
-
-  const handleOpenShopUrl = () => {
-    if (!formData.shopUrl) return;
-    let url = formData.shopUrl;
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    window.open(url, Capacitor.isNativePlatform() ? '_system' : '_blank');
-  };
+     };
+     loadWeights();
+  }, []);
 
   useEffect(() => {
-    formDataRef.current = formData;
-    showLabelRef.current = showLabel;
-    initialDataRef.current = initialData;
-  }, [formData, showLabel, initialData]);
+    const generateQr = async () => {
+      const shortId = initialData?.shortId || formData.shortId;
+      if (!shortId) return;
+      try {
+        // Generate QR on temporary canvas to add logo
+        const canvas = document.createElement('canvas');
+        const qrSize = 600;
+        await QRCode.toCanvas(canvas, `filament://${shortId}`, { 
+          errorCorrectionLevel: 'H', 
+          margin: 1, 
+          width: qrSize,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const logoImg = new Image();
+          logoImg.src = APP_LOGO_URI;
+          await new Promise((resolve) => {
+            logoImg.onload = resolve;
+          });
+
+          // Calculate logo size and position
+          const logoSize = qrSize * 0.22; // 22% of QR code
+          const logoPos = (qrSize - logoSize) / 2;
+
+          // Draw white background for logo (rounded)
+          ctx.fillStyle = '#FFFFFF';
+          const padding = 8;
+          ctx.beginPath();
+          ctx.roundRect(logoPos - padding, logoPos - padding, logoSize + padding * 2, logoSize + padding * 2, 20);
+          ctx.fill();
+
+          // Draw the logo
+          ctx.drawImage(logoImg, logoPos, logoPos, logoSize, logoSize);
+          
+          setQrCodeUrl(canvas.toDataURL('image/png'));
+        }
+      } catch(e) { console.error(e); }
+    };
+    if (showLabel) generateQr();
+  }, [initialData?.shortId, formData.shortId, showLabel]);
 
   const triggerSubmit = () => {
     const baseFilament: Filament = {
@@ -173,10 +149,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       weightRemaining: Number(formData.weightRemaining),
       tempNozzle: Number(formData.tempNozzle),
       tempBed: Number(formData.tempBed),
-      notes: formData.notes,
+      notes: formData.notes || '',
       locationId: formData.locationId || null,
       supplierId: formData.supplierId || null,
-      shopUrl: formData.shopUrl,
+      shopUrl: formData.shopUrl || '',
       price: formData.price ? Number(formData.price) : undefined
     };
 
@@ -192,321 +168,277 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     }
   };
 
-  const checkIsDirty = () => {
-    const fd = formDataRef.current;
-    const id = initialDataRef.current;
-    if (!id) return !!fd.brand || !!fd.notes || (fd.weightRemaining !== 1000);
-    return fd.brand !== id.brand || fd.material !== id.material || fd.colorName !== id.colorName || fd.colorHex !== id.colorHex || fd.weightRemaining !== id.weightRemaining;
-  };
-
-  const attemptClose = () => checkIsDirty() ? setShowUnsavedDialog(true) : onCancel();
-
-  useEffect(() => {
-    if (initialData) {
-      if (initialData.brand && !availableBrands.includes(initialData.brand)) setIsCustomBrand(true);
-      if (initialData.material && !availableMaterials.includes(initialData.material)) setIsCustomMaterial(true);
-      if (initialData.colorName && !COMMON_COLORS.some(c => c.name === initialData.colorName)) setIsCustomColor(true);
-    }
-  }, [initialData, availableBrands, availableMaterials]);
-
-  useEffect(() => {
-    const generateQr = async () => {
-      const shortId = initialData?.shortId || formData.shortId;
-      if (!shortId || !showLabel) return;
-      try {
-        const qrDataUrl = await QRCode.toDataURL(`filament://${shortId}`, { errorCorrectionLevel: 'H', margin: 1, width: 500 });
-        setQrCodeUrl(qrDataUrl);
-      } catch(e) { console.error(e); }
-    };
-    generateQr();
-  }, [initialData?.shortId, formData.shortId, showLabel]);
-
-  const [isScanning, setIsScanning] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const processImage = async (rawBase64: string) => {
-    setIsScanning(true);
-    setIsAnalyzing(true);
-    setShowCamera(false); 
-    try {
-      const result: any = await analyzeSpoolImage(rawBase64);
-      if (!result.brand && !result.material && !result.colorName) { alert(t('none')); return; }
-
-      let aiBrand = result.brand;
-      let matchedBrand = availableBrands.find(b => b.toLowerCase() === aiBrand?.toLowerCase());
-      if (matchedBrand) aiBrand = matchedBrand;
-      setIsCustomBrand(!matchedBrand && !!aiBrand);
-      
-      let aiMaterial = result.material || formData.material;
-      let matchedMaterial = availableMaterials.find(m => m.toLowerCase() === aiMaterial?.toLowerCase());
-      if (matchedMaterial) aiMaterial = matchedMaterial;
-      setIsCustomMaterial(!matchedMaterial && !!aiMaterial);
-
-      let aiColor = result.colorName || formData.colorName;
-      let aiHex = result.colorHex;
-      if (aiColor && ENGLISH_COLOR_MAP[aiColor.toLowerCase().trim()]) {
-         const entry = ENGLISH_COLOR_MAP[aiColor.toLowerCase().trim()];
-         aiColor = entry.name;
-         if (!aiHex || aiHex === '#000000') aiHex = entry.hex;
-      }
-      let matchedColor = COMMON_COLORS.find(c => c.name.toLowerCase() === aiColor?.toLowerCase());
-      if (matchedColor) { aiColor = matchedColor.name; if (!aiHex || aiHex === '#000000') aiHex = matchedColor.hex; }
-      setIsCustomColor(!matchedColor && !!aiColor);
-
-      setFormData(prev => ({
-        ...prev,
-        brand: aiBrand,
-        material: aiMaterial,
-        colorName: aiColor,
-        colorHex: aiHex || prev.colorHex,
-        tempNozzle: result.tempNozzle || prev.tempNozzle,
-        tempBed: result.tempBed || prev.tempBed
-      }));
-      setIsScannerCollapsed(true);
-    } catch (error: any) { alert(error.message); } finally { setIsScanning(false); setIsAnalyzing(false); }
-  };
-
   const startCamera = async () => {
-    // INTERCEPT: Show maintenance alert
-    setShowAiMaintenance(true);
-    return;
-    
-    // Original logic below (currently bypassed)
-    /*
     if (Capacitor.isNativePlatform()) {
       try {
         const image = await Camera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Camera, width: 1500 });
-        if (image.base64String) await processImage(image.base64String);
+        if (image.base64String) processImage(image.base64String);
         return;
       } catch (e) {}
     }
     setShowWebCamera(true);
-    */
   };
 
   const [showWebCamera, setShowWebCamera] = useState(false);
-  const stopWebCamera = () => { if (videoRef.current?.srcObject) (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop()); setShowWebCamera(false); };
+  const processImage = async (base64: string) => {
+    setIsAnalyzing(true);
+    try {
+      const res = await analyzeSpoolImage(base64);
+      setFormData(prev => ({
+        ...prev,
+        brand: res.brand || prev.brand,
+        material: res.material || prev.material,
+        colorName: res.colorName || prev.colorName,
+        colorHex: res.colorHex || prev.colorHex,
+        tempNozzle: res.tempNozzle || prev.tempNozzle,
+        tempBed: res.tempBed || prev.tempBed,
+        shortId: res.shortId || prev.shortId
+      }));
+      setIsScannerCollapsed(true);
+    } catch(e) { alert("AI kon etiket niet lezen."); }
+    finally { setIsAnalyzing(false); }
+  };
+
   const captureWebImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
-    ctx.drawImage(videoRef.current, 0, 0);
-    processImage(canvasRef.current.toDataURL('image/jpeg', 0.85));
-    stopWebCamera();
+    ctx?.drawImage(videoRef.current, 0, 0);
+    processImage(canvasRef.current.toDataURL('image/jpeg'));
+    setShowWebCamera(false);
   };
 
-  const handleAutoSettings = async () => {
-    if (!formData.brand || !formData.material) return;
-    setIsAnalyzing(true);
-    try {
-      const res = await suggestSettings(formData.brand, formData.material);
-      setFormData(prev => ({ ...prev, tempNozzle: res.tempNozzle || prev.tempNozzle, tempBed: res.tempBed || prev.tempBed }));
-    } catch (e) {} finally { setIsAnalyzing(false); }
+  const handleDownloadLabel = async () => {
+    if (!labelRef.current) return;
+    const canvas = await html2canvas(labelRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [40, 20] });
+    pdf.addImage(imgData, 'PNG', 0, 0, 40, 20);
+    pdf.save(`label-${formData.shortId || 'filament'}.pdf`);
   };
+
+  const handlePrintLabel = async () => {
+    if (!labelRef.current) return;
+    const canvas = await html2canvas(labelRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Label #${formData.shortId}</title>
+            <style>
+              body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: white; }
+              img { width: 100%; height: auto; display: block; }
+              @page { size: 40mm 20mm; margin: 0; }
+            </style>
+          </head>
+          <body>
+            <img src="${imgData}" onload="window.print();window.close();">
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  if (showLabel) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="p-6 border-b flex justify-between items-center">
+            <h2 className="text-xl font-bold dark:text-white flex items-center gap-2"><QrCode className="text-blue-500"/> QR Label (40x20mm)</h2>
+            <button onClick={onCancel} className="p-2 text-slate-400 hover:text-slate-600"><X size={24}/></button>
+          </div>
+          <div className="p-8 flex flex-col items-center">
+             <div ref={labelRef} className="w-[240px] h-[120px] bg-white border border-slate-200 rounded-lg p-2 flex items-center justify-between text-black shadow-inner">
+                <div className="flex-1 flex flex-col justify-between h-full min-w-0 pr-2">
+                   <div className="min-w-0">
+                      <h4 className="font-black text-[11px] truncate uppercase leading-tight">{formData.brand || 'Filament'}</h4>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase truncate">{formData.material || 'PLA'}</p>
+                      <p className="text-[8px] text-slate-400 font-medium truncate italic">{tColor(formData.colorName || 'Kleur')}</p>
+                   </div>
+                   <div className="flex items-center gap-1">
+                      <img src={APP_LOGO_URI} className="w-4 h-4 object-contain opacity-40" />
+                      <span className="text-[12px] font-black text-blue-600">#{formData.shortId || '----'}</span>
+                   </div>
+                </div>
+                <div className="w-[100px] h-[100px] bg-white flex items-center justify-center shrink-0">
+                   {qrCodeUrl ? <img src={qrCodeUrl} className="w-full h-full" /> : <div className="animate-pulse bg-slate-100 w-full h-full" />}
+                </div>
+             </div>
+             
+             <div className="grid grid-cols-3 gap-3 w-full mt-8">
+                <button onClick={handlePrintLabel} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95"><Printer size={18}/> <span className="text-[10px] uppercase">Print</span></button>
+                <button onClick={handleDownloadLabel} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95"><Download size={18}/> <span className="text-[10px] uppercase">PDF</span></button>
+                <button onClick={() => setShowLabel(false)} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95"><Edit2 size={18}/> <span className="text-[10px] uppercase">{t('edit')}</span></button>
+             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
         
         <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50">
-           <div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                 {isEditMode ? <Edit2 size={20} className="text-blue-500" /> : <Plus size={24} className="text-blue-500" />}
-                 {isEditMode ? t('formEditTitle') : t('formNewTitle')}
-              </h2>
-           </div>
-           <button onClick={attemptClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500"><X size={24} /></button>
+           <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              {isEditMode ? <Edit2 size={20} className="text-blue-500" /> : <Plus size={24} className="text-blue-500" />}
+              {isEditMode ? t('formEditTitle') : t('formNewTitle')}
+           </h2>
+           <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500"><X size={24} /></button>
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6 scrollbar-hide">
-           
-           {/* Smart AI Scanner Section with Collapse/Expand */}
            {!isEditMode && (
               <div className={`bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg relative overflow-hidden transition-all duration-300 ${isScannerCollapsed ? 'p-3' : 'p-6'}`}>
-                 {!isScannerCollapsed && (
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform">
-                       <Sparkles size={100} />
-                    </div>
-                 )}
-                 
                  <div className="relative z-10 flex flex-col">
-                    <div className={`flex items-center justify-between ${isScannerCollapsed ? 'mb-0' : 'mb-4'}`}>
+                    <div className="flex items-center justify-between mb-2">
                        <div className="flex items-center gap-3">
-                          <div className={`${isScannerCollapsed ? 'p-1.5' : 'p-2.5'} bg-white/20 rounded-xl backdrop-blur-md border border-white/20`}>
-                             <ScanLine size={isScannerCollapsed ? 18 : 24} />
-                          </div>
-                          <div className={isScannerCollapsed ? 'flex items-center gap-2' : ''}>
-                             <h3 className="font-bold text-sm md:text-base leading-tight">{t('scanTitle')}</h3>
-                             {!isScannerCollapsed && <p className="text-[10px] md:text-xs text-blue-100 opacity-80">{t('scanDesc')}</p>}
-                          </div>
+                          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md border border-white/20"><ScanLine size={18} /></div>
+                          <h3 className="font-bold text-sm">{t('scanTitle')}</h3>
                        </div>
-                       <button 
-                          type="button" 
-                          onClick={() => setIsScannerCollapsed(!isScannerCollapsed)}
-                          className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-                       >
-                          {isScannerCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                       </button>
+                       <button type="button" onClick={() => setIsScannerCollapsed(!isScannerCollapsed)}>{isScannerCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}</button>
                     </div>
-                    
-                    {!isScannerCollapsed ? (
-                       <button 
-                          type="button"
-                          onClick={startCamera}
-                          disabled={isAnalyzing}
-                          className="w-full bg-white text-blue-700 font-black py-3.5 rounded-xl shadow-md hover:bg-blue-50 transition-all flex items-center justify-center gap-3 transform active:scale-[0.98] disabled:opacity-50"
-                       >
+                    {!isScannerCollapsed && (
+                       <button type="button" onClick={startCamera} disabled={isAnalyzing} className="w-full bg-white text-blue-700 font-black py-3 rounded-xl shadow-md flex items-center justify-center gap-2">
                           {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <CameraIcon size={20} />}
                           {isAnalyzing ? t('analyzingFilament') : t('lookupMode')}
-                       </button>
-                    ) : (
-                       <button 
-                          type="button"
-                          onClick={startCamera}
-                          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-100 hover:text-white mt-2 pl-1 transition-colors"
-                       >
-                          <CameraIcon size={14} /> {t('lookupMode')}
                        </button>
                     )}
                  </div>
               </div>
            )}
 
-           <form onSubmit={(e) => { e.preventDefault(); triggerSubmit(); }} className="space-y-5 pb-4">
-              <div className="space-y-1">
-                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex justify-between items-center">
-                    <span>{t('brand')}</span>
-                    {isCustomBrand && <button type="button" onClick={() => setIsCustomBrand(false)} className="text-blue-500 text-[10px] hover:underline">{t('selectBrand')}</button>}
-                 </label>
-                 {isCustomBrand ? (
-                    <input type="text" required value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-blue-500/30 rounded-xl p-3 outline-none focus:border-blue-500 dark:text-white" />
-                 ) : (
-                    <select required value={formData.brand} onChange={e => e.target.value === 'CUSTOM' ? setIsCustomBrand(true) : setFormData({...formData, brand: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none">
+           <form onSubmit={(e) => { e.preventDefault(); triggerSubmit(); }} className="space-y-5">
+              {/* Basis Gegevens */}
+              <div className="space-y-4">
+                 <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">{t('brand')}</label>
+                    <select required value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white appearance-none outline-none focus:ring-2 focus:ring-blue-500">
                        <option value="">{t('selectBrand')}</option>
                        {availableBrands.map(b => <option key={b} value={b}>{b}</option>)}
-                       <option value="CUSTOM">{t('otherBrand')}</option>
                     </select>
-                 )}
-              </div>
+                 </div>
 
-              {/* Responsieve layout voor Materiaal en Kleur */}
-              <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
-                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('material')}</label>
-                    {isCustomMaterial ? (
-                       <input type="text" required value={formData.material} onChange={e => setFormData({...formData, material: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-blue-500/30 rounded-xl p-3 outline-none focus:border-blue-500 dark:text-white" />
-                    ) : (
-                       <select required value={formData.material} onChange={e => e.target.value === 'CUSTOM' ? setIsCustomMaterial(true) : setFormData({...formData, material: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">{t('material')}</label>
+                       <select value={formData.material} onChange={e => setFormData({...formData, material: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white appearance-none outline-none focus:ring-2 focus:ring-blue-500">
                           {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
-                          <option value="CUSTOM">{t('otherMaterial')}</option>
                        </select>
-                    )}
-                 </div>
-                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('color')}</label>
-                    <div className="flex gap-2 w-full">
-                       {isCustomColor ? (
-                          <input type="text" required value={formData.colorName} onChange={e => setFormData({...formData, colorName: e.target.value})} className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border-2 border-blue-500/30 rounded-xl p-3 outline-none focus:border-blue-500 dark:text-white" />
-                       ) : (
-                          <select required value={formData.colorName} onChange={(e) => { const v = e.target.value; if(v==='CUSTOM') setIsCustomColor(true); else { const c = COMMON_COLORS.find(x=>x.name===v); setFormData({...formData, colorName: v, colorHex: c?.hex || formData.colorHex}); } }} className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none">
+                    </div>
+                    <div>
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">{t('color')}</label>
+                       <div className="flex gap-2">
+                          <select value={formData.colorName} onChange={e => { const c = COMMON_COLORS.find(x => x.name === e.target.value); setFormData({...formData, colorName: e.target.value, colorHex: c?.hex || formData.colorHex}) }} className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white appearance-none">
                              {COMMON_COLORS.map(c => <option key={c.name} value={c.name}>{tColor(c.name)}</option>)}
-                             <option value="CUSTOM">{t('otherColor')}</option>
                           </select>
-                       )}
-                       <input type="color" value={formData.colorHex} onChange={e => { const h=e.target.value; const m=COMMON_COLORS.find(x=>x.hex.toLowerCase()===h.toLowerCase()); setFormData({...formData, colorHex: h, colorName: m ? m.name : formData.colorName}); if(!m) setIsCustomColor(true); }} className="w-12 h-12 rounded-xl border border-slate-300 dark:border-slate-600 p-1 flex-shrink-0 cursor-pointer" />
+                          <input type="color" value={formData.colorHex} onChange={e => setFormData({...formData, colorHex: e.target.value})} className="w-12 h-12 rounded-xl border border-slate-300 p-1 cursor-pointer" />
+                       </div>
                     </div>
                  </div>
-              </div>
 
-              {/* Responsieve layout voor Voorraad */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-                 <div className="flex justify-between items-center">
-                    <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('stock')}</h4>
-                    <button type="button" onClick={() => setShowWeighHelper(true)} className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-1.5"><Scale size={14} /> {t('weighHelper')}</button>
-                 </div>
-                 <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
+                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4">
                     <div>
-                       <label className="text-[10px] font-bold text-slate-500 uppercase">{t('weightTotalLabel')}</label>
-                       <div className="relative"><input type="number" required value={formData.weightTotal} onChange={e => setFormData({...formData, weightTotal: parseFloat(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white outline-none" /><span className="absolute left-3 top-3.5 text-slate-400 text-xs">g</span></div>
+                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('weightRemainingLabel')}</label>
+                       <div className="relative"><input type="number" required value={formData.weightRemaining} onChange={e => setFormData({...formData, weightRemaining: parseFloat(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 rounded-xl p-3 pl-8 dark:text-white outline-none" /><span className="absolute left-3 top-3.5 text-slate-400 text-xs">g</span></div>
                     </div>
                     <div>
-                       <label className="text-[10px] font-bold text-slate-500 uppercase">{t('weightRemainingLabel')}</label>
-                       <div className="relative"><input type="number" required value={formData.weightRemaining} onChange={e => setFormData({...formData, weightRemaining: parseFloat(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white outline-none" /><span className="absolute left-3 top-3.5 text-slate-400 text-xs">g</span></div>
+                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('tempNozzle')}</label>
+                       <input type="number" value={formData.tempNozzle} onChange={e => setFormData({...formData, tempNozzle: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 rounded-xl p-3 dark:text-white outline-none" />
                     </div>
                  </div>
               </div>
 
-              {/* Responsieve layout voor Instellingen */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-                 <div className="flex justify-between items-center"><h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Instellingen</h4><button type="button" onClick={handleAutoSettings} disabled={!formData.brand || !formData.material || isAnalyzing} className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-800 flex items-center gap-1.5"><Zap size={14} /> AI</button></div>
-                 <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500 uppercase">{t('tempNozzle')}</label><input type="number" value={formData.tempNozzle} onChange={e => setFormData({...formData, tempNozzle: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500 uppercase">{t('tempBed')}</label><input type="number" value={formData.tempBed} onChange={e => setFormData({...formData, tempBed: parseInt(e.target.value)})} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none" /></div>
-                 </div>
-              </div>
+              {/* Advanced Toggle */}
+              <button 
+                type="button" 
+                onClick={() => setShowAdvanced(!showAdvanced)} 
+                className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                 <span className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                    <Tag size={16} className="text-blue-500"/> {t('tabManagement')} & Details
+                 </span>
+                 {showAdvanced ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
+              </button>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-3">
-                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"><Save size={20} />{isEditMode ? t('saveChanges') : t('addToInventory')}</button>
+              {showAdvanced && (
+                 <div className="space-y-4 animate-fade-in p-1">
+                    <div className="grid grid-cols-2 gap-4">
+                       <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('price')} (€)</label>
+                          <div className="relative">
+                             <input type="number" step="0.01" value={formData.price || ''} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white outline-none" />
+                             <Euro size={14} className="absolute left-3 top-4 text-slate-400"/>
+                          </div>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Totaalgewicht (g)</label>
+                          <input type="number" value={formData.weightTotal} onChange={e => setFormData({...formData, weightTotal: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none" />
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                       <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Locatie</label>
+                          <div className="relative">
+                             <select value={formData.locationId || ''} onChange={e => setFormData({...formData, locationId: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white appearance-none outline-none">
+                                <option value="">{t('none')}</option>
+                                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                             </select>
+                             <MapPin size={14} className="absolute left-3 top-4 text-slate-400"/>
+                          </div>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Leverancier</label>
+                          <div className="relative">
+                             <select value={formData.supplierId || ''} onChange={e => setFormData({...formData, supplierId: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white appearance-none outline-none">
+                                <option value="">{t('none')}</option>
+                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                             </select>
+                             <Truck size={14} className="absolute left-3 top-4 text-slate-400"/>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div>
+                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Webshop Link</label>
+                       <div className="relative">
+                          <input type="text" value={formData.shopUrl || ''} onChange={e => setFormData({...formData, shopUrl: e.target.value})} placeholder="https://..." className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white outline-none" />
+                          <LinkIcon size={14} className="absolute left-3 top-4 text-slate-400"/>
+                       </div>
+                    </div>
+
+                    <div>
+                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notities</label>
+                       <textarea value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none h-20 resize-none" placeholder="bv. Batch nummer, droogtijd, etc." />
+                    </div>
+                 </div>
+              )}
+
+              <div className="pt-4 border-t dark:border-slate-800 flex gap-3">
+                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"><Save size={20} />{isEditMode ? t('saveChanges') : t('addToInventory')}</button>
+                 {isEditMode && <button type="button" onClick={() => setShowLabel(true)} className="px-6 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-blue-50 transition-colors"><QrCode size={24}/></button>}
               </div>
            </form>
         </div>
       </div>
-      
+
       {showWebCamera && (
-         <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
+         <div className="fixed inset-0 z-[200] bg-black flex flex-col">
             <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center"><div className="w-72 h-72 border-2 border-white/50 rounded-[40px] relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-scanner-scan" /></div></div>
-            <button onClick={stopWebCamera} className="absolute top-8 right-8 bg-white/10 backdrop-blur-md text-white p-3 rounded-full"><X size={24} /></button>
-            <div className="absolute bottom-16 left-0 right-0 flex justify-center"><button onClick={captureWebImage} className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-white" /></button></div>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+               <div className="w-64 h-64 border-2 border-white/50 rounded-3xl" />
+            </div>
+            <button onClick={() => setShowWebCamera(false)} className="absolute top-8 right-8 text-white"><X size={32}/></button>
+            <div className="absolute bottom-12 left-0 right-0 flex justify-center"><button onClick={captureWebImage} className="w-20 h-20 bg-white rounded-full border-8 border-slate-300" /></div>
             <canvas ref={canvasRef} className="hidden" />
          </div>
       )}
-
-      {showWeighHelper && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
-               <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center"><h3 className="text-xl font-bold dark:text-white flex items-center gap-3"><Scale size={24} className="text-blue-500" /> {t('weighHelper')}</h3><button onClick={() => setShowWeighHelper(false)}><X size={24} /></button></div>
-               <div className="p-6 space-y-6">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                     <label className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-widest mb-2 block">{t('grossWeight')}</label>
-                     <div className="flex items-center gap-4"><input type="number" autoFocus value={grossWeight} onChange={e => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))} className="flex-1 bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4 text-2xl font-black dark:text-white outline-none" /><span className="text-xl font-bold text-slate-400">gram</span></div>
-                  </div>
-                  <div><label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">{t('spoolType')}</label><select value={selectedSpoolType} onChange={e => { const k=e.target.value; setSelectedSpoolType(k); setTareWeight(spoolWeights[k]||0); }} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none dark:text-white appearance-none">{Object.keys(spoolWeights).sort().map(k => <option key={k} value={k}>{k}</option>)}</select></div>
-                  <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">{t('apply')}</button>
-               </div>
-            </div>
-         </div>
-      )}
-
-      {showAiMaintenance && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
-               <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <Construction size={40} className="text-amber-600 dark:text-amber-400" />
-               </div>
-               <h2 className="text-xl font-black dark:text-white mb-2">{t('aiCameraUnavailable')}</h2>
-               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
-                  {t('aiCameraUnavailableDesc')}
-               </p>
-               <button 
-                  onClick={() => setShowAiMaintenance(false)}
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98]"
-               >
-                  {t('close')}
-               </button>
-            </div>
-         </div>
-      )}
-
-      {showUnsavedDialog && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in"><div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center"><div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6"><AlertTriangle size={40} className="text-amber-500" /></div><h2 className="text-2xl font-black dark:text-white mb-2">Niet opgeslagen!</h2><p className="text-slate-500 mb-8">Wil je de wijzigingen opslaan voordat je afsluit?</p><div className="flex flex-col gap-3"><button onClick={triggerSubmit} className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg">Opslaan en Sluiten</button><button onClick={onCancel} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-red-600 font-bold rounded-2xl">Weggooien</button><button onClick={() => setShowUnsavedDialog(false)} className="text-slate-400 font-bold text-sm">Nee, ga terug</button></div></div></div>
-      )}
-
     </div>
   );
 };

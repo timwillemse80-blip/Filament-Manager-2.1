@@ -1,20 +1,12 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AiSuggestion } from "../types";
 
-const cleanJsonString = (str: string): string => {
-  if (!str) return "{}";
-  let cleaned = str.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-  return cleaned;
-};
+// Initialiseer de AI client
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggestion> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
     
     const response = await ai.models.generateContent({
@@ -22,7 +14,12 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: "Analyseer deze filament spoel afbeelding. Geef JSON terug met: brand, material, colorName (NL), colorHex, tempNozzle (number), tempBed (number), shortId (zoek naar een 4-cijferige code beginnend met # of losstaand)." }
+          { 
+            text: `Analyseer de tekst op dit etiket van een 3D printer filament spoel.
+            Zoek naar het merk, materiaal, kleur en aanbevolen temperaturen.
+            Zoek ook specifiek naar een 4-cijferige unieke code (Short ID) beginnend met # of losstaand.
+            Geef het resultaat terug in JSON formaat.` 
+          }
         ]
       },
       config: { 
@@ -32,17 +29,19 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
           properties: {
             brand: { type: Type.STRING },
             material: { type: Type.STRING },
-            colorName: { type: Type.STRING },
-            colorHex: { type: Type.STRING },
+            colorName: { type: Type.STRING, description: "Kleurnaam in het Nederlands" },
+            colorHex: { type: Type.STRING, description: "Hexadecimale kleurcode" },
             tempNozzle: { type: Type.NUMBER },
             tempBed: { type: Type.NUMBER },
             shortId: { type: Type.STRING },
-          }
+          },
+          required: ["brand", "material", "colorName"]
         }
       }
     });
 
-    return JSON.parse(cleanJsonString(response.text || "{}"));
+    if (!response.text) throw new Error("Geen tekst ontvangen van AI");
+    return JSON.parse(response.text);
   } catch (error: any) {
     console.error("Gemini Error:", error);
     throw new Error(error.message || "AI Analyse mislukt.");
@@ -51,7 +50,6 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
 
 export const lookupSpoolFromImage = async (base64Image: string): Promise<string | null> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const base64Data = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
     
     const response = await ai.models.generateContent({
@@ -68,12 +66,13 @@ export const lookupSpoolFromImage = async (base64Image: string): Promise<string 
           type: Type.OBJECT,
           properties: {
             shortId: { type: Type.STRING },
-          }
+          },
+          required: ["shortId"]
         }
       }
     });
 
-    const result = JSON.parse(cleanJsonString(response.text || "{}"));
+    const result = JSON.parse(response.text || "{}");
     return result.shortId || null;
   } catch (error) {
     return null;
@@ -82,7 +81,6 @@ export const lookupSpoolFromImage = async (base64Image: string): Promise<string 
 
 export const suggestSettings = async (brand: string, material: string): Promise<AiSuggestion> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Geef aanbevolen temperaturen voor ${brand} ${material} filament in JSON formaat.`,
@@ -97,7 +95,7 @@ export const suggestSettings = async (brand: string, material: string): Promise<
         }
       }
     });
-    return JSON.parse(cleanJsonString(response.text || "{}"));
+    return JSON.parse(response.text || "{}");
   } catch (error) {
     return {}; 
   }
