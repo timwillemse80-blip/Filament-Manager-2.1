@@ -276,28 +276,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      // Assuming you have an RPC or table exposed for this
-      const { data, error } = await supabase.from('profiles').select(`
-        id,
-        email,
-        is_pro,
-        created_at,
-        filaments (count),
-        print_jobs (count)
-      `).order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, is_pro, created_at')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Map counts if needed
       const mapped = (data || []).map((u: any) => ({
         ...u,
-        filament_count: u.filaments?.[0]?.count || 0,
-        print_count: u.print_jobs?.[0]?.count || 0
+        filament_count: 0, // Simplified to ensure table loads
+        print_count: 0
       }));
 
       setUsers(mapped);
     } catch (e: any) {
       console.error("Fout bij laden gebruikers:", e);
+      alert("Fout bij laden gebruikers: " + e.message);
     } finally {
       setIsLoading(false);
     }
@@ -316,7 +311,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       if (error) throw error;
       
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_pro: !currentStatus } : u));
-      loadDashboardStats(); // Refresh header count
+      loadDashboardStats();
     } catch (e: any) {
       console.error("Pro toggle error details:", e);
       alert(`Fout bij bijwerken PRO status: ${e?.message}`);
@@ -505,7 +500,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in flex flex-col gap-8">
        
-       {/* TOP SECTION: NAVIGATION */}
        <div className="space-y-6 w-full">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex items-center overflow-x-auto gap-2 scrollbar-hide">
              <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:white' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900'}`}><LayoutGrid size={18}/> Dashboard</button>
@@ -520,7 +514,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           <div className="min-h-[400px]">
              {activeTab === 'dashboard' && (
                 <div className="space-y-6">
-                   {/* KPI Grid */}
                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
                          <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -560,7 +553,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                    </div>
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Database Setup Section */}
                       <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden group border border-slate-700/50">
                          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform scale-150">
                             <Database size={120} />
@@ -588,7 +580,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                          </div>
                       </div>
 
-                      {/* Popular Materials Chart */}
                       <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm">
                          <h3 className="text-slate-800 dark:text-white font-bold mb-6 flex items-center gap-2"><PieChartIcon size={20} className="text-blue-500" /> Platform Materiaal Distributie</h3>
                          <div className="h-[250px]">
@@ -623,7 +614,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                    </div>
 
                    <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-                      {/* Quick Activity / Alerts */}
                       <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
                          <h3 className="text-slate-800 dark:text-white font-bold mb-4 flex items-center gap-2"><Activity size={20} className="text-orange-500" /> Platform Actie Vereist</h3>
                          <div className="space-y-3 flex-1">
@@ -678,7 +668,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                            <tr>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">E-mailadres / ID</th>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Voorraad & Activiteit</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Registratie</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -704,22 +694,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                        </button>
                                     )}
                                  </td>
-                                 <td className="p-6">
-                                    <div className="flex flex-col items-center gap-2">
-                                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-xs transition-all shadow-sm ${u.filament_count > 0 ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400' : 'bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 opacity-60'}`}>
-                                          <Disc size={14} />
-                                          <span>{u.filament_count} spoelen</span>
-                                       </div>
-                                       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-xs transition-all shadow-sm ${u.print_count > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' : 'bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800 opacity-60'}`}>
-                                          <History size={14} />
-                                          <span>{u.print_count} logs</span>
-                                       </div>
-                                    </div>
+                                 <td className="p-6 text-center">
+                                    <span className="text-xs text-slate-500">{new Date(u.created_at).toLocaleDateString()}</span>
                                  </td>
                               </tr>
                            ))}
                         </tbody>
                      </table>
+                     {users.length === 0 && !isLoading && (
+                        <div className="p-12 text-center text-slate-400 font-bold">
+                           Geen gebruikers gevonden.
+                        </div>
+                     )}
                    </div>
                 </div>
              )}
@@ -952,7 +938,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
              {activeTab === 'data' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   {/* BRANDS SECTION */}
                    <div className="space-y-6">
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                          <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus size={20} className="text-amber-500"/> Nieuw Merk</h3>
@@ -991,7 +976,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       </div>
                    </div>
 
-                   {/* MATERIALS SECTION */}
                    <div className="space-y-6">
                       <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                          <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus size={20} className="text-blue-500"/> Nieuw Materiaal Type</h3>
@@ -1034,12 +1018,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           </div>
        </div>
 
-       {/* BOTTOM SECTION: HORIZONTAL SERVER STATUS BAR */}
        <div className="w-full mt-4">
           <div className="bg-[#0b1221] rounded-[40px] p-10 text-white shadow-2xl border border-slate-800/50">
              <div className="flex flex-col lg:flex-row items-center gap-10">
                 
-                {/* Header Section */}
                 <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-2 flex-shrink-0 lg:pr-10 lg:border-r lg:border-slate-800/60">
                    <Server size={42} className="text-[#10b981]"/>
                    <div>
@@ -1048,7 +1030,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                    </div>
                 </div>
 
-                {/* Metrics Grid */}
                 <div className="flex-1 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-x-12 gap-y-6 w-full">
                    <div className="space-y-1">
                       <span className="text-slate-500 text-xs font-black uppercase tracking-widest block">Status</span>
@@ -1081,11 +1062,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                    <div className="space-y-1">
                       <span className="text-slate-500 text-xs font-black uppercase tracking-widest block flex items-center gap-2"><Shield size={12} className="text-slate-500" /> Versie</span>
-                      <span className={`${isAiConfigured ? 'text-[#3b82f6]' : 'text-slate-400'} font-mono text-lg font-black`}>2.1.23</span>
+                      <span className={`${isAiConfigured ? 'text-[#3b82f6]' : 'text-slate-400'} font-mono text-lg font-black`}>2.1.30</span>
                    </div>
                 </div>
 
-                {/* Stats Blocks */}
                 <div className="flex gap-4 flex-shrink-0 w-full lg:w-auto border-t lg:border-t-0 lg:border-l border-slate-800/60 pt-8 lg:pt-0 lg:pl-10">
                    <div className="bg-[#1a2333] py-4 px-6 rounded-2xl flex-1 lg:flex-none flex items-center gap-4 border border-slate-800 transition-all hover:border-slate-700 min-w-[140px]">
                       <span className="text-3xl font-black text-white">{tableCounts.logs || 0}</span>

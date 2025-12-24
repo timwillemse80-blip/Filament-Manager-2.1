@@ -137,6 +137,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
+    // 0. CHECK API KEY FIRST to prevent silent crash
+    if (!process.env.API_KEY || process.env.API_KEY.length < 5) {
+       alert("AI sleutel is niet geconfigureerd. Neem contact op met de beheerder.");
+       return;
+    }
+
     // Maintenance Intercept: Bypass for Admins
     const IS_MAINTENANCE = true;
     if (IS_MAINTENANCE && !isAdmin) {
@@ -148,15 +154,14 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     try {
       let base64Image = '';
       
+      // Native Platform logic
       if (Capacitor.isNativePlatform()) {
         try {
-          // EXPLICIT PERMISSION CHECK & REQUEST
-          // This fixes the issue where the camera dialog doesn't appear
           const status = await CapacitorCamera.checkPermissions();
-          if (status.camera !== 'granted') {
+          if (status.camera !== 'granted' && status.camera !== 'limited') {
              const requestStatus = await CapacitorCamera.requestPermissions();
-             if (requestStatus.camera !== 'granted') {
-                alert("Camera access is required for AI scanning.");
+             if (requestStatus.camera !== 'granted' && requestStatus.camera !== 'limited') {
+                alert("Cameratoegang is vereist voor AI-scannen.");
                 setIsAiScanning(false);
                 return;
              }
@@ -171,42 +176,41 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           });
           base64Image = image.base64String || '';
         } catch (e: any) {
-          // If user cancelled, don't show an error
           if (e.message?.toLowerCase().includes('cancelled')) {
              setIsAiScanning(false);
              return;
           }
           throw e;
         }
-      } else {
+      } 
+      // Web / PWA Fallback
+      else {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
         input.capture = 'environment';
         
         base64Image = await new Promise((resolve, reject) => {
-          let handled = false;
-          
           input.onchange = (e: any) => {
-            handled = true;
             const file = e.target.files?.[0];
             if (!file) {
               resolve('');
               return;
             }
             const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.onload = () => {
+               const res = reader.result as string;
+               resolve(res.split(',')[1]);
+            };
             reader.onerror = (err) => reject(err);
             reader.readAsDataURL(file);
           };
+          
+          // Safety: Close if no file chosen
+          window.addEventListener('focus', () => {
+             setTimeout(() => { if (!input.files?.length) resolve(''); }, 1000);
+          }, { once: true });
 
-          const onFocus = () => {
-            window.removeEventListener('focus', onFocus);
-            setTimeout(() => {
-              if (!handled) resolve('');
-            }, 1000);
-          };
-          window.addEventListener('focus', onFocus);
           input.click();
         });
       }
@@ -415,9 +419,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         </form>
       </div>
 
-      {/* --- AI Maintenance Modal --- */}
       {showAiMaintenance && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Construction size={40} className="text-blue-600 dark:text-blue-400" />
