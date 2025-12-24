@@ -10,21 +10,44 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-const MIGRATION_SQL = `-- RUN DEZE CODE IN DE SQL EDITOR ALS KOLOMMEN MISSEN
--- Voeg ontbrekende kolommen toe aan profiles
+const MIGRATION_SQL = `-- 1. ZORG DAT KOLOMMEN BESTAAN
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login timestamptz DEFAULT now();
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS showcase_name text;
 
--- Zorg dat de profiles tabel de juiste rechten heeft voor de beheerder
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
-CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (auth.jwt()->>'email' = 'timwillemse@hotmail.com');
+-- 2. VEILIGE SYNC FUNCTIE (Met Foutafhandeling)
+-- Deze functie kopieert login data, maar laat de login NOOIT falen.
+CREATE OR REPLACE FUNCTION public.sync_user_login()
+RETURNS TRIGGER AS $$
+BEGIN
+  BEGIN
+    INSERT INTO public.profiles (id, email, last_login)
+    VALUES (NEW.id, NEW.email, NEW.last_sign_in_at)
+    ON CONFLICT (id) DO UPDATE
+    SET last_login = EXCLUDED.last_login,
+        email = EXCLUDED.email;
+  EXCEPTION WHEN OTHERS THEN
+    -- Als er iets misgaat, negeer de fout zodat de gebruiker gewoon kan inloggen
+    RETURN NEW;
+  END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Forceer refresh van schema cache
-NOTIFY pgrst, 'reload schema';`;
+-- 3. HERACTIVEER TRIGGER
+DROP TRIGGER IF EXISTS on_auth_user_login ON auth.users;
+CREATE TRIGGER on_auth_user_login
+  AFTER UPDATE OF last_sign_in_at ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_user_login();
 
-const MASTER_SQL = `-- 0. PROFIELEN
+-- 4. EENMALIGE SYNC VOOR BESTAANDE DATA
+INSERT INTO public.profiles (id, email, last_login)
+SELECT id, email, last_sign_in_at FROM auth.users
+ON CONFLICT (id) DO UPDATE
+SET last_login = EXCLUDED.last_login,
+    email = EXCLUDED.email;`;
+
+const MASTER_SQL = `-- FULL SETUP SQL (Met Fail-Safe Login Sync)
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
@@ -33,6 +56,30 @@ create table if not exists public.profiles (
   last_login timestamptz default now(),
   created_at timestamptz default now()
 );
+
+-- Fail-Safe Sync Functie
+CREATE OR REPLACE FUNCTION public.sync_user_login()
+RETURNS TRIGGER AS $$
+BEGIN
+  BEGIN
+    INSERT INTO public.profiles (id, email, last_login)
+    VALUES (NEW.id, NEW.email, NEW.last_sign_in_at)
+    ON CONFLICT (id) DO UPDATE
+    SET last_login = EXCLUDED.last_login,
+        email = EXCLUDED.email;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN NEW;
+  END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS on_auth_user_login ON auth.users;
+CREATE TRIGGER on_auth_user_login
+  AFTER UPDATE OF last_sign_in_at ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_user_login();
+
 alter table public.profiles enable row level security;
 drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
@@ -41,7 +88,7 @@ create policy "Admins can view all profiles" on public.profiles for select using
 drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 
--- 1. LOCATIES
+-- [Tabellen (locations, suppliers, filaments, etc.)]
 create table if not exists public.locations (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -53,7 +100,6 @@ alter table public.locations enable row level security;
 drop policy if exists "Users manage own locations" on public.locations;
 create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
 
--- 2. LEVERANCIERS
 create table if not exists public.suppliers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -65,7 +111,6 @@ alter table public.suppliers enable row level security;
 drop policy if exists "Users manage own suppliers" on public.suppliers;
 create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
 
--- 3. FILAMENTEN
 create table if not exists public.filaments (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -89,7 +134,6 @@ alter table public.filaments enable row level security;
 drop policy if exists "Users manage own filaments" on public.filaments;
 create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
 
--- 4. OVERIGE MATERIALEN
 create table if not exists public.other_materials (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -110,7 +154,6 @@ alter table public.other_materials enable row level security;
 drop policy if exists "Users manage own materials" on public.other_materials;
 create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
 
--- 5. PRINTERS
 create table if not exists public.printers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -131,7 +174,6 @@ alter table public.printers enable row level security;
 drop policy if exists "Users manage own printers" on public.printers;
 create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
 
--- 6. PRINT LOGBOEK
 create table if not exists public.print_jobs (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -151,7 +193,6 @@ alter table public.print_jobs enable row level security;
 drop policy if exists "Users manage own prints" on public.print_jobs;
 create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
 
--- 7. FEEDBACK & BEHEER
 create table if not exists public.feedback (
   id bigint generated by default as identity primary key,
   created_at timestamptz default now(),
@@ -187,7 +228,6 @@ create policy "Users view own request" on public.deletion_requests for select us
 drop policy if exists "Users cancel own request" on public.deletion_requests;
 create policy "Users cancel own request" on public.deletion_requests for delete using (auth.uid() = user_id);
 
--- 8. SPOEL DATABASE & LOGO
 create table if not exists public.spool_weights (id bigint generated by default as identity primary key, name text, weight numeric);
 create table if not exists public.brands (id bigint generated by default as identity primary key, name text unique);
 create table if not exists public.materials (id bigint generated by default as identity primary key, name text unique);
@@ -310,6 +350,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     await navigator.clipboard.writeText(MIGRATION_SQL);
     setMigrationCopied(true);
     setTimeout(() => setMigrationCopied(false), 2000);
+    alert("Code gekopieerd! Plak dit in de Supabase SQL Editor.");
   };
 
   const loadUsers = async () => {
@@ -339,6 +380,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
          }
       } else {
          profilesData = profiles || [];
+         // Even if query works, if all are null, maybe needs a sync
+         const nullLogins = profilesData.filter(u => !u.last_login).length;
+         if (profilesData.length > 0 && nullLogins === profilesData.length) {
+            setNeedsMigration(true);
+         }
       }
       
       // 2. Fetch filaments to aggregate
@@ -569,6 +615,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     } catch (e: any) { alert(e.message); }
   };
 
+  const formatLastLogin = (dateStr: string | null) => {
+     if (!dateStr) return <span className="text-slate-400 italic">Geen data</span>;
+     const date = new Date(dateStr);
+     const now = new Date();
+     const isToday = date.toDateString() === now.toDateString();
+     
+     return (
+        <>
+           <div className="text-sm dark:text-white font-bold">
+              {isToday ? 'Vandaag' : date.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' })}
+           </div>
+           <div className="text-[10px] text-slate-400">
+              {date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+           </div>
+        </>
+     );
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in flex flex-col gap-8">
        
@@ -728,17 +792,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
              {activeTab === 'users' && (
                 <div className="space-y-4">
                    {needsMigration && (
-                       <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl flex items-center justify-between animate-fade-in">
-                          <div className="flex items-center gap-4">
-                             <div className="bg-amber-100 dark:bg-amber-800 p-2 rounded-xl text-amber-600 dark:text-amber-400">
-                                <AlertTriangle size={24} />
+                       <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-900/50 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+                          <div className="flex items-center gap-4 text-center sm:text-left">
+                             <div className="bg-amber-100 dark:bg-amber-800 p-3 rounded-2xl text-amber-600 dark:text-amber-400 shrink-0">
+                                <AlertTriangle size={32} />
                              </div>
                              <div>
-                                <h4 className="font-bold text-amber-800 dark:text-amber-200">Data Upgrade Vereist</h4>
-                                <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">De 'last_login' kolom ontbreekt in de database. De lijst is beperkt.</p>
+                                <h4 className="font-bold text-amber-800 dark:text-amber-200 text-lg">Data Sync Vereist</h4>
+                                <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">De 'last_login' kolom ontbreekt of is niet gekoppeld aan de Supabase Auth omgeving.</p>
                              </div>
                           </div>
-                          <button onClick={() => setActiveTab('sql')} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold text-xs shadow-md">Fix Nu</button>
+                          <div className="flex gap-2 w-full sm:w-auto">
+                              <button 
+                                onClick={handleCopyMigration}
+                                className="flex-1 sm:flex-none px-6 py-3 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl font-bold text-sm shadow-sm flex items-center justify-center gap-2"
+                              >
+                                <Copy size={16} /> Kopieer SQL
+                              </button>
+                              <button 
+                                onClick={() => setActiveTab('sql')}
+                                className="flex-1 sm:flex-none px-6 py-3 bg-amber-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-amber-500 transition-colors"
+                              >
+                                Fix Nu
+                              </button>
+                          </div>
                        </div>
                    )}
 
@@ -795,14 +872,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                        <div className="text-[10px] text-slate-400 uppercase font-black">{u.filament_count} spools</div>
                                     </td>
                                     <td className="p-6 text-center">
-                                       {u.last_login ? (
-                                           <>
-                                             <div className="text-sm dark:text-white font-bold">{new Date(u.last_login).toLocaleDateString()}</div>
-                                             <div className="text-[10px] text-slate-400">{new Date(u.last_login).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                                           </>
-                                       ) : (
-                                           <div className="text-xs text-slate-400 italic">No data</div>
-                                       )}
+                                       {formatLastLogin(u.last_login)}
                                     </td>
                                     <td className="p-6 text-center">
                                        <span className="text-xs text-slate-500">{new Date(u.created_at).toLocaleDateString()}</span>
