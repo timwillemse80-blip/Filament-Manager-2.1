@@ -1,3 +1,4 @@
+
 export enum FilamentMaterial {
   PLA = 'PLA',
   PETG = 'PETG',
@@ -108,6 +109,8 @@ export interface AiSuggestion {
   colorHex?: string;
   tempNozzle?: number;
   tempBed?: number;
+  // Added shortId to match data returned by analyzeSpoolImage in geminiService.ts
+  shortId?: string;
 }
 
 export interface CostBreakdown {

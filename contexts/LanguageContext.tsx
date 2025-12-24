@@ -8,6 +8,10 @@ const translations: Record<Language, Record<string, string>> = {
     // AI Alert
     aiCameraUnavailable: "AI camera temporarily unavailable",
     aiCameraUnavailableDesc: "We are working hard to improve AI features. This feature will be fully available again in a future update!",
+    aiScanLabel: "Scan Label with AI",
+    aiAnalyzing: "AI is analyzing the label...",
+    aiSuccess: "Label analyzed successfully!",
+    aiError: "AI could not recognize the label. Please enter data manually.",
     
     // Menu & Tabs
     inventory: "Inventory",

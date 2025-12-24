@@ -2,10 +2,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, COMMON_COLORS } from '../constants';
+import { Capacitor } from '@capacitor/core';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 interface FilamentFormProps {
   initialData?: Filament;
@@ -50,6 +52,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
   const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normal)');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAiScanning, setIsAiScanning] = useState(false);
 
   const spoolWeights: Record<string, number> = {
     "Bambu Lab (Reusable)": 250,
@@ -141,6 +144,65 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     } catch (e) {} finally { setIsAnalyzing(false); }
   };
 
+  const handleAiScan = async () => {
+    setIsAiScanning(true);
+    try {
+      let base64Image = '';
+      
+      if (Capacitor.isNativePlatform()) {
+        const image = await CapacitorCamera.getPhoto({
+          quality: 85,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Camera,
+          width: 1024
+        });
+        base64Image = image.base64String || '';
+      } else {
+        // Simple file upload fallback for web testing if camera isn't direct
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment';
+        
+        base64Image = await new Promise((resolve) => {
+          input.onchange = (e: any) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(',')[1]);
+            reader.readAsDataURL(file);
+          };
+          input.click();
+        });
+      }
+
+      if (!base64Image) {
+        setIsAiScanning(false);
+        return;
+      }
+
+      const suggestion = await analyzeSpoolImage(base64Image);
+      
+      if (suggestion) {
+        setFormData(prev => ({
+          ...prev,
+          brand: suggestion.brand || prev.brand,
+          material: suggestion.material || prev.material,
+          colorName: suggestion.colorName || prev.colorName,
+          colorHex: suggestion.colorHex || prev.colorHex,
+          tempNozzle: suggestion.tempNozzle || prev.tempNozzle,
+          tempBed: suggestion.tempBed || prev.tempBed,
+          shortId: suggestion.shortId || prev.shortId
+        }));
+      }
+    } catch (error) {
+      console.error("AI Scan failed:", error);
+      alert(t('aiError'));
+    } finally {
+      setIsAiScanning(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
       <div className="bg-[#0f172a] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-800">
@@ -157,6 +219,30 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
         <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto scrollbar-hide max-h-[80vh]">
           
+          {/* AI Scan Action */}
+          {!initialData && (
+             <button 
+                type="button"
+                onClick={handleAiScan}
+                disabled={isAiScanning}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden group"
+             >
+                {isAiScanning ? (
+                   <>
+                      <Loader2 className="animate-spin" size={24} />
+                      <span>{t('aiAnalyzing')}</span>
+                      <div className="absolute inset-0 bg-white/10 animate-pulse" />
+                   </>
+                ) : (
+                   <>
+                      <Sparkles className="text-amber-300 group-hover:rotate-12 transition-transform" size={24} />
+                      <span>{t('aiScanLabel')}</span>
+                      <Camera className="absolute right-4 opacity-20" size={32} />
+                   </>
+                )}
+             </button>
+          )}
+
           {/* Row 1: Brand & Material */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

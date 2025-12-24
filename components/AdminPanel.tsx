@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft, History } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -645,6 +646,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
                          <Users size={24} className="text-blue-500"/> Gebruikers ({users.length})
                       </h3>
+                      <button 
+                         onClick={loadUsers}
+                         disabled={isLoading}
+                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                      >
+                         <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                         <span className="hidden sm:inline">Vernieuwen</span>
+                      </button>
                    </div>
                    <div className="overflow-x-auto">
                      <table className="w-full text-left">
@@ -1015,7 +1024,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 
                 {/* Header Section */}
                 <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-2 flex-shrink-0 lg:pr-10 lg:border-r lg:border-slate-800/60">
-                   <Server size={42} className="text-[#10b981]"/>
+                   <Server size(42) className="text-[#10b981]"/>
                    <div>
                       <h3 className="font-bold text-2xl lg:text-3xl leading-none">Server</h3>
                       <h3 className="font-bold text-2xl lg:text-3xl leading-none">Status</h3>
