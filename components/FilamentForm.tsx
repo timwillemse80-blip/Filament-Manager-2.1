@@ -52,21 +52,15 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const isEditMode = !!initialData;
   const [quantity, setQuantity] = useState(1);
-  const [isCustomBrand, setIsCustomBrand] = useState(false);
-  const [isCustomMaterial, setIsCustomMaterial] = useState(false);
-  const [isCustomColor, setIsCustomColor] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isScannerCollapsed, setIsScannerCollapsed] = useState(!!initialData);
-  const [showWeighHelper, setShowWeighHelper] = useState(false);
-  const [grossWeight, setGrossWeight] = useState<number | ''>('');
-  const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normaal)');
-  const [tareWeight, setTareWeight] = useState<number>(230);
   const [spoolWeights, setSpoolWeights] = useState<Record<string, number>>({});
 
   const labelRef = useRef<HTMLDivElement>(null); 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showWebCamera, setShowWebCamera] = useState(false);
 
   const availableBrands = useMemo(() => {
     const combined = new Set([...COMMON_BRANDS, ...(existingBrands || [])]);
@@ -89,46 +83,85 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
      loadWeights();
   }, []);
 
+  // Verbeterde Web Camera Stream handler voor mobiel
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const startWebCam = async () => {
+      if (!window.isSecureContext) {
+        alert("Camera werkt alleen via een beveiligde (HTTPS) verbinding. Controleer je URL.");
+        setShowWebCamera(false);
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Forceer play voor mobiele browsers
+          try {
+            await videoRef.current.play();
+          } catch (e) {
+            console.error("Autoplay failed:", e);
+          }
+        }
+      } catch (err: any) {
+        console.error("Camera access error:", err);
+        let errorMsg = "Geen toegang tot camera.";
+        if (err.name === 'NotAllowedError') errorMsg = "Toegang tot de camera is geweigerd door de browser.";
+        if (err.name === 'NotFoundError') errorMsg = "Geen camera gevonden op dit apparaat.";
+        alert(errorMsg);
+        setShowWebCamera(false);
+      }
+    };
+
+    if (showWebCamera) {
+      startWebCam();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showWebCamera]);
+
   useEffect(() => {
     const generateQr = async () => {
       const shortId = initialData?.shortId || formData.shortId;
       if (!shortId) return;
       try {
-        // Generate QR on temporary canvas to add logo
         const canvas = document.createElement('canvas');
         const qrSize = 600;
         await QRCode.toCanvas(canvas, `filament://${shortId}`, { 
           errorCorrectionLevel: 'H', 
           margin: 1, 
           width: qrSize,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          }
+          color: { dark: '#000000', light: '#FFFFFF' }
         });
 
         const ctx = canvas.getContext('2d');
         if (ctx) {
           const logoImg = new Image();
           logoImg.src = APP_LOGO_URI;
-          await new Promise((resolve) => {
-            logoImg.onload = resolve;
-          });
+          await new Promise((resolve) => { logoImg.onload = resolve; });
 
-          // Calculate logo size and position
-          const logoSize = qrSize * 0.22; // 22% of QR code
+          const logoSize = qrSize * 0.22;
           const logoPos = (qrSize - logoSize) / 2;
 
-          // Draw white background for logo (rounded)
           ctx.fillStyle = '#FFFFFF';
           const padding = 8;
           ctx.beginPath();
           ctx.roundRect(logoPos - padding, logoPos - padding, logoSize + padding * 2, logoSize + padding * 2, 20);
           ctx.fill();
 
-          // Draw the logo
           ctx.drawImage(logoImg, logoPos, logoPos, logoSize, logoSize);
-          
           setQrCodeUrl(canvas.toDataURL('image/png'));
         }
       } catch(e) { console.error(e); }
@@ -174,12 +207,13 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         const image = await Camera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Camera, width: 1500 });
         if (image.base64String) processImage(image.base64String);
         return;
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Capacitor camera failed/cancelled", e);
+      }
     }
     setShowWebCamera(true);
   };
 
-  const [showWebCamera, setShowWebCamera] = useState(false);
   const processImage = async (base64: string) => {
     setIsAnalyzing(true);
     try {
@@ -202,9 +236,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const captureWebImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
-    ctx?.drawImage(videoRef.current, 0, 0);
+    ctx.drawImage(videoRef.current, 0, 0);
     processImage(canvasRef.current.toDataURL('image/jpeg'));
     setShowWebCamera(false);
   };
@@ -314,7 +349,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
            )}
 
            <form onSubmit={(e) => { e.preventDefault(); triggerSubmit(); }} className="space-y-5">
-              {/* Basis Gegevens */}
               <div className="space-y-4">
                  <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">{t('brand')}</label>
@@ -354,7 +388,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  </div>
               </div>
 
-              {/* Advanced Toggle */}
               <button 
                 type="button" 
                 onClick={() => setShowAdvanced(!showAdvanced)} 
@@ -429,13 +462,21 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       </div>
 
       {showWebCamera && (
-         <div className="fixed inset-0 z-[200] bg-black flex flex-col">
-            <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
+         <div className="fixed inset-0 z-[200] bg-black flex flex-col h-[100dvh]">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted
+              className="h-full w-full object-cover" 
+            />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                <div className="w-64 h-64 border-2 border-white/50 rounded-3xl" />
             </div>
-            <button onClick={() => setShowWebCamera(false)} className="absolute top-8 right-8 text-white"><X size={32}/></button>
-            <div className="absolute bottom-12 left-0 right-0 flex justify-center"><button onClick={captureWebImage} className="w-20 h-20 bg-white rounded-full border-8 border-slate-300" /></div>
+            <button onClick={() => setShowWebCamera(false)} className="absolute top-8 right-8 text-white bg-black/20 p-2 rounded-full backdrop-blur-sm"><X size={32}/></button>
+            <div className="absolute bottom-12 left-0 right-0 flex justify-center">
+              <button onClick={captureWebImage} className="w-20 h-20 bg-white rounded-full border-8 border-slate-300 shadow-2xl active:scale-90 transition-transform" />
+            </div>
             <canvas ref={canvasRef} className="hidden" />
          </div>
       )}

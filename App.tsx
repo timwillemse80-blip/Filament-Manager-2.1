@@ -655,7 +655,7 @@ const AppContent = () => {
   if (!session) return <AuthScreen onOfflineLogin={() => {}} />;
 
   return (
-    <div className="h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-900 flex">
+    <div className="h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-slate-900 flex">
       <aside className={`hidden lg:flex flex-col w-72 bg-white dark:bg-slate-950 border-r dark:border-slate-800 transition-all duration-300 ${isDesktopSidebarOpen ? 'translate-x-0' : '-translate-x-full w-0 overflow-hidden'}`}>
         <div className="h-16 flex items-center gap-3 px-6 border-b dark:border-slate-800">
           <Logo className="w-8 h-8 shrink-0" />
@@ -699,8 +699,8 @@ const AppContent = () => {
         </div>
       )}
 
-      <main className="flex-1 min-w-0 flex flex-col">
-        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 justify-between gap-2">
+      <main className="flex-1 min-w-0 flex flex-col h-full">
+        <header className="bg-white dark:bg-slate-950 border-b dark:border-slate-800 h-16 flex items-center px-4 justify-between gap-2 shrink-0">
           <div className="flex items-center gap-1">
              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
              {view !== 'dashboard' && (
