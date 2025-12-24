@@ -252,7 +252,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                 <div className="p-6 overflow-y-auto space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Projectnaam</label>
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">{t('projectName')}</label>
                          <input type="text" value={jobName} onChange={e => setJobName(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                       <div>
@@ -268,13 +268,13 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex gap-3 animate-fade-in">
                          <AlertTriangle size={24} className="text-amber-600 shrink-0" />
                          <p className="text-xs text-amber-700 dark:text-amber-400 font-bold leading-relaxed">
-                            <strong>Multi-color G-code</strong> bevat vaak enkel het model-gewicht. Vul de <strong>Waste</strong> kolom handmatig in (Flush, Poop & Tower) voor een kloppende voorraad.
+                            {t('multiColorWarning')}
                          </p>
                       </div>
                    )}
 
                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verbruik per Materiaal</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('usagePerMaterial')}</label>
                       {materialSlots.map((slot, index) => {
                          const totalForSlot = (Number(slot.weight) || 0) + (Number(slot.waste) || 0);
                          return (
@@ -287,9 +287,9 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                   {slot.matchSource === 'ams' ? (
                                      <span className="text-[9px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full flex items-center gap-1 border border-blue-200 uppercase">AMS {slot.matchUnit} - SLOT {slot.matchSlot}</span>
                                   ) : slot.matchSource === 'stock' ? (
-                                     <span className="text-[9px] font-black bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 uppercase">VOORRAAD MATCH</span>
+                                     <span className="text-[9px] font-black bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 uppercase">{t('stockMatch')}</span>
                                   ) : (
-                                     <span className="text-[9px] text-red-400 font-bold uppercase">GEEN MATCH</span>
+                                     <span className="text-[9px] text-red-400 font-bold uppercase">{t('noMatch')}</span>
                                   )}
                                </div>
                                
@@ -303,11 +303,11 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                   
                                   <div className="grid grid-cols-3 gap-3">
                                      <div className="relative">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">Model (g)</label>
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">{t('modelWeightLabel')}</label>
                                         <input type="number" value={slot.weight} onChange={(e) => { const n = [...materialSlots]; n[index].weight = e.target.value; setMaterialSlots(n); }} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold text-sm text-center dark:text-white" />
                                      </div>
                                      <div className="relative">
-                                        <label className="text-[9px] font-bold text-orange-500 uppercase mb-1 block">Waste (g)</label>
+                                        <label className="text-[9px] font-bold text-orange-500 uppercase mb-1 block">{t('wasteLabel')}</label>
                                         <input type="number" value={slot.waste} onChange={(e) => { const n = [...materialSlots]; n[index].waste = e.target.value; setMaterialSlots(n); }} className="w-full bg-white dark:bg-slate-900 border-2 border-orange-500/30 dark:border-orange-500/20 focus:border-orange-500 rounded-lg p-2 font-black text-sm text-center dark:text-orange-400 text-orange-600 outline-none" placeholder="0" />
                                      </div>
                                      <div className="flex flex-col justify-end pb-2">
@@ -320,18 +320,18 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                </div>
                                
                                <button onClick={() => setMaterialSlots(materialSlots.filter((_, i) => i !== index))} className="mt-4 text-[10px] font-bold text-red-500 flex items-center gap-1 hover:underline">
-                                  <Trash2 size={12} /> Verwijder slot
+                                  <Trash2 size={12} /> {t('removeSlot')}
                                </button>
                             </div>
                          );
                       })}
-                      <button onClick={() => setMaterialSlots([...materialSlots, { detectedType: 'PLA', weight: 0, waste: 0, assignedFilamentId: '' }])} className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400 text-[10px] font-black uppercase hover:border-blue-500 hover:text-blue-500 transition-all">+ Slot Toevoegen</button>
+                      <button onClick={() => setMaterialSlots([...materialSlots, { detectedType: 'PLA', weight: 0, waste: 0, assignedFilamentId: '' }])} className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400 text-[10px] font-black uppercase hover:border-blue-500 hover:text-blue-500 transition-all">+ {t('addSlot')}</button>
                    </div>
                 </div>
                 
                 <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50">
                    <button onClick={handleSave} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                      <Save size={20} /> Opslaan & Voorraad Bijwerken
+                      <Save size={20} /> {t('saveUpdate')}
                    </button>
                 </div>
              </div>

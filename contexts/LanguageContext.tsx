@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'nl' | 'en' | 'de' | 'fr' | 'es';
@@ -218,6 +219,13 @@ const translations: Record<Language, Record<string, string>> = {
     rounding: "Afronding",
     noDetailedCost: "No detailed costs available for this print.",
     unknownMaterial: "Onbekend materiaal",
+    wasteLabel: "Waste (g)",
+    modelWeightLabel: "Model (g)",
+    multiColorWarning: "Multi-color G-code bevat vaak enkel het model-gewicht. Vul de Waste kolom handmatig in (Flush, Poop & Tower) voor een kloppende voorraad.",
+    usagePerMaterial: "Verbruik per Materiaal",
+    stockMatch: "VOORRAAD MATCH",
+    noMatch: "GEEN MATCH",
+    removeSlot: "Verwijder slot",
 
     // Settings
     tabGeneral: "Algemeen",
@@ -273,8 +281,6 @@ const translations: Record<Language, Record<string, string>> = {
     serverCostsDesc: "Je bijdrage helpt direct bij het betalen van de database en hosting.",
     development: "Ontwikkeling",
     developmentDesc: "Nieuwe functies zoals de AI-scanner kosten tijd en rekenkracht.",
-    adFree: "100% Reclamevrij",
-    adFreeDesc: "Geen vervelende ads, alleen tools voor makers.",
     thankYouNote: "Bedankt voor je support!",
 
     // Forms Common
@@ -341,6 +347,16 @@ const translations: Record<Language, Record<string, string>> = {
     "naturel": "Naturel"
   },
   en: {
+    wasteLabel: "Waste (g)",
+    modelWeightLabel: "Model (g)",
+    multiColorWarning: "Multi-color G-code often only contains the model weight. Fill in the Waste column manually (Flush, Poop & Tower) for accurate stock.",
+    usagePerMaterial: "Usage per Material",
+    stockMatch: "STOCK MATCH",
+    noMatch: "NO MATCH",
+    removeSlot: "Remove slot",
+    saveUpdate: "Save & Update Inventory",
+    addSlot: "Add Slot",
+    projectName: "Project Name",
     aiCameraUnavailable: "AI camera temporarily unavailable",
     aiCameraUnavailableDesc: "We are working hard to improve the AI features. This function will be fully available again in a future update!",
     feedbackTitle: "Your opinion matters!",
@@ -376,6 +392,16 @@ const translations: Record<Language, Record<string, string>> = {
     analyzingFilament: "Analyzing Label..."
   },
   de: {
+    wasteLabel: "Abfall (g)",
+    modelWeightLabel: "Modell (g)",
+    multiColorWarning: "Multi-Color-G-Code enthält oft nur das Modellgewicht. Füllen Sie die Abfall-Spalte manuell aus (Flush, Poop & Tower) für einen korrekten Bestand.",
+    usagePerMaterial: "Verbrauch pro Material",
+    stockMatch: "LAGER MATCH",
+    noMatch: "KEIN MATCH",
+    removeSlot: "Slot entfernen",
+    saveUpdate: "Speichern & Bestand aktualisieren",
+    addSlot: "Slot hinzufügen",
+    projectName: "Projektname",
     aiCameraUnavailable: "KI-Kamera vorübergehend nicht verfügbar",
     aiCameraUnavailableDesc: "Wir arbeiten hart daran, die KI-Funktionen zu verbessern. Diese Funktion wird in einem zukünftigen Update wieder vollständig verfügbar sein!",
     feedbackTitle: "Ihre Meinung zählt!",
@@ -407,6 +433,16 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Aus Vorraad laden"
   },
   fr: {
+    wasteLabel: "Déchets (g)",
+    modelWeightLabel: "Modèle (g)",
+    multiColorWarning: "Le G-code multi-couleurs ne contient souvent que le poids du modèle. Remplissez manuellement la colonne Déchets (Flush, Poop & Tower) pour un stock exact.",
+    usagePerMaterial: "Consommation par Matériau",
+    stockMatch: "MATCH STOCK",
+    noMatch: "AUCUN MATCH",
+    removeSlot: "Supprimer le slot",
+    saveUpdate: "Enregistrer et mettre à jour le stock",
+    addSlot: "Ajouter un slot",
+    projectName: "Nom du projet",
     aiCameraUnavailable: "Caméra IA temporairement indisponible",
     aiCameraUnavailableDesc: "Nous travaillons dur pour améliorer les fonctionnalités de l'IA. Cette fonction sera à nouveau pleinement disponible dans une future mise à jour !",
     feedbackTitle: "Votre avis compte !",
@@ -438,6 +474,16 @@ const translations: Record<Language, Record<string, string>> = {
     loadFromStock: "Charger depuis le stock"
   },
   es: {
+    wasteLabel: "Residuos (g)",
+    modelWeightLabel: "Modelo (g)",
+    multiColorWarning: "El G-code multicolor a menudo solo contiene el peso del modelo. Complete manualmente la columna Residuos (Flush, Poop & Tower) para un stock preciso.",
+    usagePerMaterial: "Consumo por Material",
+    stockMatch: "COINCIDENCIA STOCK",
+    noMatch: "SIN COINCIDENCIA",
+    removeSlot: "Eliminar ranura",
+    saveUpdate: "Guardar y actualizar stock",
+    addSlot: "Añadir ranura",
+    projectName: "Nombre del proyecto",
     aiCameraUnavailable: "Cámara IA temporalmente no disponible",
     aiCameraUnavailableDesc: "Estamos trabajando duro para mejorar las funciones de IA. ¡Esta función volverá a estar plenamente disponible en una futura actualización!",
     feedbackTitle: "¡Tu opinión cuenta!",
