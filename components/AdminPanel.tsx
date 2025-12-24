@@ -276,9 +276,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('admin_user_stats').select('*').order('created_at', { ascending: false });
+      // Assuming you have an RPC or table exposed for this
+      const { data, error } = await supabase.from('profiles').select(`
+        id,
+        email,
+        is_pro,
+        created_at,
+        filaments (count),
+        print_jobs (count)
+      `).order('created_at', { ascending: false });
+
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Map counts if needed
+      const mapped = (data || []).map((u: any) => ({
+        ...u,
+        filament_count: u.filaments?.[0]?.count || 0,
+        print_count: u.print_jobs?.[0]?.count || 0
+      }));
+
+      setUsers(mapped);
     } catch (e: any) {
       console.error("Fout bij laden gebruikers:", e);
     } finally {
@@ -1024,7 +1041,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 
                 {/* Header Section */}
                 <div className="flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-2 flex-shrink-0 lg:pr-10 lg:border-r lg:border-slate-800/60">
-                   <Server size(42) className="text-[#10b981]"/>
+                   <Server size={42} className="text-[#10b981]"/>
                    <div>
                       <h3 className="font-bold text-2xl lg:text-3xl leading-none">Server</h3>
                       <h3 className="font-bold text-2xl lg:text-3xl leading-none">Status</h3>

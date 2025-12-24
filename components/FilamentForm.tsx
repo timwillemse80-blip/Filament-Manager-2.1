@@ -26,7 +26,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 }) => {
   const { t, tColor } = useLanguage();
   
-  // Local state for free-text inputs that will be converted to IDs during save
   const [locationName, setLocationName] = useState(() => {
     return locations.find(l => l.id === initialData?.locationId)?.name || '';
   });
@@ -67,13 +66,11 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     let finalLocationId = initialData?.locationId || null;
     let finalSupplierId = initialData?.supplierId || null;
 
-    // 1. Handle Location creation/mapping
     if (locationName.trim()) {
       const existingLoc = locations.find(l => l.name.toLowerCase() === locationName.trim().toLowerCase());
       if (existingLoc) {
         finalLocationId = existingLoc.id;
       } else {
-        // Create new location
         const newLoc: Location = { id: crypto.randomUUID(), name: locationName.trim() };
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -82,17 +79,13 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           finalLocationId = newLoc.id;
         }
       }
-    } else {
-      finalLocationId = null;
     }
 
-    // 2. Handle Supplier creation/mapping
     if (supplierName.trim()) {
       const existingSup = suppliers.find(s => s.name.toLowerCase() === supplierName.trim().toLowerCase());
       if (existingSup) {
         finalSupplierId = existingSup.id;
       } else {
-        // Create new supplier
         const newSup: Supplier = { id: crypto.randomUUID(), name: supplierName.trim() };
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -101,11 +94,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           finalSupplierId = newSup.id;
         }
       }
-    } else {
-      finalSupplierId = null;
     }
 
-    // 3. Construct final filament object
     const finalFilament: Filament = {
       ...formData as Filament,
       id: initialData?.id || crypto.randomUUID(),
@@ -159,7 +149,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         });
         base64Image = image.base64String || '';
       } else {
-        // Simple file upload fallback for web testing if camera isn't direct
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -243,7 +232,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
              </button>
           )}
 
-          {/* Row 1: Brand & Material */}
+          {/* Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('brand')}</label>
@@ -283,7 +272,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Color */}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('color')}</label>
             <div className="flex gap-2">
@@ -310,7 +298,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
-          {/* Row 3: Weights */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('weightTotalLabel')}</label>
@@ -344,7 +331,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
-          {/* Row 4: Temperatures */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('tempNozzle')}</label>
@@ -372,95 +358,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Location & Supplier */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('location')}</label>
-              <div className="relative">
-                <input 
-                  list="locations-list"
-                  type="text" 
-                  value={locationName} 
-                  onChange={e => setLocationName(e.target.value)}
-                  placeholder="bv. Stelling A"
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
-                />
-                <datalist id="locations-list">
-                  {locations.map(l => <option key={l.id} value={l.name} />)}
-                </datalist>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('supplier')}</label>
-              <div className="relative">
-                <input 
-                  list="suppliers-list"
-                  type="text" 
-                  value={supplierName} 
-                  onChange={e => setSupplierName(e.target.value)}
-                  placeholder="bv. Amazon"
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
-                />
-                <datalist id="suppliers-list">
-                  {suppliers.map(s => <option key={s.id} value={s.name} />)}
-                </datalist>
-              </div>
-            </div>
-          </div>
-
-          {/* Row 6: Price & URL */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('price')} (€)</label>
-              <div className="relative flex items-center bg-[#1e293b] border border-slate-700 rounded-lg overflow-hidden pr-3">
-                <span className="p-3 text-slate-500">€</span>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={formData.price || ''} 
-                  onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
-                  className="flex-1 bg-transparent py-3 text-white outline-none"
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('shopUrl')}</label>
-              <div className="flex gap-2">
-                <div className="flex-1 relative flex items-center bg-[#1e293b] border border-slate-700 rounded-lg overflow-hidden pr-3">
-                  <div className="p-3"><LinkIcon size={16} className="text-slate-500"/></div>
-                  <input 
-                    type="text" 
-                    value={formData.shopUrl || ''} 
-                    onChange={e => setFormData({...formData, shopUrl: e.target.value})}
-                    className="flex-1 bg-transparent py-3 text-white outline-none text-xs"
-                    placeholder="https://..."
-                  />
-                </div>
-                {formData.shopUrl && (
-                  <button 
-                    type="button" 
-                    onClick={() => window.open(formData.shopUrl, '_blank')}
-                    className="p-3 bg-slate-800 text-blue-400 rounded-lg hover:text-blue-300 transition-colors border border-slate-700"
-                  >
-                    <ExternalLink size={20} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('notes')}</label>
-            <textarea 
-              value={formData.notes || ''} 
-              onChange={e => setFormData({...formData, notes: e.target.value})}
-              className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors min-h-[120px] resize-none"
-            />
-          </div>
-
-          {/* Submit Button */}
           <div className="pt-4 sticky bottom-0 bg-[#0f172a] pb-2">
             <button 
               type="submit" 
@@ -472,7 +369,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         </form>
       </div>
 
-      {/* Weigh Helper Modal */}
       {showWeighHelper && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-[#0f172a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col">
@@ -487,16 +383,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         <input type="number" autoFocus value={grossWeight} onChange={e => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))} className="flex-1 bg-[#1e293b] border-2 border-blue-500/30 rounded-xl p-4 text-2xl font-black text-white outline-none focus:border-blue-500" />
                         <span className="text-xl font-bold text-slate-500">gram</span>
                      </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">{t('spoolType')}</label>
-                    <select 
-                      value={selectedSpoolType} 
-                      onChange={e => setSelectedSpoolType(e.target.value)} 
-                      className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 outline-none text-white appearance-none"
-                    >
-                      {Object.keys(spoolWeights).map(k => <option key={k} value={k}>{k} ({spoolWeights[k]}g)</option>)}
-                    </select>
                   </div>
                   <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">
                     {t('apply')}
