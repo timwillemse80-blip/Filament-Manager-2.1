@@ -474,6 +474,19 @@ const AppContent = () => {
 
   }, [session]);
 
+  // Track Last Login
+  useEffect(() => {
+    if (session?.user?.id) {
+      const updateLastLogin = async () => {
+        await supabase
+          .from('profiles')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', session.user.id);
+      };
+      updateLastLogin();
+    }
+  }, [session]);
+
   const handleSpoolDeepLink = (shortId: string) => {
      const spool = filaments.find(f => f.shortId?.toLowerCase() === shortId.toLowerCase());
      if (spool) {

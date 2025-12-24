@@ -99,6 +99,8 @@ const translations: Record<Language, Record<string, string>> = {
     minutes: "minutes",
     slot: "Slot",
     confirmDelete: "Are you sure you want to delete this?",
+    lastLogin: "Last Login",
+    totalFilament: "Total Filament",
     
     // Feedback Page Specific
     feedbackTitle: "Your opinion matters!",

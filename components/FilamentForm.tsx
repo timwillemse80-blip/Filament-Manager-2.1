@@ -137,9 +137,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
-    // 0. CHECK API KEY FIRST to prevent silent crash
-    if (!process.env.API_KEY || process.env.API_KEY.length < 5) {
-       alert("AI sleutel is niet geconfigureerd. Neem contact op met de beheerder.");
+    // 0. CHECK API KEY FIRST
+    const apiKey = process.env.API_KEY || '';
+    if (!apiKey || apiKey.length < 5) {
+       alert("AI key is not configured. Please contact the administrator.");
        return;
     }
 
@@ -157,21 +158,23 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       // Native Platform logic
       if (Capacitor.isNativePlatform()) {
         try {
+          // Robust permission handling: check, then request if not granted
           const status = await CapacitorCamera.checkPermissions();
-          if (status.camera !== 'granted' && status.camera !== 'limited') {
+          if (status.camera !== 'granted') {
              const requestStatus = await CapacitorCamera.requestPermissions();
-             if (requestStatus.camera !== 'granted' && requestStatus.camera !== 'limited') {
-                alert("Cameratoegang is vereist voor AI-scannen.");
+             if (requestStatus.camera !== 'granted') {
+                alert("Camera permission is required to scan spools.");
                 setIsAiScanning(false);
                 return;
              }
           }
 
+          // Trigger OS Camera UI
           const image = await CapacitorCamera.getPhoto({
             quality: 85,
             allowEditing: false,
             resultType: CameraResultType.Base64,
-            source: CameraSource.Camera,
+            source: CameraSource.Prompt, // Prompt allows user to pick camera or gallery, more reliable trigger
             width: 1024
           });
           base64Image = image.base64String || '';
@@ -180,6 +183,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
              setIsAiScanning(false);
              return;
           }
+          console.error("Camera UI failed:", e);
           throw e;
         }
       } 
@@ -206,7 +210,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             reader.readAsDataURL(file);
           };
           
-          // Safety: Close if no file chosen
           window.addEventListener('focus', () => {
              setTimeout(() => { if (!input.files?.length) resolve(''); }, 1000);
           }, { once: true });
@@ -233,6 +236,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           tempBed: suggestion.tempBed || prev.tempBed,
           shortId: suggestion.shortId || prev.shortId
         }));
+      } else {
+        throw new Error("No suggestion returned from AI");
       }
     } catch (error: any) {
       console.error("AI Scan failed:", error);

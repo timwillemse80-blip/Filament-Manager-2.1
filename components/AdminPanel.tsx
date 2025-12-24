@@ -10,7 +10,24 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-const MASTER_SQL = `-- 1. LOCATIES
+const MASTER_SQL = `-- 0. PROFIELEN
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  is_pro boolean default false,
+  showcase_name text,
+  last_login timestamptz default now(),
+  created_at timestamptz default now()
+);
+alter table public.profiles enable row level security;
+drop policy if exists "Users can view own profile" on public.profiles;
+create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
+drop policy if exists "Admins can view all profiles" on public.profiles;
+create policy "Admins can view all profiles" on public.profiles for select using (auth.jwt()->>'email' = 'timwillemse@hotmail.com');
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+
+-- 1. LOCATIES
 create table if not exists public.locations (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -276,18 +293,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // 1. Fetch profiles
+      const { data: profiles, error: pError } = await supabase
         .from('profiles')
-        .select('id, email, is_pro, created_at')
+        .select('id, email, is_pro, created_at, last_login')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (pError) throw pError;
       
-      const mapped = (data || []).map((u: any) => ({
-        ...u,
-        filament_count: 0, // Simplified to ensure table loads
-        print_count: 0
-      }));
+      // 2. Fetch filaments to aggregate weight/count
+      const { data: allFilaments, error: fError } = await supabase
+        .from('filaments')
+        .select('user_id, weightRemaining');
+
+      if (fError) throw fError;
+
+      // 3. Aggregate data per user
+      const mapped = (profiles || []).map((u: any) => {
+        const userFilaments = (allFilaments || []).filter(f => f.user_id === u.id);
+        const totalWeight = userFilaments.reduce((sum, f) => sum + (f.weightRemaining || 0), 0);
+        
+        return {
+          ...u,
+          filament_count: userFilaments.length,
+          total_weight: totalWeight
+        };
+      });
 
       setUsers(mapped);
     } catch (e: any) {
@@ -668,6 +699,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                            <tr>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">E-mailadres / ID</th>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('totalFilament')}</th>
+                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('lastLogin')}</th>
                               <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Registratie</th>
                            </tr>
                         </thead>
@@ -693,6 +726,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                           {u.is_pro ? 'PRO STATUS' : 'MAAK PRO'}
                                        </button>
                                     )}
+                                 </td>
+                                 <td className="p-6 text-center">
+                                    <div className="font-bold dark:text-white">{(u.total_weight / 1000).toFixed(1)} kg</div>
+                                    <div className="text-[10px] text-slate-400 uppercase font-black">{u.filament_count} spools</div>
+                                 </td>
+                                 <td className="p-6 text-center">
+                                    <div className="text-sm dark:text-white">{u.last_login ? new Date(u.last_login).toLocaleDateString() : '---'}</div>
+                                    <div className="text-[10px] text-slate-400">{u.last_login ? new Date(u.last_login).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</div>
                                  </td>
                                  <td className="p-6 text-center">
                                     <span className="text-xs text-slate-500">{new Date(u.created_at).toLocaleDateString()}</span>
