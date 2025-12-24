@@ -478,10 +478,15 @@ const AppContent = () => {
   useEffect(() => {
     if (session?.user?.id) {
       const updateLastLogin = async () => {
-        await supabase
-          .from('profiles')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', session.user.id);
+        try {
+            await supabase
+              .from('profiles')
+              .update({ last_login: new Date().toISOString() })
+              .eq('id', session.user.id);
+        } catch (e) {
+            // Silently fail if column doesn't exist yet
+            console.warn("Could not update last login", e);
+        }
       };
       updateLastLogin();
     }
@@ -866,7 +871,7 @@ const AppContent = () => {
       )}
 
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />

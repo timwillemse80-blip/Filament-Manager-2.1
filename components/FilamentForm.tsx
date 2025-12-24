@@ -137,14 +137,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
-    // 0. CHECK API KEY FIRST
     const apiKey = process.env.API_KEY || '';
     if (!apiKey || apiKey.length < 5) {
        alert("AI key is not configured. Please contact the administrator.");
        return;
     }
 
-    // Maintenance Intercept: Bypass for Admins
     const IS_MAINTENANCE = true;
     if (IS_MAINTENANCE && !isAdmin) {
       setShowAiMaintenance(true);
@@ -155,39 +153,39 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     try {
       let base64Image = '';
       
-      // Native Platform logic
       if (Capacitor.isNativePlatform()) {
         try {
-          // Robust permission handling: check, then request if not granted
+          // Explicit permission logic for iOS/Android
           const status = await CapacitorCamera.checkPermissions();
           if (status.camera !== 'granted') {
              const requestStatus = await CapacitorCamera.requestPermissions();
              if (requestStatus.camera !== 'granted') {
-                alert("Camera permission is required to scan spools.");
-                setIsAiScanning(false);
-                return;
+                throw new Error("Permission Denied: Camera access is required.");
              }
           }
 
-          // Trigger OS Camera UI
           const image = await CapacitorCamera.getPhoto({
             quality: 85,
             allowEditing: false,
             resultType: CameraResultType.Base64,
-            source: CameraSource.Prompt, // Prompt allows user to pick camera or gallery, more reliable trigger
+            source: CameraSource.Prompt, // Prompt often works better than direct Camera on some OS versions
             width: 1024
           });
-          base64Image = image.base64String || '';
+          
+          if (!image.base64String) {
+             throw new Error("Geen afbeelding ontvangen van camera.");
+          }
+          base64Image = image.base64String;
         } catch (e: any) {
           if (e.message?.toLowerCase().includes('cancelled')) {
              setIsAiScanning(false);
              return;
           }
-          console.error("Camera UI failed:", e);
-          throw e;
+          alert(`Camera Fout: ${e.message}`);
+          setIsAiScanning(false);
+          return;
         }
       } 
-      // Web / PWA Fallback
       else {
         const input = document.createElement('input');
         input.type = 'file';
@@ -237,7 +235,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           shortId: suggestion.shortId || prev.shortId
         }));
       } else {
-        throw new Error("No suggestion returned from AI");
+        throw new Error("AI retourneeerde geen data.");
       }
     } catch (error: any) {
       console.error("AI Scan failed:", error);
@@ -425,7 +423,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       </div>
 
       {showAiMaintenance && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Construction size={40} className="text-blue-600 dark:text-blue-400" />

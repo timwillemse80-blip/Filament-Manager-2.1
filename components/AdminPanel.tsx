@@ -10,6 +10,17 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
+const MIGRATION_SQL = `-- RUN DEZE CODE ALS JE EEN FOUTMELDING KRIJGT OVER MISSING COLUMNS
+-- Voeg last_login toe aan profielen
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login timestamptz DEFAULT now();
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS showcase_name text;
+
+-- Zorg dat de profiles tabel de juiste rechten heeft
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (auth.jwt()->>'email' = 'timwillemse@hotmail.com');`;
+
 const MASTER_SQL = `-- 0. PROFIELEN
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -222,6 +233,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [migrationCopied, setMigrationCopied] = useState(false);
 
   // Platform Distribution Data
   const [platformMaterialData, setPlatformMaterialData] = useState<any[]>([]);
@@ -290,16 +302,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     setTimeout(() => setSqlCopied(false), 2000);
   };
 
+  const handleCopyMigration = async () => {
+    await navigator.clipboard.writeText(MIGRATION_SQL);
+    setMigrationCopied(true);
+    setTimeout(() => setMigrationCopied(false), 2000);
+  };
+
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch profiles
+      // 1. Fetch profiles with optional column handling
+      let profilesData: any[] = [];
       const { data: profiles, error: pError } = await supabase
         .from('profiles')
         .select('id, email, is_pro, created_at, last_login')
         .order('created_at', { ascending: false });
 
-      if (pError) throw pError;
+      if (pError) {
+         // If last_login column is missing, retry without it
+         if (pError.message.includes('last_login')) {
+            const { data: fallbackProfiles, error: fError } = await supabase
+               .from('profiles')
+               .select('id, email, is_pro, created_at')
+               .order('created_at', { ascending: false });
+            
+            if (fError) throw fError;
+            profilesData = fallbackProfiles || [];
+         } else {
+            throw pError;
+         }
+      } else {
+         profilesData = profiles || [];
+      }
       
       // 2. Fetch filaments to aggregate weight/count
       const { data: allFilaments, error: fError } = await supabase
@@ -309,7 +343,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       if (fError) throw fError;
 
       // 3. Aggregate data per user
-      const mapped = (profiles || []).map((u: any) => {
+      const mapped = profilesData.map((u: any) => {
         const userFilaments = (allFilaments || []).filter(f => f.user_id === u.id);
         const totalWeight = userFilaments.reduce((sum, f) => sum + (f.weightRemaining || 0), 0);
         
@@ -598,16 +632,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                   <p className="text-slate-400 text-sm font-bold">Initialiseer of update tabellen</p>
                                </div>
                             </div>
-                            <p className="text-slate-300 text-sm leading-relaxed mb-8 flex-1">
-                               Kopieer het volledige database script om alle tabellen, beveiligingsregels (RLS) en rechten in één keer goed te zetten in de Supabase SQL Editor.
-                            </p>
-                            <button 
-                               onClick={handleCopySql}
-                               className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg transform active:scale-[0.98] ${sqlCopied ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'}`}
-                            >
-                               {sqlCopied ? <Check size={20} /> : <Copy size={20} />}
-                               {sqlCopied ? 'SQL Gekopieerd!' : 'Installatie SQL Kopiëren'}
-                            </button>
+                            <div className="flex flex-col gap-3 mb-8">
+                                <button 
+                                    onClick={handleCopyMigration}
+                                    className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg transform active:scale-[0.98] ${migrationCopied ? 'bg-amber-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white shadow-slate-900/20'}`}
+                                >
+                                    {migrationCopied ? <Check size={20} /> : <Zap size={20} />}
+                                    {migrationCopied ? 'Migration Gekopieerd!' : 'Update Kolommen (Migration)'}
+                                </button>
+                                <button 
+                                    onClick={handleCopySql}
+                                    className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-lg transform active:scale-[0.98] ${sqlCopied ? 'bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'}`}
+                                >
+                                    {sqlCopied ? <Check size={20} /> : <Copy size={20} />}
+                                    {sqlCopied ? 'Full SQL Gekopieerd!' : 'Installatie SQL Kopiëren'}
+                                </button>
+                            </div>
                          </div>
                       </div>
 
@@ -728,7 +768,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     )}
                                  </td>
                                  <td className="p-6 text-center">
-                                    <div className="font-bold dark:text-white">{(u.total_weight / 1000).toFixed(1)} kg</div>
+                                    <div className="font-bold dark:text-white">{((u.total_weight || 0) / 1000).toFixed(1)} kg</div>
                                     <div className="text-[10px] text-slate-400 uppercase font-black">{u.filament_count} spools</div>
                                  </td>
                                  <td className="p-6 text-center">
