@@ -263,11 +263,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
               
               <div className="flex flex-col gap-1 text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex justify-between">
-                      <span className="flex items-center gap-1"><Disc size={10}/> Filament</span>
+                      <span className="flex items-center gap-1"><Disc size={10}/> {t('filament')}</span>
                       <span className="font-mono text-slate-700 dark:text-slate-300">€{filamentValue.toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between">
-                      <span className="flex items-center gap-1"><Box size={10}/> Materialen</span>
+                      <span className="flex items-center gap-1"><Box size={10}/> {t('materials')}</span>
                       <span className="font-mono text-slate-700 dark:text-slate-300">€{materialValue.toFixed(0)}</span>
                   </div>
               </div>

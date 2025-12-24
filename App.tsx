@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
 import { Inventory } from './components/Inventory';
@@ -22,7 +23,7 @@ import { ProModal } from './components/ProModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { NotificationPage } from './components/NotificationPage';
 import { PrintPreview } from './components/PrintPreview';
-import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronLeft, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
+import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronLeft, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -33,7 +34,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.29"; 
+const APP_VERSION = "2.2.0"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -211,7 +212,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 };
 
 const AppContent = () => {
-  const { t, tColor } = useLanguage();
+  const { t, tColor, language } = useLanguage();
   const [session, setSession] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -259,6 +260,7 @@ const AppContent = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false); 
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
+  const [showUpdateToast, setShowUpdateToast] = useState(false);
   
   // Lifting state for logbook details to catch it with back button
   const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
@@ -398,11 +400,21 @@ const AppContent = () => {
         const res = await fetch('/version.json');
         const data = await res.json();
         if (data.version && data.version !== APP_VERSION) {
+          // Detect translated notes based on current app language
+          const translatedNotes = typeof data.releaseNotes === 'object' 
+            ? (data.releaseNotes[language] || data.releaseNotes['en'] || "")
+            : data.releaseNotes;
+
           setUpdateInfo({ 
             version: data.version, 
-            notes: data.releaseNotes,
+            notes: translatedNotes,
             downloadUrl: data.downloadUrl
           });
+          
+          if (settings.enableUpdateNotifications) {
+            setShowUpdateToast(true);
+            setTimeout(() => setShowUpdateToast(false), 5000);
+          }
         }
       } catch (e) {
         console.warn("Update check failed", e);
@@ -452,7 +464,7 @@ const AppContent = () => {
        }
     });
 
-  }, [session]);
+  }, [session, settings.enableUpdateNotifications, language]);
 
   const handleSpoolDeepLink = (shortId: string) => {
      const spool = filaments.find(f => f.shortId?.toLowerCase() === shortId.toLowerCase());
@@ -815,9 +827,32 @@ const AppContent = () => {
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
 
+      {/* UPDATE TOAST POPUP */}
+      {showUpdateToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[400] w-[90%] max-w-sm animate-bounce-in">
+           <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-blue-400">
+              <div className="flex items-center gap-3">
+                 <div className="bg-white/20 p-2 rounded-lg">
+                    <Sparkles size={20} />
+                 </div>
+                 <div>
+                    <h4 className="font-bold text-sm">Update Beschikbaar!</h4>
+                    <p className="text-[10px] opacity-90">Versie {updateInfo?.version} staat klaar.</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => { setShowUpdateToast(false); setView('notifications'); }}
+                className="bg-white text-blue-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase flex items-center gap-1"
+              >
+                 Bekijk <ChevronRight size={12}/>
+              </button>
+           </div>
+        </div>
+      )}
+
       {showExitConfirm && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
+          <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />
             </div>

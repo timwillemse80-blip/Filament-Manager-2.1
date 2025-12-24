@@ -1,5 +1,12 @@
+
 {
-  "version": "2.1.25",
+  "version": "2.2.1",
   "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases",
-  "releaseNotes": "Download link hersteld naar de juiste GitHub repository (timwillemse80-blip). Dit lost de 404 melding op."
+  "releaseNotes": {
+    "nl": "Logboek Update: Nieuwe 'Waste' kolom voor nauwkeurig voorraadbeheer (Poop/Flush/Tower). Verbeterde printer-identificatie met merk/model badges in de historie.",
+    "en": "Logbook Update: New 'Waste' column for accurate inventory tracking (Poop/Flush/Tower). Improved printer identification with brand/model badges in history.",
+    "de": "Logbuch-Update: Neue 'Abfall'-Spalte für genaue Bestandsverfolgung (Poop/Flush/Tower). Verbesserte Druckeridentifikation mit Marken-/Modell-Badges im Verlauf.",
+    "fr": "Mise à jour du journal : Nouvelle colonne 'Déchets' pour un suivi précis des stocks. Identification améliorée des imprimantes avec des badges de marque/modèle.",
+    "es": "Actualización del registro: Nueva columna 'Residuos' para un seguimiento preciso del inventario. Identificación de impresora mejorada con insignias de marca/modelo."
+  }
 }
