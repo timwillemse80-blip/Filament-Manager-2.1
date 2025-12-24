@@ -35,7 +35,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.29"; 
+const APP_VERSION = "2.1.30"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -262,6 +262,9 @@ const AppContent = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false); 
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   
+  const [showBackToast, setShowBackToast] = useState(false);
+  const toastTimeoutRef = useRef<number | null>(null);
+
   // Lifting state for logbook details to catch it with back button
   const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
 
@@ -286,6 +289,7 @@ const AppContent = () => {
   const showExitConfirmRef = useRef(showExitConfirm);
   const activeGroupKeyRef = useRef(activeGroupKey);
   const viewingJobRef = useRef(viewingJob);
+  const lastBackPressRef = useRef<number>(0);
 
   useEffect(() => {
     viewRef.current = view;
@@ -364,12 +368,26 @@ const AppContent = () => {
       // 6. Navigate back to Dashboard if elsewhere
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
+        // Reset exit press timer when navigating back home
+        lastBackPressRef.current = 0;
         return;
       }
 
-      // 7. If already on Dashboard and everything is closed: Show Exit Popup
+      // 7. If already on Dashboard and everything is closed: Implement Double-Press Timeout
       if (viewRef.current === 'dashboard') {
-        setShowExitConfirm(true);
+        const now = Date.now();
+        const BACK_PRESS_TIMEOUT = 2000;
+        
+        if (now - lastBackPressRef.current < BACK_PRESS_TIMEOUT) {
+            setShowExitConfirm(true);
+            setShowBackToast(false);
+            if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+        } else {
+            lastBackPressRef.current = now;
+            setShowBackToast(true);
+            if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = window.setTimeout(() => setShowBackToast(false), BACK_PRESS_TIMEOUT);
+        }
       }
     });
 
@@ -823,27 +841,37 @@ const AppContent = () => {
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
 
+      {/* Back Button Toast Notification */}
+      {showBackToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] animate-fade-in pointer-events-none">
+           <div className="bg-slate-800/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl border border-slate-700/50 flex items-center gap-2">
+              <ArrowLeft size={14} />
+              Druk nogmaals om af te sluiten
+           </div>
+        </div>
+      )}
+
       {showExitConfirm && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Exit App?</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Are you sure you want to close the Filament Manager?</p>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">App afsluiten?</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Weet je zeker dat je de Filament Manager wilt sluiten?</p>
             
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => setShowExitConfirm(false)}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <ArrowLeft size={20} /> Back to App
+                <ArrowLeft size={20} /> Terug naar App
               </button>
               <button 
                 onClick={() => CapacitorApp.exitApp()}
                 className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
               >
-                Exit
+                Afsluiten
               </button>
             </div>
           </div>
