@@ -10,16 +10,19 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-const MIGRATION_SQL = `-- RUN DEZE CODE ALS JE EEN FOUTMELDING KRIJGT OVER MISSING COLUMNS
--- Voeg last_login toe aan profielen
+const MIGRATION_SQL = `-- RUN DEZE CODE IN DE SQL EDITOR ALS KOLOMMEN MISSEN
+-- Voeg ontbrekende kolommen toe aan profiles
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_login timestamptz DEFAULT now();
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS showcase_name text;
 
--- Zorg dat de profiles tabel de juiste rechten heeft
+-- Zorg dat de profiles tabel de juiste rechten heeft voor de beheerder
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
-CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (auth.jwt()->>'email' = 'timwillemse@hotmail.com');`;
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (auth.jwt()->>'email' = 'timwillemse@hotmail.com');
+
+-- Forceer refresh van schema cache
+NOTIFY pgrst, 'reload schema';`;
 
 const MASTER_SQL = `-- 0. PROFIELEN
 create table if not exists public.profiles (
@@ -234,6 +237,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [newMaterial, setNewMaterial] = useState('');
   const [sqlCopied, setSqlCopied] = useState(false);
   const [migrationCopied, setMigrationCopied] = useState(false);
+  const [needsMigration, setNeedsMigration] = useState(false);
 
   // Platform Distribution Data
   const [platformMaterialData, setPlatformMaterialData] = useState<any[]>([]);
@@ -310,8 +314,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   const loadUsers = async () => {
     setIsLoading(true);
+    setNeedsMigration(false);
     try {
-      // 1. Fetch profiles with optional column handling
+      // 1. Fetch profiles
       let profilesData: any[] = [];
       const { data: profiles, error: pError } = await supabase
         .from('profiles')
@@ -319,8 +324,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         .order('created_at', { ascending: false });
 
       if (pError) {
-         // If last_login column is missing, retry without it
          if (pError.message.includes('last_login')) {
+            console.warn("last_login column missing, attempting fallback.");
+            setNeedsMigration(true);
             const { data: fallbackProfiles, error: fError } = await supabase
                .from('profiles')
                .select('id, email, is_pro, created_at')
@@ -335,14 +341,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
          profilesData = profiles || [];
       }
       
-      // 2. Fetch filaments to aggregate weight/count
+      // 2. Fetch filaments to aggregate
       const { data: allFilaments, error: fError } = await supabase
         .from('filaments')
         .select('user_id, weightRemaining');
 
       if (fError) throw fError;
 
-      // 3. Aggregate data per user
+      // 3. Map everything together
       const mapped = profilesData.map((u: any) => {
         const userFilaments = (allFilaments || []).filter(f => f.user_id === u.id);
         const totalWeight = userFilaments.reduce((sum, f) => sum + (f.weightRemaining || 0), 0);
@@ -350,7 +356,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         return {
           ...u,
           filament_count: userFilaments.length,
-          total_weight: totalWeight
+          total_weight: totalWeight,
+          last_login: u.last_login || null
         };
       });
 
@@ -719,74 +726,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
              )}
 
              {activeTab === 'users' && (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
-                         <Users size={24} className="text-blue-500"/> Gebruikers ({users.length})
-                      </h3>
-                      <button 
-                         onClick={loadUsers}
-                         disabled={isLoading}
-                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
-                      >
-                         <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                         <span className="hidden sm:inline">Vernieuwen</span>
-                      </button>
-                   </div>
-                   <div className="overflow-x-auto">
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
-                           <tr>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">E-mailadres / ID</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('totalFilament')}</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('lastLogin')}</th>
-                              <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Registratie</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                           {users.map(u => (
-                              <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                 <td className="p-6">
-                                    <div className="font-bold text-base dark:text-white">{u.email}</div>
-                                    <div className="text-[10px] text-slate-400 font-mono mt-1">{u.id}</div>
-                                 </td>
-                                 <td className="p-6 text-center">
-                                    {u.email?.toLowerCase() === 'timwillemse@hotmail.com' ? (
-                                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm mx-auto">
-                                          <Shield size={14} fill="currentColor" /> BEHEERDER
-                                       </span>
-                                    ) : (
-                                       <button 
-                                          onClick={() => toggleProStatus(u.id, u.is_pro)}
-                                          disabled={updatingUserId === u.id}
-                                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'}`}
-                                       >
-                                          {updatingUserId === u.id ? <Loader2 size={14} className="animate-spin" /> : (u.is_pro ? <Crown size={14} fill="currentColor" /> : <Plus size={14} />)}
-                                          {u.is_pro ? 'PRO STATUS' : 'MAAK PRO'}
-                                       </button>
-                                    )}
-                                 </td>
-                                 <td className="p-6 text-center">
-                                    <div className="font-bold dark:text-white">{((u.total_weight || 0) / 1000).toFixed(1)} kg</div>
-                                    <div className="text-[10px] text-slate-400 uppercase font-black">{u.filament_count} spools</div>
-                                 </td>
-                                 <td className="p-6 text-center">
-                                    <div className="text-sm dark:text-white">{u.last_login ? new Date(u.last_login).toLocaleDateString() : '---'}</div>
-                                    <div className="text-[10px] text-slate-400">{u.last_login ? new Date(u.last_login).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</div>
-                                 </td>
-                                 <td className="p-6 text-center">
-                                    <span className="text-xs text-slate-500">{new Date(u.created_at).toLocaleDateString()}</span>
-                                 </td>
+                <div className="space-y-4">
+                   {needsMigration && (
+                       <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl flex items-center justify-between animate-fade-in">
+                          <div className="flex items-center gap-4">
+                             <div className="bg-amber-100 dark:bg-amber-800 p-2 rounded-xl text-amber-600 dark:text-amber-400">
+                                <AlertTriangle size={24} />
+                             </div>
+                             <div>
+                                <h4 className="font-bold text-amber-800 dark:text-amber-200">Data Upgrade Vereist</h4>
+                                <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">De 'last_login' kolom ontbreekt in de database. De lijst is beperkt.</p>
+                             </div>
+                          </div>
+                          <button onClick={() => setActiveTab('sql')} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold text-xs shadow-md">Fix Nu</button>
+                       </div>
+                   )}
+
+                   <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                         <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                            <Users size={24} className="text-blue-500"/> Gebruikers ({users.length})
+                         </h3>
+                         <button 
+                            onClick={loadUsers}
+                            disabled={isLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+                         >
+                            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                            <span className="hidden sm:inline">Vernieuwen</span>
+                         </button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                           <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-700">
+                              <tr>
+                                 <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest">Gebruiker</th>
+                                 <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
+                                 <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('totalFilament')}</th>
+                                 <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">{t('lastLogin')}</th>
+                                 <th className="p-6 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Registratie</th>
                               </tr>
-                           ))}
-                        </tbody>
-                     </table>
-                     {users.length === 0 && !isLoading && (
-                        <div className="p-12 text-center text-slate-400 font-bold">
-                           Geen gebruikers gevonden.
-                        </div>
-                     )}
+                           </thead>
+                           <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                              {users.map(u => (
+                                 <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                    <td className="p-6">
+                                       <div className="font-bold text-base dark:text-white truncate max-w-[200px]">{u.email || u.id.substring(0,8)}</div>
+                                       <div className="text-[10px] text-slate-400 font-mono mt-1">{u.id}</div>
+                                    </td>
+                                    <td className="p-6 text-center">
+                                       {u.email?.toLowerCase() === 'timwillemse@hotmail.com' ? (
+                                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm mx-auto">
+                                             <Shield size={14} fill="currentColor" /> BEHEERDER
+                                          </span>
+                                       ) : (
+                                          <button 
+                                             onClick={() => toggleProStatus(u.id, u.is_pro)}
+                                             disabled={updatingUserId === u.id}
+                                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'}`}
+                                          >
+                                             {updatingUserId === u.id ? <Loader2 size={14} className="animate-spin" /> : (u.is_pro ? <Crown size={14} fill="currentColor" /> : <Plus size={14} />)}
+                                             {u.is_pro ? 'PRO STATUS' : 'MAAK PRO'}
+                                          </button>
+                                       )}
+                                    </td>
+                                    <td className="p-6 text-center">
+                                       <div className="font-bold dark:text-white">{((u.total_weight || 0) / 1000).toFixed(1)} kg</div>
+                                       <div className="text-[10px] text-slate-400 uppercase font-black">{u.filament_count} spools</div>
+                                    </td>
+                                    <td className="p-6 text-center">
+                                       {u.last_login ? (
+                                           <>
+                                             <div className="text-sm dark:text-white font-bold">{new Date(u.last_login).toLocaleDateString()}</div>
+                                             <div className="text-[10px] text-slate-400">{new Date(u.last_login).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                           </>
+                                       ) : (
+                                           <div className="text-xs text-slate-400 italic">No data</div>
+                                       )}
+                                    </td>
+                                    <td className="p-6 text-center">
+                                       <span className="text-xs text-slate-500">{new Date(u.created_at).toLocaleDateString()}</span>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                        {users.length === 0 && !isLoading && (
+                           <div className="p-12 text-center text-slate-400 font-bold">
+                              Geen gebruikers gevonden.
+                           </div>
+                        )}
+                      </div>
                    </div>
                 </div>
              )}

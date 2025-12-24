@@ -265,7 +265,6 @@ const AppContent = () => {
   const [showBackToast, setShowBackToast] = useState(false);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  // Lifting state for logbook details to catch it with back button
   const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
 
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
@@ -277,7 +276,6 @@ const AppContent = () => {
     localStorage.setItem('filament_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Refs for consistent state access in the backbutton closure
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -305,18 +303,15 @@ const AppContent = () => {
     viewingJobRef.current = viewingJob;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
-  // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
-      // 0. If Exit Confirmation is open, close it first
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
       }
 
-      // 1. Close heavy UI overlays
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -334,7 +329,6 @@ const AppContent = () => {
         return;
       }
 
-      // 2. Close forms
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
@@ -347,33 +341,27 @@ const AppContent = () => {
         return;
       }
 
-      // 3. Close detail windows (e.g. logbook)
       if (viewingJobRef.current) {
         setViewingJob(null);
         return;
       }
 
-      // 4. Close mobile sidebar
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
 
-      // 5. Exit sub-inventory view (groups)
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
 
-      // 6. Navigate back to Dashboard if elsewhere
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
-        // Reset exit press timer when navigating back home
         lastBackPressRef.current = 0;
         return;
       }
 
-      // 7. If already on Dashboard and everything is closed: Implement Double-Press Timeout
       if (viewRef.current === 'dashboard') {
         const now = Date.now();
         const BACK_PRESS_TIMEOUT = 2000;
@@ -474,17 +462,19 @@ const AppContent = () => {
 
   }, [session]);
 
-  // Track Last Login
+  // Track Last Login (Fixed: use upsert to ensure row exists)
   useEffect(() => {
     if (session?.user?.id) {
       const updateLastLogin = async () => {
         try {
             await supabase
               .from('profiles')
-              .update({ last_login: new Date().toISOString() })
-              .eq('id', session.user.id);
+              .upsert({ 
+                id: session.user.id, 
+                email: session.user.email,
+                last_login: new Date().toISOString() 
+              }, { onConflict: 'id' });
         } catch (e) {
-            // Silently fail if column doesn't exist yet
             console.warn("Could not update last login", e);
         }
       };
@@ -860,7 +850,6 @@ const AppContent = () => {
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
 
-      {/* Back Button Toast Notification */}
       {showBackToast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] animate-fade-in pointer-events-none">
            <div className="bg-slate-800/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl border border-slate-700/50 flex items-center gap-2">
@@ -871,7 +860,7 @@ const AppContent = () => {
       )}
 
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />
