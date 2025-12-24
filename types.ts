@@ -1,4 +1,3 @@
-
 export enum FilamentMaterial {
   PLA = 'PLA',
   PETG = 'PETG',
@@ -102,7 +101,6 @@ export interface AppSettings {
   showcasePublicName?: string; // e.g. "Tim's 3D Shop"
 }
 
-// Added shortId property to resolve type errors in components/FilamentForm.tsx
 export interface AiSuggestion {
   brand?: string;
   material?: string;
@@ -110,7 +108,6 @@ export interface AiSuggestion {
   colorHex?: string;
   tempNozzle?: number;
   tempBed?: number;
-  shortId?: string;
 }
 
 export interface CostBreakdown {

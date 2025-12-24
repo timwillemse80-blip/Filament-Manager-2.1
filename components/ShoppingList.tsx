@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Filament, OtherMaterial } from '../types';
 import { ShoppingCart, ExternalLink, Search, Box, Tag, Sparkles, ArrowRight } from 'lucide-react';

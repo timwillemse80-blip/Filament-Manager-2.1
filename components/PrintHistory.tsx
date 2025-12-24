@@ -3,21 +3,8 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, PrintJob, Printer, AppSettings, CostBreakdown, OtherMaterial } from '../types';
 import { parseGcodeFile, GCodeStats } from '../services/gcodeParser';
-import { Clock, Scale, Calendar, FileCode, CheckCircle2, XCircle, Plus, ChevronRight, ArrowRight, Euro, AlertCircle, Save, Trash2, Search, X, RefreshCw, Printer as PrinterIcon, FileText, Zap, Hammer, Coins, Disc, Wrench, Percent, Tag, ArrowUpFromLine, Crown, Box, Package, Ruler, Sparkles, Info, AlertTriangle, Pipette, Trash } from 'lucide-react';
+import { Clock, Scale, Calendar, FileCode, CheckCircle2, XCircle, Plus, ChevronRight, Euro, AlertCircle, Save, Trash2, Search, X, RefreshCw, Printer as PrinterIcon, FileText, Zap, Hammer, Coins, Disc, Wrench, Percent, Tag, ArrowUpFromLine, Crown, Box, Package, Ruler, Sparkles, Info } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-
-// Helper voor kleurgelijkheid
-const getRgb = (hex: string) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-};
-
-const getColorDistance = (hex1: string, hex2: string) => {
-  const rgb1 = getRgb(hex1);
-  const rgb2 = getRgb(hex2);
-  if (!rgb1 || !rgb2) return 1000;
-  return Math.sqrt(Math.pow(rgb1.r - rgb2.r, 2) + Math.pow(rgb1.g - rgb2.g, 2) + Math.pow(rgb1.b - rgb2.b, 2));
-};
 
 interface PrintHistoryProps {
   filaments: Filament[];
@@ -33,305 +20,959 @@ interface PrintHistoryProps {
   setViewingJob: (job: PrintJob | null) => void;
 }
 
-const FilamentPicker = ({ filaments, selectedId, onChange }: { filaments: Filament[], selectedId: string, onChange: (id: string) => void }) => {
+// --- Color Matching Utilities ---
+const getRgb = (hex: string) => {
+  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+  hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+};
+
+const getColorDistance = (hex1: string, hex2: string) => {
+  const rgb1 = getRgb(hex1);
+  const rgb2 = getRgb(hex2);
+  if (!rgb1 || !rgb2) return 1000;
+  return Math.sqrt(
+    Math.pow(rgb1.r - rgb2.r, 2) +
+    Math.pow(rgb1.g - rgb2.g, 2) +
+    Math.pow(rgb1.b - rgb2.b, 2)
+  );
+};
+
+interface FilamentPickerProps {
+  filaments: Filament[];
+  selectedId: string;
+  onChange: (id: string) => void;
+}
+
+const FilamentPicker: React.FC<FilamentPickerProps> = ({ filaments, selectedId, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const { t, tColor } = useLanguage();
+
   const selectedFilament = filaments.find(f => f.id === selectedId);
-  const filtered = filaments.filter(f => !searchTerm || `${f.brand} ${f.colorName} ${f.shortId}`.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const filteredFilaments = useMemo(() => {
+    if (!searchTerm) return filaments;
+    const lower = searchTerm.toLowerCase();
+    return filaments.filter(f => 
+      (f.shortId && f.shortId.toLowerCase().includes(lower)) ||
+      f.brand.toLowerCase().includes(lower) ||
+      f.colorName.toLowerCase().includes(lower) ||
+      f.material.toLowerCase().includes(lower)
+    );
+  }, [filaments, searchTerm]);
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSelect = (id: string) => {
+    onChange(id);
+    setIsOpen(false);
+    setSearchTerm('');
+  };
 
   if (isOpen) {
     return (
-      <div className="w-full bg-slate-100 dark:bg-slate-800 border border-blue-500 rounded-xl shadow-sm animate-fade-in z-20 relative">
+      <div className="w-full bg-slate-100 dark:bg-slate-800 border border-blue-500 rounded-lg shadow-sm animate-fade-in z-20 relative">
         <div className="flex items-center p-2 border-b border-slate-200 dark:border-slate-700 gap-2">
            <Search size={16} className="text-slate-400" />
-           <input autoFocus type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1 bg-transparent outline-none text-sm dark:text-white" placeholder={t('searchPlaceholder')} />
-           <button onClick={() => setIsOpen(false)} className="text-slate-400"><X size={16} /></button>
+           <input 
+             ref={inputRef}
+             type="text" 
+             value={searchTerm}
+             onChange={e => setSearchTerm(e.target.value)}
+             className="flex-1 bg-transparent outline-none text-sm dark:text-white"
+             placeholder={t('searchPlaceholder')}
+           />
+           <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+             <X size={16} />
+           </button>
         </div>
         <div className="max-h-48 overflow-y-auto">
-           {filtered.map(f => (
-             <div key={f.id} onClick={() => { onChange(f.id); setIsOpen(false); }} className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 flex items-center justify-between">
-               <div className="flex flex-col"><span className="text-sm font-bold dark:text-white">{f.brand} {tColor(f.colorName)}</span><span className="text-[10px] text-slate-500">{f.material} • {f.weightRemaining}g</span></div>
-               <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: f.colorHex }} />
-             </div>
-           ))}
+           {filteredFilaments.length === 0 ? (
+             <div className="p-3 text-xs text-slate-500 text-center">{t('none')}</div>
+           ) : (
+             filteredFilaments.map(f => (
+               <div 
+                 key={f.id} 
+                 onClick={() => handleSelect(f.id)}
+                 className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0 flex items-center justify-between group"
+               >
+                 <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                       {f.shortId && <span className="text-blue-600 dark:text-blue-400 font-mono mr-1">[#{f.shortId}]</span>}
+                       {f.brand} <span className="font-normal">{tColor(f.colorName)}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500">{f.material} • {f.weightRemaining}g</span>
+                 </div>
+                 {f.colorHex && (
+                   <div className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 shadow-sm" style={{ backgroundColor: f.colorHex }} />
+                 )}
+               </div>
+             ))
+           )}
         </div>
       </div>
     );
   }
+
   return (
-    <button onClick={() => setIsOpen(true)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm dark:text-white text-left flex items-center justify-between transition-all hover:border-blue-400">
+    <button 
+      onClick={handleOpen}
+      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm dark:text-white text-left flex items-center justify-between hover:border-slate-400 transition-colors"
+    >
       <span className="truncate flex items-center gap-2">
-        {selectedFilament ? <><div className="w-3 h-3 rounded-full border shadow-sm" style={{ backgroundColor: selectedFilament.colorHex }} /><span>{selectedFilament.brand} {tColor(selectedFilament.colorName)}</span></> : <span className="text-slate-400 italic">-- {t('selectBrand')} --</span>}
+        {selectedFilament ? (
+           <>
+             {selectedFilament.colorHex && <div className="w-3 h-3 rounded-full border border-slate-200" style={{ backgroundColor: selectedFilament.colorHex }} />}
+             <span className="font-bold">
+                {selectedFilament.shortId && <span className="font-mono text-slate-500 mr-2">#{selectedFilament.shortId}</span>}
+                {selectedFilament.brand} {tColor(selectedFilament.colorName)}
+             </span>
+           </>
+        ) : (
+           <span className="text-slate-400 italic">-- {t('selectBrand')} --</span>
+        )}
       </span>
-      <ChevronRight size={14} className="rotate-90 text-slate-400" />
+      <ChevronRight size={14} className="rotate-90 text-slate-400 flex-shrink-0"/>
     </button>
   );
 };
 
+const MaterialPicker = ({ materials, selectedId, onChange }: { materials: OtherMaterial[], selectedId: string, onChange: (id: string) => void }) => {
+   const { t } = useLanguage();
+   const [isOpen, setIsOpen] = useState(false);
+   const [searchTerm, setSearchTerm] = useState('');
+   
+   const selected = materials.find(m => m.id === selectedId);
+   const filtered = materials.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+   if (isOpen) {
+      return (
+         <div className="w-full bg-slate-100 dark:bg-slate-800 border border-blue-500 rounded-lg shadow-sm animate-fade-in z-20 relative">
+            <div className="flex items-center p-2 border-b border-slate-200 dark:border-slate-700 gap-2">
+               <Search size={16} className="text-slate-400" />
+               <input 
+                  autoFocus
+                  type="text" 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-sm dark:text-white"
+                  placeholder={t('searchMaterial')}
+               />
+               <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={16} /></button>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+               {filtered.length === 0 ? <div className="p-3 text-xs text-slate-500 text-center">{t('none')}</div> : filtered.map(m => (
+                  <div key={m.id} onClick={() => { onChange(m.id); setIsOpen(false); }} className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0">
+                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{m.name}</div>
+                     <div className="text-[10px] text-slate-500">{m.category} • {m.quantity} {m.unit} op voorraad</div>
+                  </div>
+               ))}
+            </div>
+         </div>
+      );
+   }
+
+   return (
+      <button onClick={() => setIsOpen(true)} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white text-left flex items-center justify-between hover:border-slate-400 transition-colors">
+         <span className="truncate">{selected ? selected.name : <span className="text-slate-400 italic">-- {t('selectMaterial')} --</span>}</span>
+         <ChevronRight size={14} className="rotate-90 text-slate-400 flex-shrink-0"/>
+      </button>
+   );
+};
+
+const parseTimeToHours = (timeStr: string): number => {
+   if (!timeStr) return 0;
+   let totalHours = 0;
+   const hMatch = timeStr.match(/(\d+)h/);
+   const mMatch = timeStr.match(/(\d+)m/);
+   if (hMatch) totalHours += parseInt(hMatch[1]);
+   if (mMatch) totalHours += parseInt(mMatch[1]) / 60;
+   return totalHours;
+};
+
+const getCompatibleUnits = (stockUnit: string) => {
+    switch (stockUnit.toLowerCase()) {
+        case 'meter': return ['m', 'cm', 'mm'];
+        case 'liter': return ['l', 'ml', 'cl'];
+        case 'gram': return ['g', 'kg'];
+        default: return [];
+    }
+};
+
+const getConversionFactor = (fromUnit: string, toUnit: string) => {
+    if (toUnit === 'meter') {
+        if (fromUnit === 'cm') return 0.01;
+        if (fromUnit === 'mm') return 0.001;
+        return 1;
+    }
+    if (toUnit === 'liter') {
+        if (fromUnit === 'ml') return 0.001;
+        if (fromUnit === 'cl') return 0.01;
+        return 1;
+    }
+    if (toUnit === 'gram') {
+        if (fromUnit === 'kg') return 1000;
+        return 1;
+    }
+    return 1;
+};
+
 export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials, history, printers, onSaveJob, onDeleteJob, settings, isAdmin, onUnlockPro, viewingJob, setViewingJob }) => {
   const [showModal, setShowModal] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [parsing, setParsing] = useState(false);
-  const { t, tColor } = useLanguage();
+  const { t } = useLanguage();
   
   const [jobName, setJobName] = useState('');
   const [printTime, setPrintTime] = useState('');
   const [status, setStatus] = useState<'success' | 'fail'>('success');
+  const [overrideTotalWeight, setOverrideTotalWeight] = useState<number | ''>('');
+  const [assemblyTime, setAssemblyTime] = useState<number>(0); 
+  const [isAssemblyRequired, setIsAssemblyRequired] = useState(false);
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>('');
-  const [materialSlots, setMaterialSlots] = useState<any[]>([]);
-  const [rawGcodeStats, setRawGcodeStats] = useState<GCodeStats | null>(null);
 
-  // Smart Matching Logic with Unit/Slot separation
-  const suggestFilament = (type: string, colorHex?: string, printerId?: string) => {
-    const printer = printers.find(p => p.id === printerId);
-    const THRESHOLD = 65; 
+  const [materialSlots, setMaterialSlots] = useState<{
+     detectedType: string;
+     detectedColor?: string;
+     weight: number; // model weight
+     wasteWeight: number; // poop / tower weight
+     assignedFilamentId: string;
+     matchedSlotNumber?: number; // Physical slot in the AMS
+     recommendationSource?: 'ams' | 'stock';
+  }[]>([{ detectedType: 'PLA', weight: 0, wasteWeight: 0, assignedFilamentId: '' }]);
 
-    if (printer && printer.hasAMS) {
-      const amsMatches = printer.amsSlots
-        .map((slot, idx) => {
-           const filament = filaments.find(f => f.id === slot.filamentId);
-           const unitNumber = Math.floor(idx / 4) + 1;
-           const slotInUnit = (idx % 4) + 1;
-           return { filament, unitNumber, slotInUnit };
-        })
-        .filter(m => m.filament && m.filament.material.toLowerCase().includes(type.toLowerCase()));
-      
-      if (colorHex && amsMatches.length > 0) {
-        const bestAms = amsMatches.sort((a, b) => getColorDistance(colorHex, a.filament!.colorHex) - getColorDistance(colorHex, b.filament!.colorHex))[0];
-        if (bestAms && getColorDistance(colorHex, bestAms.filament!.colorHex) < THRESHOLD) {
-           return { id: bestAms.filament!.id, source: 'ams', unit: bestAms.unitNumber, slot: bestAms.slotInUnit };
+  const [otherMaterialSlots, setOtherMaterialSlots] = useState<{
+     tempId: string;
+     materialId: string;
+     quantity: number;
+     inputUnit?: string;
+  }[]>([]);
+
+  // Recommendation Logic Function
+  const findBestFilament = (type: string, colorHex?: string, printer?: Printer): { id: string, source: 'ams' | 'stock', slotNumber?: number } | null => {
+    const COLOR_THRESHOLD = 60;
+    
+    const scoreFilament = (f: Filament) => {
+        if (!f.material.toLowerCase().includes(type.toLowerCase())) return -1;
+        let score = 100;
+        if (colorHex && f.colorHex) {
+            const dist = getColorDistance(colorHex, f.colorHex);
+            score -= (dist / 5);
         }
-      } else if (amsMatches.length > 0) {
-        return { id: amsMatches[0].filament!.id, source: 'ams', unit: amsMatches[0].unitNumber, slot: amsMatches[0].slotInUnit };
-      }
+        return score;
+    };
+
+    // 1. Try physical CFS/AMS Slots of the printer
+    if (printer && printer.hasAMS) {
+        const amsOptions = printer.amsSlots
+            .map(slot => {
+                const f = filaments.find(fil => fil.id === slot.filamentId);
+                return f ? { f, slotNumber: slot.slotNumber, score: scoreFilament(f) } : null;
+            })
+            .filter(o => o !== null && o.score > 0)
+            .sort((a, b) => b!.score - a!.score);
+
+        if (amsOptions.length > 0) {
+            return { id: amsOptions[0]!.f.id, source: 'ams', slotNumber: amsOptions[0]!.slotNumber };
+        }
     }
 
-    const stockMatches = filaments.filter(f => f.material.toLowerCase().includes(type.toLowerCase()));
-    if (colorHex && stockMatches.length > 0) {
-      const bestStock = stockMatches.sort((a, b) => getColorDistance(colorHex, a.colorHex) - getColorDistance(colorHex, b.colorHex))[0];
-      return { id: bestStock.id, source: 'stock' };
-    } else if (stockMatches.length > 0) {
-      return { id: stockMatches[0].id, source: 'stock' };
+    // 2. Try General Stock
+    const stockOptions = filaments
+        .map(f => ({ f, score: scoreFilament(f) }))
+        .filter(o => o.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+    if (stockOptions.length > 0) {
+        return { id: stockOptions[0].f.id, source: 'stock' };
     }
 
     return null;
   };
 
+  // Re-run matching when printer changes or slots change
   useEffect(() => {
-    if (rawGcodeStats) {
-       const matchedSlots = rawGcodeStats.materials.map((m) => {
-         const suggestion = suggestFilament(m.type, m.color, selectedPrinterId);
-         return {
-           detectedType: m.type,
-           detectedColor: m.color,
-           weight: m.weight,
-           waste: 0, // Nieuwe waste kolom, standaard 0
-           assignedFilamentId: suggestion?.id || '',
-           matchSource: suggestion?.source,
-           matchUnit: suggestion?.unit,
-           matchSlot: suggestion?.slot
-         };
-       });
-       setMaterialSlots(matchedSlots);
+    if (selectedPrinterId) {
+        const printer = printers.find(p => p.id === selectedPrinterId);
+        const updatedSlots = materialSlots.map(slot => {
+            if (slot.detectedType.includes('Afval') || slot.detectedType.includes('Flush')) return slot;
+            const match = findBestFilament(slot.detectedType, slot.detectedColor, printer);
+            if (match) {
+                return { ...slot, assignedFilamentId: match.id, recommendationSource: match.source, matchedSlotNumber: match.slotNumber };
+            }
+            return slot;
+        });
+        if (JSON.stringify(updatedSlots) !== JSON.stringify(materialSlots)) {
+            setMaterialSlots(updatedSlots);
+        }
     }
-  }, [selectedPrinterId, rawGcodeStats]);
+  }, [selectedPrinterId]);
+
+  useEffect(() => {
+      if (overrideTotalWeight === '' || overrideTotalWeight <= 0) return;
+      const currentSum = materialSlots.filter(s => s.detectedType !== 'Rest / Afval / Flush').reduce((acc, curr) => acc + curr.weight + curr.wasteWeight, 0);
+      const diff = Number(overrideTotalWeight) - currentSum;
+      
+      if (diff > 0.5) {
+          const hasWasteSlot = materialSlots.some(s => s.detectedType === 'Rest / Afval / Flush');
+          if (!hasWasteSlot) {
+              setMaterialSlots(prev => [...prev, {
+                  detectedType: 'Rest / Afval / Flush',
+                  weight: Number(diff.toFixed(2)),
+                  wasteWeight: 0,
+                  assignedFilamentId: '',
+                  detectedColor: '#555555'
+              }]);
+          } else {
+              setMaterialSlots(prev => prev.map(s => 
+                  s.detectedType === 'Rest / Afval / Flush' ? { ...s, weight: Number(diff.toFixed(2)) } : s
+              ));
+          }
+      } else {
+          setMaterialSlots(prev => prev.filter(s => s.detectedType !== 'Rest / Afval / Flush'));
+      }
+  }, [overrideTotalWeight]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) await processFile(file);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file);
+  };
 
   const processFile = async (file: File) => {
     setParsing(true);
     setShowModal(true);
-    setJobName(file.name.replace(/\.(gcode|bgcode)$/i, '').replace(/_/g, ' '));
+    setJobName(file.name.replace(/\.(gcode|bgcode|mqc)$/i, '').replace(/_/g, ' '));
+    setOverrideTotalWeight('');
+    setAssemblyTime(0);
+    setIsAssemblyRequired(false);
+    setOtherMaterialSlots([]);
+    
     try {
       const stats = await parseGcodeFile(file);
       setPrintTime(stats.estimatedTime);
-      setRawGcodeStats(stats);
+      
+      const printer = printers.find(p => p.id === selectedPrinterId);
+      const newSlots = stats.materials.map(m => {
+          const match = findBestFilament(m.type, m.color, printer);
+          return {
+            detectedType: m.type,
+            detectedColor: m.color,
+            weight: m.weight,
+            wasteWeight: 0,
+            assignedFilamentId: match?.id || '',
+            matchedSlotNumber: match?.slotNumber,
+            recommendationSource: match?.source
+          };
+      });
+      setMaterialSlots(newSlots);
+      
+      if (Math.abs(stats.totalWeight - newSlots.reduce((a,b) => a + b.weight, 0)) < 0.1) {
+          setOverrideTotalWeight(stats.totalWeight);
+      }
+
     } catch (e: any) {
       alert("Fout: " + e.message);
+      if (materialSlots.length === 0) {
+          setMaterialSlots([{ detectedType: 'PLA', weight: 0, wasteWeight: 0, assignedFilamentId: '' }]);
+      }
     } finally {
       setParsing(false);
     }
   };
 
   const handleSave = () => {
-    if (!jobName) return alert(t('failed') + ": Vul een naam in.");
-    const deductions: any[] = [];
-    const usedFilaments: any[] = [];
-    let totalCost = 0;
-    let totalWeightFinal = 0;
+    if (!jobName) {
+      alert("Vul een naam in.");
+      return;
+    }
+    
+    const validAssignments = materialSlots.every(slot => 
+        (slot.weight + slot.wasteWeight) === 0 || 
+        slot.assignedFilamentId || 
+        slot.detectedType.includes('Afval') || 
+        slot.detectedType.includes('Flush')
+    );
+    
+    if (!validAssignments) {
+      if(!confirm("Niet alle slots zijn gekoppeld. Doorgaan?")) return;
+    }
+
+    const totalWeight = materialSlots.reduce((acc, curr) => acc + curr.weight + curr.wasteWeight, 0);
+    const printHours = parseTimeToHours(printTime);
+    
+    let totalFilamentCost = 0;
+    let electricityCost = 0;
+    let depreciationCost = 0;
+    let laborCost = 0;
+    let materialCost = 0;
+
+    const deductions: { id: string, amount: number }[] = [];
+    const usedFilamentsMeta: any[] = [];
+    const usedOtherMaterials: { materialId: string, quantity: number }[] = [];
 
     materialSlots.forEach(slot => {
-      if (slot.assignedFilamentId) {
-        const f = filaments.find(fil => fil.id === slot.assignedFilamentId);
-        if (f) {
-          const totalSlotWeight = Number(slot.weight) + Number(slot.waste);
-          const cost = (totalSlotWeight * (f.price || 0)) / f.weightTotal;
-          totalCost += cost;
-          totalWeightFinal += totalSlotWeight;
-          deductions.push({ id: f.id, amount: totalSlotWeight });
-          usedFilaments.push({ filamentId: f.id, amount: totalSlotWeight, colorHex: f.colorHex });
+        const consumed = slot.weight + slot.wasteWeight;
+        if (consumed > 0 && slot.assignedFilamentId) {
+            const filament = filaments.find(f => f.id === slot.assignedFilamentId);
+            if (filament) {
+                const costPerGram = (filament.price || 0) / filament.weightTotal;
+                totalFilamentCost += consumed * costPerGram;
+                deductions.push({ id: filament.id, amount: consumed });
+                usedFilamentsMeta.push({
+                    filamentId: filament.id,
+                    amount: consumed,
+                    colorHex: filament.colorHex
+                });
+            }
         }
-      }
     });
 
+    otherMaterialSlots.forEach(slot => {
+        if (slot.materialId && slot.quantity > 0) {
+            const mat = materials.find(m => m.id === slot.materialId);
+            if (mat) {
+                let deductionAmount = slot.quantity;
+                if (slot.inputUnit && slot.inputUnit !== mat.unit) {
+                    const factor = getConversionFactor(slot.inputUnit, mat.unit);
+                    deductionAmount = slot.quantity * factor;
+                }
+                materialCost += (mat.price || 0) * deductionAmount;
+                usedOtherMaterials.push({ materialId: mat.id, quantity: deductionAmount });
+            }
+        }
+    });
+
+    if (settings) {
+        let powerWatts = 0;
+        let machineHourlyCost = 0;
+        if (selectedPrinterId) {
+            const printer = printers.find(p => p.id === selectedPrinterId);
+            if (printer) {
+                if (printer.powerWatts) powerWatts = printer.powerWatts;
+                if (printer.purchasePrice && printer.lifespanHours && printer.lifespanHours > 0) {
+                    machineHourlyCost = printer.purchasePrice / printer.lifespanHours;
+                }
+            }
+        }
+        if (powerWatts > 0 && settings.electricityRate) {
+            const kWh = (powerWatts / 1000) * printHours;
+            electricityCost = kWh * settings.electricityRate;
+        }
+        if (machineHourlyCost > 0) depreciationCost = machineHourlyCost * printHours;
+        if (settings.hourlyRate && isAssemblyRequired && assemblyTime > 0) {
+            laborCost = settings.hourlyRate * (assemblyTime / 60);
+        }
+    }
+
+    const totalCost = totalFilamentCost + electricityCost + depreciationCost + laborCost + materialCost;
+
     const newJob: PrintJob = {
-      id: crypto.randomUUID(),
-      name: jobName,
-      date: new Date().toISOString(),
-      printTime,
-      totalWeight: totalWeightFinal,
-      calculatedCost: totalCost,
-      status,
-      printerId: selectedPrinterId,
-      usedFilaments,
-      costBreakdown: { filamentCost: totalCost, electricityCost: 0, depreciationCost: 0, laborCost: 0 }
+        id: crypto.randomUUID(),
+        name: jobName,
+        date: new Date().toISOString(),
+        printTime: printTime,
+        totalWeight: totalWeight,
+        calculatedCost: totalCost,
+        status: status,
+        printerId: selectedPrinterId,
+        usedFilaments: usedFilamentsMeta,
+        costBreakdown: { filamentCost: totalFilamentCost, electricityCost, depreciationCost, laborCost, materialCost },
+        assemblyTime: isAssemblyRequired ? assemblyTime : 0,
+        usedOtherMaterials: usedOtherMaterials
     };
 
     onSaveJob(newJob, deductions);
     setShowModal(false);
-    setRawGcodeStats(null);
+    setJobName('');
+    setPrintTime('');
+    setOverrideTotalWeight('');
+    setSelectedPrinterId('');
+    setAssemblyTime(0);
+    setIsAssemblyRequired(false);
+    setMaterialSlots([{ detectedType: 'PLA', weight: 0, wasteWeight: 0, assignedFilamentId: '' }]);
+    setOtherMaterialSlots([]);
   };
+
+  const handleExportCSV = () => {
+     if (!isAdmin) {
+        if (onUnlockPro) onUnlockPro();
+        else alert(t('proComingSoonMsg'));
+        return;
+     }
+     if (!history.length) return;
+     const headers = [t('date'), t('name'), t('status'), t('printTime'), `${t('totalWeight')} (g)`, `${t('totalValue')} (€)`, t('printer'), "Filamenten"];
+     const rows = history.map(job => {
+        const date = new Date(job.date).toLocaleDateString();
+        const printerName = job.printerId ? printers.find(p => p.id === job.printerId)?.name : t('unknown');
+        const filamentsStr = job.usedFilaments.map(uf => {
+           const f = filaments.find(fil => fil.id === uf.filamentId);
+           return f ? `${f.brand} ${f.colorName}` : t('unknown');
+        }).join(' + ');
+        return [ date, `"${job.name.replace(/"/g, '""')}"`, job.status, job.printTime || '', job.totalWeight.toFixed(1), job.calculatedCost.toFixed(2), `"${printerName}"`, `"${filamentsStr}"` ].join(',');
+     });
+     const csvContent = [headers.join(','), ...rows].join('\n');
+     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+     const url = URL.createObjectURL(blob);
+     const link = document.createElement('a');
+     link.href = url;
+     link.setAttribute('download', `print-history-${new Date().toISOString().split('T')[0]}.csv`);
+     document.body.appendChild(link);
+     link.click();
+     document.body.removeChild(link);
+  };
+
+  const sortedHistory = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const profitMargin = settings?.profitMargin || 0;
+  const netCost = viewingJob?.calculatedCost || 0;
+  const rawSellPrice = netCost * (1 + profitMargin / 100);
+  let finalSellPrice = rawSellPrice;
+  let roundingAmount = 0;
+
+  if (settings?.roundToNine) {
+      let candidate = (Math.floor(rawSellPrice * 10) / 10) + 0.09;
+      if (candidate < rawSellPrice) candidate += 0.10;
+      finalSellPrice = candidate;
+      roundingAmount = finalSellPrice - rawSellPrice;
+  }
+
+  const showSellPrice = (profitMargin > 0) || settings?.roundToNine || (settings?.electricityRate || 0) > 0 || (settings?.hourlyRate || 0) > 0;
 
   return (
     <div className="space-y-6 animate-fade-in relative h-full flex flex-col">
        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">{t('recentActivity')}</h3>
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">{t('recentActivity')}</h3>
+          {history.length > 0 && (
+             <button onClick={handleExportCSV} className="text-xs bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors border border-amber-200 dark:border-amber-800">
+                <Crown size={12} fill="currentColor"/> <span>PRO {t('exportCsv')}</span>
+             </button>
+          )}
        </div>
 
        <div 
-          onDragOver={(e) => { e.preventDefault(); }}
-          onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) processFile(file); }}
-          className="bg-white dark:bg-slate-800 rounded-3xl border-2 border-dashed p-10 text-center cursor-pointer hover:border-blue-500 transition-all group"
-          onClick={() => document.getElementById('hist-file')?.click()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`
+            bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer
+            ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]' : 'border-slate-300 dark:border-slate-700 hover:border-blue-400'}
+          `}
+          onClick={() => setShowModal(true)}
        >
-          <input type="file" id="hist-file" className="hidden" accept=".gcode,.bgcode" onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
-          <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
              <FileCode size={32} />
           </div>
-          <h3 className="text-lg font-bold dark:text-white">{t('logPrint')}</h3>
-          <p className="text-slate-500 text-sm">{t('dragDrop')}</p>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">{t('logPrint')}</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto">{t('dragDrop')}</p>
        </div>
 
-       <div className="flex-1 overflow-y-auto space-y-4">
-          {history.length === 0 ? (
-             <div className="py-20 text-center text-slate-400 italic text-sm">{t('noHistory')}</div>
-          ) : history.map(job => {
-            const printer = printers.find(p => p.id === job.printerId);
-            return (
-              <div key={job.id} onClick={() => setViewingJob(job)} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 cursor-pointer hover:shadow-lg transition-all">
-                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${job.status === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                    {job.status === 'success' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
-                 </div>
-                 <div className="flex-1 min-w-0">
-                    <h4 className="font-bold truncate dark:text-white">{job.name}</h4>
-                    {printer && (
-                       <div className="flex gap-1.5 mt-1">
-                          <span className="text-[8px] font-black bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded uppercase">{printer.brand}</span>
-                          <span className="text-[8px] font-black bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 px-1.5 py-0.5 rounded uppercase">{printer.model}</span>
-                       </div>
-                    )}
-                    <div className="flex gap-2 text-[10px] text-slate-500 mt-1 font-medium uppercase tracking-tighter">
-                       <span>{job.totalWeight.toFixed(1)}g</span>
-                       <span>•</span>
-                       <span className="text-blue-500 font-bold">€{job.calculatedCost.toFixed(2)}</span>
-                    </div>
-                 </div>
-                 <Trash2 size={16} className="text-slate-300 hover:text-red-500" onClick={(e) => { e.stopPropagation(); onDeleteJob(job.id); }} />
-              </div>
-            );
-          })}
-       </div>
-
-       {showModal && createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50">
-                   <h2 className="text-xl font-bold dark:text-white">{t('logPrint')}</h2>
-                   <button onClick={() => { setShowModal(false); setRawGcodeStats(null); }}><X size={24} className="text-slate-400" /></button>
-                </div>
-                
-                <div className="p-6 overflow-y-auto space-y-6">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">{t('projectName')}</label>
-                         <input type="text" value={jobName} onChange={e => setJobName(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />
+       <div className="flex-1 overflow-y-auto">
+          <div className="space-y-4">
+             {sortedHistory.length === 0 && <div className="text-center py-10 text-slate-400">{t('noHistory')}</div>}
+             {sortedHistory.map(job => (
+                <div 
+                  key={job.id} 
+                  onClick={() => setViewingJob(job)}
+                  className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm group hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transition-colors"
+                >
+                   <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${job.status === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
+                      {job.status === 'success' ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+                   </div>
+                   <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                         <h4 className="font-bold text-slate-800 dark:text-white truncate pr-2">{job.name}</h4>
+                         <span className="text-xs text-slate-400 whitespace-nowrap">{new Date(job.date).toLocaleDateString()}</span>
                       </div>
-                      <div>
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">{t('printer')}</label>
-                         <select value={selectedPrinterId} onChange={(e) => setSelectedPrinterId(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none">
-                            <option value="">{t('selectPrinter')}</option>
-                            {printers.map(p => <option key={p.id} value={p.id}>{p.name} ({p.brand} {p.model})</option>)}
-                         </select>
+                      <div className="flex items-center flex-wrap gap-2 mt-2">
+                         <div className="flex -space-x-1.5">
+                            {job.usedFilaments.map((f, idx) => (
+                                <div key={idx} className="w-4 h-4 rounded-full border border-white dark:border-slate-800 shadow-sm" style={{ backgroundColor: f.colorHex }} title={`${f.amount}g`} />
+                            ))}
+                         </div>
+                         <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">{job.totalWeight.toFixed(1)}g</span>
+                         {job.usedOtherMaterials && job.usedOtherMaterials.length > 0 && (
+                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-md flex items-center gap-1"><Box size={10} /> {job.usedOtherMaterials.length}</span>
+                         )}
+                         {job.printTime && (
+                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md flex items-center gap-1"><Clock size={10} /> {job.printTime}</span>
+                         )}
+                      </div>
+                   </div>
+                   <div className="text-right flex flex-col items-end gap-2">
+                      <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-end gap-1"><Euro size={12} /> {job.calculatedCost.toFixed(2)}</div>
+                      <button 
+                         onClick={(e) => { e.stopPropagation(); onDeleteJob(job.id); }}
+                         className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                         title={t('delete')}
+                      >
+                         <Trash2 size={16} />
+                      </button>
+                   </div>
+                </div>
+             ))}
+          </div>
+       </div>
+
+       {/* View Details Modal via PORTAL */}
+       {viewingJob && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-hidden">
+             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden relative max-h-[90vh] flex flex-col">
+                <button 
+                   onClick={() => setViewingJob(null)} 
+                   className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white z-10"
+                >
+                   <X size={20} />
+                </button>
+
+                <div className="p-6 overflow-y-auto">
+                   <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1 truncate pr-6">{viewingJob.name}</h3>
+                   <div className="text-sm text-slate-500 mb-6">{new Date(viewingJob.date).toLocaleString()}</div>
+
+                   <div className="flex justify-center mb-6">
+                      <div className="text-center w-full">
+                         {showSellPrice ? (
+                            <div className="space-y-4">
+                               <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                  <span className="block text-xl font-bold text-slate-600 dark:text-slate-300">€{netCost.toFixed(2)}</span>
+                                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{t('netCost')}</span>
+                               </div>
+                               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                                  <span className="block text-4xl font-bold text-green-600 dark:text-green-400">€{finalSellPrice.toFixed(2)}</span>
+                                  <span className="text-xs text-green-600/70 dark:text-green-400/70 uppercase tracking-widest font-bold flex items-center justify-center gap-1">{t('sellPrice')} <Tag size={12}/></span>
+                               </div>
+                            </div>
+                         ) : (
+                            <div>
+                               <span className="block text-4xl font-bold text-slate-800 dark:text-white">€{netCost.toFixed(2)}</span>
+                               <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('totalCosts')}</span>
+                            </div>
+                         )}
                       </div>
                    </div>
 
-                   {materialSlots.length > 1 && (
-                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex gap-3 animate-fade-in">
-                         <AlertTriangle size={24} className="text-amber-600 shrink-0" />
-                         <p className="text-xs text-amber-700 dark:text-amber-400 font-bold leading-relaxed">
-                            {t('multiColorWarning')}
-                         </p>
+                   <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                      {viewingJob.costBreakdown ? (
+                         <>
+                            <div className="flex justify-between items-center text-sm">
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Disc size={14} className="text-blue-500"/> {t('filament')}</span>
+                               <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.filamentCost.toFixed(2)}</span>
+                            </div>
+                            {(viewingJob.costBreakdown.materialCost || 0) > 0 && (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Box size={14} className="text-indigo-500"/> {t('materials')}</span>
+                                    <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.materialCost?.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center text-sm">
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Zap size={14} className="text-yellow-500"/> {t('electricity')}</span>
+                               <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.electricityCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Coins size={14} className="text-orange-500"/> {t('depreciation')}</span>
+                               <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.depreciationCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                               <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Hammer size={14} className="text-purple-500"/> {t('labor')}</span>
+                               <span className="font-medium dark:text-white">€{viewingJob.costBreakdown.laborCost.toFixed(2)}</span>
+                            </div>
+                            {profitMargin > 0 && (
+                               <div className="flex justify-between items-center text-sm pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
+                                  <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><Percent size={14} className="text-green-500"/> {t('profitMarginLabel')}</span>
+                                  <span className="font-medium text-green-600 dark:text-green-400">{profitMargin}%</span>
+                               </div>
+                            )}
+                            {roundingAmount > 0.001 && (
+                               <div className="flex justify-between items-center text-sm">
+                                  <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2"><ArrowUpFromLine size={14} className="text-slate-400"/> {t('rounding')}</span>
+                                  <span className="font-medium text-green-600 dark:text-green-400">+€{roundingAmount.toFixed(2)}</span>
+                               </div>
+                            )}
+                         </>
+                      ) : (
+                         <div className="text-center text-sm text-slate-400 italic py-2">{t('noDetailedCost')}</div>
+                      )}
+                   </div>
+
+                   {viewingJob.usedOtherMaterials && viewingJob.usedOtherMaterials.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><Package size={12}/> {t('usedMaterials')}</h4>
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 space-y-1">
+                                {viewingJob.usedOtherMaterials.map((um, idx) => {
+                                    const mat = materials.find(m => m.id === um.materialId);
+                                    const displayQty = um.quantity < 1 ? um.quantity.toFixed(2) : um.quantity;
+                                    return (
+                                        <div key={idx} className="text-xs flex justify-between items-center dark:text-slate-300">
+                                            <span>{mat ? mat.name : t('unknownMaterial')}</span>
+                                            <span className="font-mono text-slate-500">{displayQty} {mat?.unit || 'st'}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                   )}
+
+                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">{t('details')}</h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                         <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                            <span className="block text-slate-500">{t('weight')}</span>
+                            <span className="font-bold dark:text-white">{viewingJob.totalWeight.toFixed(1)}g</span>
+                         </div>
+                         <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                            <span className="block text-slate-500">{t('duration')}</span>
+                            <span className="font-bold dark:text-white">{viewingJob.printTime || '-'}</span>
+                         </div>
+                         {viewingJob.assemblyTime !== undefined && viewingJob.assemblyTime > 0 && (
+                            <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded col-span-2 flex items-center justify-between">
+                                <span className="text-slate-500">{t('assemblyTimeLabel')}</span>
+                                <span className="font-bold dark:text-white">{viewingJob.assemblyTime} {t('minutes')}</span>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </div>,
+          document.body
+       )}
+
+       {/* Modal for Adding/Editing via PORTAL */}
+       {showModal && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto overflow-x-hidden">
+             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center shrink-0">
+                   <h2 className="text-xl font-bold dark:text-white text-slate-800">{t('logPrint')}</h2>
+                   <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><XCircle size={24} /></button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto space-y-5">
+                   {parsing && (
+                      <div className="flex items-center justify-center py-4 text-blue-500 gap-2">
+                         <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent" />
+                         <span>{t('analyzingGcode')}</span>
                       </div>
                    )}
 
-                   <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('usagePerMaterial')}</label>
-                      {materialSlots.map((slot, index) => {
-                         const totalForSlot = (Number(slot.weight) || 0) + (Number(slot.waste) || 0);
-                         return (
-                            <div key={index} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-                               <div className="flex justify-between items-center mb-3">
-                                  <div className="flex items-center gap-2">
-                                     {slot.detectedColor && <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: slot.detectedColor }} />}
-                                     <span className="text-[11px] font-black dark:text-slate-300 uppercase">{slot.detectedType}</span>
+                   <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('printer')}</label>
+                      <div className="relative">
+                         <select 
+                            value={selectedPrinterId}
+                            onChange={(e) => setSelectedPrinterId(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none"
+                         >
+                            <option value="">{t('selectPrinter')}</option>
+                            {printers.map(p => (
+                               <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
+                            ))}
+                         </select>
+                         <PrinterIcon size={18} className="absolute right-3 top-3.5 text-slate-400 pointer-events-none" />
+                      </div>
+                   </div>
+
+                   <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('projectName')}</label>
+                      <input 
+                        type="text" 
+                        value={jobName} 
+                        onChange={e => setJobName(e.target.value)} 
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                        placeholder={t('projectNamePlaceholder')}
+                     />
+                   </div>
+
+                   <div className="flex gap-4">
+                      <div className="flex-1">
+                         <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('timeOptional')}</label>
+                         <input 
+                           type="text" 
+                           value={printTime} 
+                           onChange={e => setPrintTime(e.target.value)} 
+                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                           placeholder={t('exampleTime')}
+                         />
+                      </div>
+                      <div className="flex-1">
+                         <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('status')}</label>
+                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                            <button onClick={() => setStatus('success')} className={`flex-1 py-2 rounded-md text-sm font-bold transition-colors ${status === 'success' ? 'bg-green-500 text-white shadow' : 'text-slate-500 dark:text-slate-400'}`}>{t('success')}</button>
+                            <button onClick={() => setStatus('fail')} className={`flex-1 py-2 rounded-md text-sm font-bold transition-colors ${status === 'fail' ? 'bg-red-500 text-white shadow' : 'text-slate-500 dark:text-slate-400'}`}>{t('failed')}</button>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                         <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Wrench size={14} className="text-blue-500" /> {t('assemblyTimeLabel')}?</label>
+                            <input type="checkbox" checked={isAssemblyRequired} onChange={(e) => { setIsAssemblyRequired(e.target.checked); if (!e.target.checked) setAssemblyTime(0); }} className="w-5 h-5 accent-blue-600 rounded" />
+                         </div>
+                         {isAssemblyRequired && (
+                            <div className="flex items-center gap-2 animate-fade-in">
+                               <input type="number" value={assemblyTime} onChange={e => setAssemblyTime(Number(e.target.value))} className="w-24 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white" />
+                               <span className="text-sm text-slate-600 dark:text-slate-400">{t('minutes')}</span>
+                            </div>
+                         )}
+                   </div>
+
+                   <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                      <label className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-1 block flex items-center gap-2"><Scale size={14}/> {t('overrideWeight')}</label>
+                      <div className="flex items-center gap-2">
+                          <input type="number" value={overrideTotalWeight} onChange={e => setOverrideTotalWeight(e.target.value === '' ? '' : Number(e.target.value))} className="flex-1 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-lg p-2 text-sm dark:text-white" placeholder={t('autoCalculated')} />
+                          <span className="text-sm text-slate-500">g</span>
+                      </div>
+                   </div>
+
+                   <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><Disc size={14} className="text-blue-500"/> {t('usedMaterials')}</label>
+                        <button onClick={() => setMaterialSlots([...materialSlots, { detectedType: 'PLA', weight: 0, wasteWeight: 0, assignedFilamentId: '' }])} className="text-blue-500 text-xs font-bold hover:underline flex items-center gap-1">
+                           <Plus size={14} /> {t('addSlot')}
+                        </button>
+                      </div>
+
+                      {materialSlots.length > 1 && (
+                         <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 p-3 rounded-xl mb-4 flex gap-3 items-start animate-fade-in">
+                            <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
+                               {t('multiColorWasteWarning')}
+                            </p>
+                         </div>
+                      )}
+
+                      <div className="space-y-4">
+                         {materialSlots.map((slot, index) => {
+                            const printer = printers.find(p => p.id === selectedPrinterId);
+                            
+                            // physical mapping calculation
+                            const physicalSlot = slot.matchedSlotNumber || (index + 1);
+                            const unit = Math.ceil(physicalSlot / 4);
+                            const unitSlot = ((physicalSlot - 1) % 4) + 1;
+                            const slotLabel = printer?.hasAMS ? `CFS/AMS ${unit} - Slot ${unitSlot}` : `${t('slot')} ${index + 1}`;
+
+                            return (
+                               <div key={index} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 group relative">
+                                  <div className="flex justify-between items-center mb-3">
+                                     <div className="flex items-center gap-2">
+                                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                           {slotLabel}
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-400 truncate max-w-[150px]">
+                                           {slot.detectedType}
+                                        </span>
+                                        {slot.detectedColor && (<div className="w-3 h-3 rounded-full border border-slate-300" style={{ backgroundColor: slot.detectedColor }}/>)}
+                                     </div>
+                                     <div className="flex items-center gap-3">
+                                        {slot.recommendationSource && (
+                                            <span className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${slot.recommendationSource === 'ams' ? 'text-blue-500' : 'text-emerald-500'}`}>
+                                                <Sparkles size={10} />
+                                                {slot.recommendationSource === 'ams' ? t('amsMatch') : t('stockMatch')}
+                                            </span>
+                                        )}
+                                        {materialSlots.length > 1 && (<button onClick={() => setMaterialSlots(materialSlots.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-500 p-1 rounded-lg transition-colors"><Trash2 size={16}/></button>)}
+                                     </div>
                                   </div>
-                                  {slot.matchSource === 'ams' ? (
-                                     <span className="text-[9px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full flex items-center gap-1 border border-blue-200 uppercase">AMS {slot.matchUnit} - SLOT {slot.matchSlot}</span>
-                                  ) : slot.matchSource === 'stock' ? (
-                                     <span className="text-[9px] font-black bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 uppercase">{t('stockMatch')}</span>
-                                  ) : (
-                                     <span className="text-[9px] text-red-400 font-bold uppercase">{t('noMatch')}</span>
-                                  )}
-                               </div>
-                               
-                               <div className="space-y-4">
-                                  <FilamentPicker filaments={filaments} selectedId={slot.assignedFilamentId} onChange={(id) => {
-                                     const newSlots = [...materialSlots];
-                                     newSlots[index].assignedFilamentId = id;
-                                     newSlots[index].matchSource = 'manual';
-                                     setMaterialSlots(newSlots);
-                                  }} />
                                   
-                                  <div className="grid grid-cols-3 gap-3">
-                                     <div className="relative">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block">{t('modelWeightLabel')}</label>
-                                        <input type="number" value={slot.weight} onChange={(e) => { const n = [...materialSlots]; n[index].weight = e.target.value; setMaterialSlots(n); }} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold text-sm text-center dark:text-white" />
-                                     </div>
-                                     <div className="relative">
-                                        <label className="text-[9px] font-bold text-orange-500 uppercase mb-1 block">{t('wasteLabel')}</label>
-                                        <input type="number" value={slot.waste} onChange={(e) => { const n = [...materialSlots]; n[index].waste = e.target.value; setMaterialSlots(n); }} className="w-full bg-white dark:bg-slate-900 border-2 border-orange-500/30 dark:border-orange-500/20 focus:border-orange-500 rounded-lg p-2 font-black text-sm text-center dark:text-orange-400 text-orange-600 outline-none" placeholder="0" />
-                                     </div>
-                                     <div className="flex flex-col justify-end pb-2">
-                                        <div className="flex items-center gap-2 text-slate-400">
-                                           <ArrowRight size={14}/>
-                                           <span className="font-black text-sm dark:text-white">{totalForSlot.toFixed(1)}g</span>
+                                  <div className="space-y-4">
+                                     <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('netWeight')}</label>
+                                           <div className="relative">
+                                               <input 
+                                                  type="number" 
+                                                  step="0.1"
+                                                  value={slot.weight} 
+                                                  onChange={e => { const newSlots = [...materialSlots]; newSlots[index].weight = parseFloat(e.target.value) || 0; setMaterialSlots(newSlots); }} 
+                                                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-sm dark:text-white" 
+                                               />
+                                               <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold uppercase">g</span>
+                                           </div>
+                                        </div>
+                                        <div>
+                                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('wasteWeight')}</label>
+                                           <div className="relative">
+                                               <input 
+                                                  type="number" 
+                                                  step="0.1"
+                                                  value={slot.wasteWeight} 
+                                                  onChange={e => { const newSlots = [...materialSlots]; newSlots[index].wasteWeight = parseFloat(e.target.value) || 0; setMaterialSlots(newSlots); }} 
+                                                  className="w-full bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/50 rounded-xl p-3 text-sm dark:text-white shadow-sm focus:ring-1 ring-blue-500" 
+                                                  placeholder="0"
+                                               />
+                                               <span className="absolute right-3 top-3 text-xs text-blue-500/50 font-bold uppercase">g</span>
+                                           </div>
                                         </div>
                                      </div>
+                                     <div className="flex-1">
+                                         <FilamentPicker filaments={filaments} selectedId={slot.assignedFilamentId} onChange={(id) => { const newSlots = [...materialSlots]; newSlots[index].assignedFilamentId = id; newSlots[index].recommendationSource = undefined; newSlots[index].matchedSlotNumber = undefined; setMaterialSlots(newSlots); }} />
+                                     </div>
                                   </div>
                                </div>
-                               
-                               <button onClick={() => setMaterialSlots(materialSlots.filter((_, i) => i !== index))} className="mt-4 text-[10px] font-bold text-red-500 flex items-center gap-1 hover:underline">
-                                  <Trash2 size={12} /> {t('removeSlot')}
-                               </button>
-                            </div>
-                         );
-                      })}
-                      <button onClick={() => setMaterialSlots([...materialSlots, { detectedType: 'PLA', weight: 0, waste: 0, assignedFilamentId: '' }])} className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400 text-[10px] font-black uppercase hover:border-blue-500 hover:text-blue-500 transition-all">+ {t('addSlot')}</button>
+                            );
+                         })}
+                      </div>
                    </div>
+
+                   <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block flex justify-between items-center">
+                            <span>{t('otherMaterials')}</span>
+                            <button onClick={() => setOtherMaterialSlots([...otherMaterialSlots, { tempId: crypto.randomUUID(), materialId: '', quantity: 1 }])} className="text-blue-500 text-xs flex items-center gap-1 font-bold hover:underline"><Plus size={14} /> {t('add')}</button>
+                        </label>
+                        <div className="space-y-2">
+                            {otherMaterialSlots.map((slot, index) => {
+                                const selectedMat = materials.find(m => m.id === slot.materialId);
+                                const compatibleUnits = selectedMat ? getCompatibleUnits(selectedMat.unit) : [];
+                                return (
+                                    <div key={slot.tempId} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <div className="flex-1 min-w-0">
+                                            <MaterialPicker materials={materials} selectedId={slot.materialId} onChange={(id) => { const mat = materials.find(m => m.id === id); const units = mat ? getCompatibleUnits(mat.unit) : []; const newSlots = [...otherMaterialSlots]; newSlots[index].materialId = id; newSlots[index].inputUnit = units.length > 0 ? units[0] : undefined; setOtherMaterialSlots(newSlots); }} />
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <input type="number" value={slot.quantity} onChange={e => { const newSlots = [...otherMaterialSlots]; newSlots[index].quantity = parseFloat(e.target.value) || 0; setOtherMaterialSlots(newSlots); }} className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white text-center" placeholder="0" />
+                                            {compatibleUnits.length > 0 ? (
+                                                <select value={slot.inputUnit || compatibleUnits[0]} onChange={e => { const newSlots = [...otherMaterialSlots]; newSlots[index].inputUnit = e.target.value; setOtherMaterialSlots(newSlots); }} className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm dark:text-white appearance-none text-center font-bold">
+                                                    {compatibleUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
+                                            ) : (<span className="text-xs text-slate-500 w-10 truncate text-center font-bold">{selectedMat ? selectedMat.unit : '-'}</span>)}
+                                        </div>
+                                        <button onClick={() => setOtherMaterialSlots(otherMaterialSlots.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-500 p-1"><Trash2 size={16} /></button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                   </div>
+                   
+                   <input type="file" onChange={handleFileSelect} className="hidden" id="manual-file-upload" accept=".gcode,.bgcode" />
+                   <label htmlFor="manual-file-upload" className="block text-center text-xs text-blue-500 hover:underline cursor-pointer font-bold mt-4">{t('manualEntry')}</label>
                 </div>
                 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50">
-                   <button onClick={handleSave} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                      <Save size={20} /> {t('saveUpdate')}
-                   </button>
+                <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+                   <button onClick={handleSave} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"><Save size={18} /> {t('saveUpdate')}</button>
                 </div>
              </div>
           </div>,

@@ -1,6 +1,6 @@
 {
   "name": "Filament Manager 2.1",
-  "description": "Beheer je 3D-printer filamentvoorraad, locaties en leveranciers.",
+  "description": "Manage your 3D printer filament stock, locations, and suppliers.",
   "requestFramePermissions": [
     "camera"
   ]

@@ -1,4 +1,3 @@
-
 # Filament Manager
 
 Beheer je 3D-printer filamentvoorraad eenvoudig en modern.
@@ -8,46 +7,17 @@ Beheer je 3D-printer filamentvoorraad eenvoudig en modern.
 1.  Maak een nieuw project aan op [Supabase.com](https://supabase.com).
 2.  Ga naar **Project Settings** > **API**.
 3.  Kopieer de `Project URL` en de `anon public` key.
-4.  Voeg deze toe in je omgeving of in `services/supabase.ts`.
-5.  Ga in Supabase naar de **SQL Editor** en voer het onderstaande script uit.
+4.  Voeg deze in Vercel (of je `.env` bestand) toe als:
+    *   `VITE_SUPABASE_URL`
+    *   `VITE_SUPABASE_ANON_KEY`
+5.  Ga in Supabase naar de **SQL Editor** en plak het onderstaande script.
 
 ## 🛠️ Master Database Script (SQL)
 
-Voer dit script uit om alle tabellen, views en beveiliging in te stellen.
+Kopieer en voer dit script uit in de Supabase SQL Editor om alle tabellen en rechten in één keer goed te zetten.
 
 ```sql
--- 1. PROFIELEN (Voor Pro status en instellingen)
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  is_pro boolean default false,
-  showcase_name text,
-  updated_at timestamptz default now()
-);
-alter table public.profiles enable row level security;
-create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
-create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
-create policy "Admins can view all profiles" on public.profiles for select using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
-create policy "Admins can update all profiles" on public.profiles for update using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
-
--- Automatisch profiel maken bij registratie
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-  insert into public.profiles (id)
-  values (new.id);
-  return new;
-end;
-$$ language plpgsql security definer;
-
-create or replace trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-
--- 2. LOCATIES
+-- 1. LOCATIES
 create table if not exists public.locations (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -56,9 +26,10 @@ create table if not exists public.locations (
   created_at timestamptz default now()
 );
 alter table public.locations enable row level security;
+drop policy if exists "Users manage own locations" on public.locations;
 create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
 
--- 3. LEVERANCIERS
+-- 2. LEVERANCIERS
 create table if not exists public.suppliers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -67,9 +38,10 @@ create table if not exists public.suppliers (
   created_at timestamptz default now()
 );
 alter table public.suppliers enable row level security;
+drop policy if exists "Users manage own suppliers" on public.suppliers;
 create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
 
--- 4. FILAMENTEN
+-- 3. FILAMENTEN
 create table if not exists public.filaments (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -90,9 +62,10 @@ create table if not exists public.filaments (
   "shortId" text
 );
 alter table public.filaments enable row level security;
+drop policy if exists "Users manage own filaments" on public.filaments;
 create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);
 
--- 5. OVERIGE MATERIALEN
+-- 4. OVERIGE MATERIALEN
 create table if not exists public.other_materials (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -110,9 +83,10 @@ create table if not exists public.other_materials (
   image text
 );
 alter table public.other_materials enable row level security;
+drop policy if exists "Users manage own materials" on public.other_materials;
 create policy "Users manage own materials" on public.other_materials for all using (auth.uid() = user_id);
 
--- 6. PRINTERS
+-- 5. PRINTERS
 create table if not exists public.printers (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -130,9 +104,10 @@ create table if not exists public.printers (
   "webcamUrl" text
 );
 alter table public.printers enable row level security;
+drop policy if exists "Users manage own printers" on public.printers;
 create policy "Users manage own printers" on public.printers for all using (auth.uid() = user_id);
 
--- 7. PRINT LOGBOEK
+-- 6. PRINT LOGBOEK
 create table if not exists public.print_jobs (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -149,9 +124,10 @@ create table if not exists public.print_jobs (
   "usedOtherMaterials" jsonb
 );
 alter table public.print_jobs enable row level security;
+drop policy if exists "Users manage own prints" on public.print_jobs;
 create policy "Users manage own prints" on public.print_jobs for all using (auth.uid() = user_id);
 
--- 8. FEEDBACK & VERZOEKEN
+-- 7. FEEDBACK & BEHEER
 create table if not exists public.feedback (
   id bigint generated by default as identity primary key,
   created_at timestamptz default now(),
@@ -163,10 +139,14 @@ create table if not exists public.feedback (
   user_agent text
 );
 alter table public.feedback enable row level security;
-create policy "Everyone can insert feedback" on public.feedback for insert with check (true);
-create policy "Admins can manage feedback" on public.feedback for all using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
+drop policy if exists "Everyone can send feedback" on public.feedback;
+create policy "Everyone can send feedback" on public.feedback for insert with check (true);
+drop policy if exists "Admins can view feedback" on public.feedback;
+create policy "Admins can view feedback" on public.feedback for select using (true);
+drop policy if exists "Admins can update feedback" on public.feedback;
+create policy "Admins can update feedback" on public.feedback for update using (true);
+drop policy if exists "Admins can delete feedback" on public.feedback;
+create policy "Admins can delete feedback" on public.feedback for delete using (true);
 
 create table if not exists public.deletion_requests (
   id uuid default gen_random_uuid() primary key,
@@ -176,60 +156,30 @@ create table if not exists public.deletion_requests (
   created_at timestamptz default now()
 );
 alter table public.deletion_requests enable row level security;
+drop policy if exists "Users can request deletion" on public.deletion_requests;
 create policy "Users can request deletion" on public.deletion_requests for insert with check (auth.uid() = user_id);
-create policy "Admins can view requests" on public.deletion_requests for select using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
+drop policy if exists "Users view own request" on public.deletion_requests;
+create policy "Users view own request" on public.deletion_requests for select using (auth.uid() = user_id);
+drop policy if exists "Users cancel own request" on public.deletion_requests;
+create policy "Users cancel own request" on public.deletion_requests for delete using (auth.uid() = user_id);
 
--- 9. ADMIN VIEW: Gebruikers Statistieken (LIVE)
--- We verwijderen de view eerst omdat PostgreSQL niet toestaat kolommen te hernoemen met CREATE OR REPLACE VIEW
-drop view if exists public.admin_user_stats;
+-- 8. SPOEL DATABASE & LOGO
+create table if not exists public.spool_weights (id bigint generated by default as identity primary key, name text, weight numeric);
+create table if not exists public.brands (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.materials (id bigint generated by default as identity primary key, name text unique);
+create table if not exists public.global_settings (key text primary key, value text);
 
-create view public.admin_user_stats as
-select 
-  p.id,
-  u.email,
-  p.is_pro,
-  u.created_at,
-  (select count(*) from public.filaments f where f.user_id = p.id) as filament_count,
-  (select count(*) from public.print_jobs pj where pj.user_id = p.id) as print_count
-from public.profiles p
-join auth.users u on u.id = p.id;
-
--- Geef toegang tot de view voor de admin
-alter view public.admin_user_stats owner to postgres;
-grant select on public.admin_user_stats to authenticated;
-
--- 10. GLOBALE INSTELLINGEN (Voor logo etc)
-create table if not exists public.global_settings (
-  key text primary key,
-  value text
-);
-alter table public.global_settings enable row level security;
-create policy "Public can view settings" on public.global_settings for select using (true);
-create policy "Admins manage settings" on public.global_settings for all using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
-
--- 11. SPOEL GEWICHTEN & PRESETS
-create table if not exists public.spool_weights (
-  id uuid default gen_random_uuid() primary key,
-  name text unique not null,
-  weight numeric not null
-);
 alter table public.spool_weights enable row level security;
-create policy "Public view spool weights" on public.spool_weights for select using (true);
-create policy "Admins manage spool weights" on public.spool_weights for all using (
-  auth.jwt() ->> 'email' = 'timwillemse@hotmail.com'
-);
-
-create table if not exists public.brands (id uuid default gen_random_uuid() primary key, name text unique not null);
 alter table public.brands enable row level security;
-create policy "Public view brands" on public.brands for select using (true);
-create policy "Admins manage brands" on public.brands for all using (auth.jwt() ->> 'email' = 'timwillemse@hotmail.com');
-
-create table if not exists public.materials (id uuid default gen_random_uuid() primary key, name text unique not null);
 alter table public.materials enable row level security;
-create policy "Public view materials" on public.materials for select using (true);
-create policy "Admins manage materials" on public.materials for all using (auth.jwt() ->> 'email' = 'timwillemse@hotmail.com');
+alter table public.global_settings enable row level security;
+
+drop policy if exists "Public read access" on public.spool_weights;
+create policy "Public read access" on public.spool_weights for select using (true);
+drop policy if exists "Public read access brands" on public.brands;
+create policy "Public read access brands" on public.brands for select using (true);
+drop policy if exists "Public read access materials" on public.materials;
+create policy "Public read access materials" on public.materials for select using (true);
+drop policy if exists "Public read access global" on public.global_settings;
+create policy "Public read access global" on public.global_settings for select using (true);
 ```

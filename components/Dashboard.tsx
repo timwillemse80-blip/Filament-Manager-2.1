@@ -135,7 +135,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
           pct: Math.round((f.weightRemaining / f.weightTotal) * 100),
           color: f.colorHex,
           extraStock: extraStock,
-          extraLabel: extraStock > 0 ? `+ ${extraStock}st` : '' // Label for the chart
+          extraLabel: extraStock > 0 ? `+ ${extraStock} items` : '' // Label for the chart
         };
       })
       .sort((a, b) => a.pct - b.pct)
