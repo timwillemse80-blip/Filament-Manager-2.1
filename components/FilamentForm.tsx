@@ -36,7 +36,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [formData, setFormData] = useState<Partial<Filament>>(initialData || {
     brand: '',
     material: FilamentMaterial.PLA,
-    colorName: 'Zwart',
+    colorName: 'Black',
     colorHex: '#000000',
     weightTotal: 1000,
     weightRemaining: 1000,
@@ -83,13 +83,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
      loadWeights();
   }, []);
 
-  // Verbeterde Web Camera Stream handler voor mobiel
   useEffect(() => {
     let stream: MediaStream | null = null;
 
     const startWebCam = async () => {
       if (!window.isSecureContext) {
-        alert("Camera werkt alleen via een beveiligde (HTTPS) verbinding. Controleer je URL.");
+        alert("Camera works only via a secure (HTTPS) connection. Please check your URL.");
         setShowWebCamera(false);
         return;
       }
@@ -98,13 +97,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
           } 
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          // Forceer play voor mobiele browsers
           try {
             await videoRef.current.play();
           } catch (e) {
@@ -113,9 +111,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         }
       } catch (err: any) {
         console.error("Camera access error:", err);
-        let errorMsg = "Geen toegang tot camera.";
-        if (err.name === 'NotAllowedError') errorMsg = "Toegang tot de camera is geweigerd door de browser.";
-        if (err.name === 'NotFoundError') errorMsg = "Geen camera gevonden op dit apparaat.";
+        let errorMsg = "No camera access.";
+        if (err.name === 'NotAllowedError') errorMsg = "Camera access denied by browser.";
+        if (err.name === 'NotFoundError') errorMsg = "No camera found on this device.";
         alert(errorMsg);
         setShowWebCamera(false);
       }
@@ -204,7 +202,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const startCamera = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        const image = await Camera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Camera, width: 1500 });
+        const image = await Camera.getPhoto({ 
+          quality: 100, 
+          resultType: CameraResultType.Base64, 
+          source: CameraSource.Camera, 
+          width: 2000 
+        });
         if (image.base64String) processImage(image.base64String);
         return;
       } catch (e) {
@@ -229,7 +232,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         shortId: res.shortId || prev.shortId
       }));
       setIsScannerCollapsed(true);
-    } catch(e) { alert("AI kon etiket niet lezen."); }
+    } catch(e) { alert("AI could not read the label. Please ensure proper lighting."); }
     finally { setIsAnalyzing(false); }
   };
 
@@ -240,7 +243,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
     ctx.drawImage(videoRef.current, 0, 0);
-    processImage(canvasRef.current.toDataURL('image/jpeg'));
+    processImage(canvasRef.current.toDataURL('image/jpeg', 1.0));
     setShowWebCamera(false);
   };
 
@@ -292,7 +295,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                    <div className="min-w-0">
                       <h4 className="font-black text-[11px] truncate uppercase leading-tight">{formData.brand || 'Filament'}</h4>
                       <p className="text-[9px] font-bold text-slate-500 uppercase truncate">{formData.material || 'PLA'}</p>
-                      <p className="text-[8px] text-slate-400 font-medium truncate italic">{tColor(formData.colorName || 'Kleur')}</p>
+                      <p className="text-[8px] text-slate-400 font-medium truncate italic">{tColor(formData.colorName || 'Color')}</p>
                    </div>
                    <div className="flex items-center gap-1">
                       <img src={APP_LOGO_URI} className="w-4 h-4 object-contain opacity-40" />
@@ -403,21 +406,21 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  <div className="space-y-4 animate-fade-in p-1">
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('price')} (€)</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('price')} ($)</label>
                           <div className="relative">
                              <input type="number" step="0.01" value={formData.price || ''} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white outline-none" />
                              <Euro size={14} className="absolute left-3 top-4 text-slate-400"/>
                           </div>
                        </div>
                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Totaalgewicht (g)</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Total Weight (g)</label>
                           <input type="number" value={formData.weightTotal} onChange={e => setFormData({...formData, weightTotal: parseFloat(e.target.value)})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none" />
                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Locatie</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Location</label>
                           <div className="relative">
                              <select value={formData.locationId || ''} onChange={e => setFormData({...formData, locationId: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white appearance-none outline-none">
                                 <option value="">{t('none')}</option>
@@ -427,7 +430,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                           </div>
                        </div>
                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Leverancier</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Supplier</label>
                           <div className="relative">
                              <select value={formData.supplierId || ''} onChange={e => setFormData({...formData, supplierId: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 pl-8 dark:text-white appearance-none outline-none">
                                 <option value="">{t('none')}</option>
@@ -447,8 +450,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                     </div>
 
                     <div>
-                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notities</label>
-                       <textarea value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none h-20 resize-none" placeholder="bv. Batch nummer, droogtijd, etc." />
+                       <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
+                       <textarea value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 dark:text-white outline-none h-20 resize-none" placeholder="e.g. Batch number, drying time, etc." />
                     </div>
                  </div>
               )}
@@ -471,7 +474,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               className="h-full w-full object-cover" 
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-               <div className="w-64 h-64 border-2 border-white/50 rounded-3xl" />
+               <div className="w-72 h-72 border-2 border-white/50 rounded-3xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_2s_ease-in-out_infinite]" />
+               </div>
             </div>
             <button onClick={() => setShowWebCamera(false)} className="absolute top-8 right-8 text-white bg-black/20 p-2 rounded-full backdrop-blur-sm"><X size={32}/></button>
             <div className="absolute bottom-12 left-0 right-0 flex justify-center">
@@ -480,6 +485,13 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             <canvas ref={canvasRef} className="hidden" />
          </div>
       )}
+      
+      <style>{`
+        @keyframes scan {
+          0%, 100% { top: 0; }
+          50% { top: 100%; }
+        }
+      `}</style>
     </div>
   );
 };

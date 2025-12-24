@@ -10,7 +10,7 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-const MASTER_SQL = `-- 1. PROFIELEN
+const MASTER_SQL = `-- 1. PROFILES
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   is_pro boolean default false,
@@ -21,8 +21,7 @@ alter table public.profiles enable row level security;
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 
--- 2. ADMIN VIEW: Gebruikers Statistieken
--- Eerst verwijderen om kolomnaam-fouten te voorkomen
+-- 2. ADMIN VIEW: User Stats
 drop view if exists public.admin_user_stats;
 
 create view public.admin_user_stats as
@@ -72,7 +71,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   
-  // States
   const [users, setUsers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -82,7 +80,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [tableCounts, setTableCounts] = useState({ logs: 0, filaments: 0, proUsers: 0, totalUsers: 0 });
   const [platformMaterialData, setPlatformMaterialData] = useState<any[]>([]);
   
-  // Loading & UI States
   const [isLoading, setIsLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
@@ -90,7 +87,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Form States
   const [newSpool, setNewSpool] = useState({ name: '', weight: '' });
   const [newBrand, setNewBrand] = useState('');
   const [newMaterial, setNewMaterial] = useState('');
@@ -150,7 +146,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       await supabase.from('profiles').update({ is_pro: !currentStatus }).eq('id', userId);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_pro: !currentStatus } : u));
       loadDashboardStats();
-    } catch (e) { alert("Bijwerken mislukt"); }
+    } catch (e) { alert("Update failed"); }
     setUpdatingUserId(null);
   };
 
@@ -234,7 +230,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     await supabase.from('global_settings').upsert({ key: 'app_logo', value: previewUrl });
     await refreshLogo();
     setIsUploading(false);
-    alert("Logo bijgewerkt!");
+    alert("Logo updated!");
   };
 
   return (
@@ -243,11 +239,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-2 flex items-center overflow-x-auto gap-2 scrollbar-hide">
         {[
           { id: 'dashboard', icon: LayoutGrid, label: 'Dashboard' },
-          { id: 'users', icon: Users, label: 'Gebruikers' },
+          { id: 'users', icon: Users, label: 'Users' },
           { id: 'sql', icon: Database, label: 'SQL Tool' },
-          { id: 'spools', icon: Disc, label: 'Spoelen' },
-          { id: 'requests', icon: AlertTriangle, label: 'Verzoeken' },
-          { id: 'data', icon: Tag, label: 'Merken/Mats' },
+          { id: 'spools', icon: Disc, label: 'Spools' },
+          { id: 'requests', icon: AlertTriangle, label: 'Requests' },
+          { id: 'data', icon: Tag, label: 'Brands/Mats' },
           { id: 'logo', icon: ImageIcon, label: 'Logo' },
           { id: 'feedback', icon: MessageSquare, label: 'Feedback' },
         ].map(tab => (
@@ -266,26 +262,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-slate-500 text-[10px] font-black uppercase mb-1">Gebruikers</p>
+                <p className="text-slate-500 text-[10px] font-black uppercase mb-1">Users</p>
                 <p className="text-3xl font-black dark:text-white">{tableCounts.totalUsers}</p>
               </div>
               <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-amber-500 text-[10px] font-black uppercase mb-1">PRO Leden</p>
+                <p className="text-amber-500 text-[10px] font-black uppercase mb-1">PRO Members</p>
                 <p className="text-3xl font-black text-amber-500">{tableCounts.proUsers}</p>
               </div>
               <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-blue-500 text-[10px] font-black uppercase mb-1">Totaal Spoelen</p>
+                <p className="text-blue-500 text-[10px] font-black uppercase mb-1">Total Spools</p>
                 <p className="text-3xl font-black dark:text-white">{tableCounts.filaments}</p>
               </div>
               <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-emerald-500 text-[10px] font-black uppercase mb-1">Database Latency</p>
+                <p className="text-emerald-500 text-[10px] font-black uppercase mb-1">DB Latency</p>
                 <p className="text-3xl font-black text-emerald-500">{latency ? `${latency}ms` : '---'}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 shadow-sm h-80">
-                <h3 className="font-bold mb-6 flex items-center gap-2 dark:text-white"><PieChartIcon size={20} className="text-blue-500" /> Top Materialen</h3>
+                <h3 className="font-bold mb-6 flex items-center gap-2 dark:text-white"><PieChartIcon size={20} className="text-blue-500" /> Top Materials</h3>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={platformMaterialData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
@@ -296,7 +292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </ResponsiveContainer>
               </div>
               <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 shadow-sm">
-                <h3 className="font-bold mb-4 flex items-center gap-2 dark:text-white"><Activity size={20} className="text-orange-500" /> Systeem</h3>
+                <h3 className="font-bold mb-4 flex items-center gap-2 dark:text-white"><Activity size={20} className="text-orange-500" /> System</h3>
                 <div className="space-y-3">
                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl flex justify-between items-center text-sm font-bold">
                       <span className="text-slate-500">Supabase Status</span>
@@ -315,7 +311,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-              <h3 className="font-bold dark:text-white">Gebruikers ({users.length})</h3>
+              <h3 className="font-bold dark:text-white">Users ({users.length})</h3>
               <button onClick={loadUsers} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><RefreshCw size={18}/></button>
             </div>
             <div className="overflow-x-auto">
@@ -332,7 +328,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                      <tr key={u.id} className="text-sm dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/30">
                      <td className="p-4">
                         <div className="font-bold">{u.email}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">Sinds: {new Date(u.created_at).toLocaleDateString()}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Since: {new Date(u.created_at).toLocaleDateString()}</div>
                      </td>
                      <td className="p-4 text-center">
                         <button 
@@ -363,7 +359,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                <AlertCircle className="text-amber-600 shrink-0" size={24}/>
                <div>
                   <h4 className="font-bold text-amber-800 dark:text-amber-400">Database Setup</h4>
-                  <p className="text-sm text-amber-700 dark:text-amber-500/80">Kopieer de onderstaande SQL en voer deze uit in de Supabase SQL Editor om alle benodigde tabellen, views en triggers in één keer aan te maken.</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-500/80">Copy the SQL below and run it in the Supabase SQL Editor to create all necessary tables and triggers.</p>
                </div>
             </div>
             <div className="bg-slate-900 rounded-2xl overflow-hidden relative border border-slate-700 shadow-2xl">
@@ -374,7 +370,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${sqlCopied ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
                   >
                      {sqlCopied ? <Check size={14}/> : <Copy size={14}/>}
-                     {sqlCopied ? 'Gekopieerd!' : 'SQL Kopiëren'}
+                     {sqlCopied ? 'Copied!' : 'Copy SQL'}
                   </button>
                </div>
                <pre className="p-6 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[400px] leading-relaxed">
@@ -387,17 +383,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'spools' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm">
-               <h3 className="font-bold mb-4 dark:text-white">Nieuw Spoelgewicht</h3>
+               <h3 className="font-bold mb-4 dark:text-white">New Spool Weight Preset</h3>
                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-end">
-                  <input type="text" placeholder="Naam (bijv. Bambu Lab Karton)" value={newSpool.name} onChange={e => setNewSpool({...newSpool, name: e.target.value})} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-xl p-3 text-sm dark:text-white" />
-                  <input type="number" placeholder="Gewicht (gram)" value={newSpool.weight} onChange={e => setNewSpool({...newSpool, weight: e.target.value})} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-xl p-3 text-sm dark:text-white" />
-                  <button onClick={addSpoolWeight} className="bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center gap-2"><Plus size={18}/> Toevoegen</button>
+                  <input type="text" placeholder="Name (e.g. Bambu Lab Cardboard)" value={newSpool.name} onChange={e => setNewSpool({...newSpool, name: e.target.value})} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-xl p-3 text-sm dark:text-white" />
+                  <input type="number" placeholder="Weight (grams)" value={newSpool.weight} onChange={e => setNewSpool({...newSpool, weight: e.target.value})} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-xl p-3 text-sm dark:text-white" />
+                  <button onClick={addSpoolWeight} className="bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-500 transition-all flex items-center justify-center gap-2"><Plus size={18}/> Add Preset</button>
                </div>
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-900 text-[10px] font-black text-slate-500 uppercase border-b">
-                    <tr><th className="p-4">Spoel Type</th><th className="p-4">Gewicht</th><th className="p-4 text-right">Actie</th></tr>
+                    <tr><th className="p-4">Spool Type</th><th className="p-4">Weight</th><th className="p-4 text-right">Action</th></tr>
                   </thead>
                   <tbody>
                     {spoolWeights.map(sw => (
@@ -416,12 +412,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'requests' && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b flex justify-between items-center bg-red-50/30 dark:bg-red-900/10">
-                <h3 className="font-bold text-red-600">Verwijderverzoeken ({requests.length})</h3>
+                <h3 className="font-bold text-red-600">Deletion Requests ({requests.length})</h3>
                 <button onClick={loadRequests} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><RefreshCw size={18}/></button>
              </div>
              <table className="w-full text-left">
                 <thead className="bg-slate-50 dark:bg-slate-900 text-[10px] font-black text-slate-500 uppercase border-b">
-                   <tr><th className="p-4">Account</th><th className="p-4">Reden</th><th className="p-4">Datum</th><th className="p-4 text-right">Actie</th></tr>
+                   <tr><th className="p-4">Account</th><th className="p-4">Reason</th><th className="p-4">Date</th><th className="p-4 text-right">Action</th></tr>
                 </thead>
                 <tbody>
                    {requests.map(r => (
@@ -435,7 +431,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                          </td>
                       </tr>
                    ))}
-                   {requests.length === 0 && <tr><td colSpan={4} className="p-10 text-center text-slate-400 italic">Geen verzoeken gevonden</td></tr>}
+                   {requests.length === 0 && <tr><td colSpan={4} className="p-10 text-center text-slate-400 italic">No requests found</td></tr>}
                 </tbody>
              </table>
           </div>
@@ -444,9 +440,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         {activeTab === 'data' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm flex flex-col">
-               <h3 className="font-bold mb-4 dark:text-white">Presets: Merken</h3>
+               <h3 className="font-bold mb-4 dark:text-white">Presets: Brands</h3>
                <div className="flex gap-2 mb-4">
-                  <input type="text" placeholder="Merk naam" value={newBrand} onChange={e => setNewBrand(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl p-2 text-sm dark:text-white" />
+                  <input type="text" placeholder="Brand name" value={newBrand} onChange={e => setNewBrand(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl p-2 text-sm dark:text-white" />
                   <button onClick={addBrand} className="bg-blue-600 text-white p-2 rounded-xl"><Plus size={20}/></button>
                </div>
                <div className="max-h-64 overflow-y-auto divide-y dark:divide-slate-700">
@@ -459,9 +455,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                </div>
             </div>
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm flex flex-col">
-               <h3 className="font-bold mb-4 dark:text-white">Presets: Materialen</h3>
+               <h3 className="font-bold mb-4 dark:text-white">Presets: Materials</h3>
                <div className="flex gap-2 mb-4">
-                  <input type="text" placeholder="Materiaal" value={newMaterial} onChange={e => setNewMaterial(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl p-2 text-sm dark:text-white" />
+                  <input type="text" placeholder="Material" value={newMaterial} onChange={e => setNewMaterial(e.target.value)} className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl p-2 text-sm dark:text-white" />
                   <button onClick={addMaterial} className="bg-blue-600 text-white p-2 rounded-xl"><Plus size={20}/></button>
                </div>
                <div className="max-h-64 overflow-y-auto divide-y dark:divide-slate-700">
@@ -478,15 +474,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         {activeTab === 'logo' && (
           <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 shadow-sm max-w-xl mx-auto text-center">
-             <h3 className="font-bold text-xl mb-6 dark:text-white">App Logo Aanpassen</h3>
+             <h3 className="font-bold text-xl mb-6 dark:text-white">Customize App Logo</h3>
              <div onClick={() => fileInputRef.current?.click()} className="group aspect-square max-w-[200px] mx-auto rounded-[40px] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-all overflow-hidden bg-slate-50 dark:bg-slate-900">
                 {previewUrl ? <img src={previewUrl} className="w-full h-full object-contain p-4" /> : <ImageIcon size={48} className="text-slate-300" />}
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
              </div>
-             <p className="mt-4 text-xs text-slate-400">Klik hierboven om een afbeelding te kiezen. <br/>Aanbevolen: PNG of SVG (vierkant).</p>
+             <p className="mt-4 text-xs text-slate-400">Click above to choose an image. <br/>Recommended: PNG or SVG (square).</p>
              <button onClick={handleLogoUpload} disabled={!previewUrl || isUploading} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-50 flex items-center justify-center gap-2">
                 {isUploading ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>}
-                Opslaan & Bijwerken
+                Save & Update
              </button>
           </div>
         )}
@@ -498,9 +494,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                  <table className="w-full text-left">
                     <thead>
                        <tr className="bg-slate-50 dark:bg-slate-900 text-[10px] font-black uppercase text-slate-500 border-b">
-                          <th className="p-4">Bericht</th>
+                          <th className="p-4">Message</th>
                           <th className="p-4 text-center">Rating</th>
-                          <th className="p-4 text-right">Actie</th>
+                          <th className="p-4 text-right">Action</th>
                        </tr>
                     </thead>
                     <tbody>

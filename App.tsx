@@ -162,7 +162,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {isPremium && !isAdmin && (
             <div className="px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
                <Crown size={16} className="text-amber-500" fill="currentColor" />
-               <span className="text-xs font-bold text-amber-700 dark:text-amber-400">PRO Lidmaatschap Actief</span>
+               <span className="text-xs font-bold text-amber-700 dark:text-amber-400">PRO Membership Active</span>
             </div>
           )}
         </div>
@@ -390,13 +390,11 @@ const AppContent = () => {
         const res = await fetch('/version.json');
         const data = await res.json();
         if (data.version && data.version !== APP_VERSION) {
-          const translatedNotes = typeof data.releaseNotes === 'object' 
-            ? (data.releaseNotes[language] || data.releaseNotes['en'] || "")
-            : data.releaseNotes;
+          const notes = data.releaseNotes?.['en'] || data.releaseNotes || "";
 
           setUpdateInfo({ 
             version: data.version, 
-            notes: translatedNotes,
+            notes: notes,
             downloadUrl: data.downloadUrl
           });
           
@@ -424,7 +422,7 @@ const AppContent = () => {
             const filters = params.get('materials')?.split(',') || [];
             setPublicViewData({
               filaments: fData,
-              name: sData?.showcase_name || 'Gedeelde Voorraad',
+              name: sData?.showcase_name || 'Shared Inventory',
               filters: filters
             });
           }
@@ -513,7 +511,7 @@ const AppContent = () => {
             const wasPro = isPro;
             setIsPro(payload.new.is_pro);
             if (payload.new.is_pro && !wasPro) {
-               alert("Gefeliciteerd! Je account is zojuist geupgrade naar PRO. Alle functies zijn nu ontgrendeld.");
+               alert("Congratulations! Your account has been upgraded to PRO. All features are now unlocked.");
             }
           })
           .subscribe();
@@ -556,7 +554,7 @@ const AppContent = () => {
       setEditingId(null);
       fetchData();
     } catch (e: any) {
-      alert("Fout bij opslaan: " + e.message);
+      alert("Error saving: " + e.message);
     }
   };
 
@@ -575,7 +573,7 @@ const AppContent = () => {
       setEditingId(null);
       fetchData();
     } catch (e: any) {
-      alert("Fout bij opslaan: " + e.message);
+      alert("Error saving: " + e.message);
     }
   };
 
@@ -587,19 +585,19 @@ const AppContent = () => {
       if (error) throw error;
       fetchData();
     } catch (e: any) {
-      alert("Fout bij verwijderen: " + e.message);
+      alert("Error deleting: " + e.message);
     }
   };
 
   const handleBatchDelete = async (ids: string[], type: 'filament' | 'material') => {
-    if (!confirm(`Weet je zeker dat je deze ${ids.length} items wilt verwijderen?`)) return;
+    if (!confirm(`Are you sure you want to delete these ${ids.length} items?`)) return;
     try {
       const table = type === 'filament' ? 'filaments' : 'other_materials';
       const { error } = await supabase.from(table).delete().in('id', ids);
       if (error) throw error;
       fetchData();
     } catch (e: any) {
-      alert("Batch verwijderen mislukt: " + e.message);
+      alert("Batch delete failed: " + e.message);
     }
   };
 
@@ -722,7 +720,7 @@ const AppContent = () => {
              <button 
                 onClick={() => setView('notifications')}
                 className={`p-2 rounded-full relative transition-colors ${updateBadgeCount > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                title="Meldingen"
+                title="Notifications"
              >
                 <Bell size={20} className={updateBadgeCount > 0 ? 'animate-pulse' : ''} />
                 {updateBadgeCount > 0 && (
@@ -824,15 +822,15 @@ const AppContent = () => {
                     <Sparkles size={20} />
                  </div>
                  <div>
-                    <h4 className="font-bold text-sm">Update Beschikbaar!</h4>
-                    <p className="text-[10px] opacity-90">Versie {updateInfo?.version} staat klaar.</p>
+                    <h4 className="font-bold text-sm">Update Available!</h4>
+                    <p className="text-[10px] opacity-90">Version {updateInfo?.version} is ready.</p>
                  </div>
               </div>
               <button 
                 onClick={() => { setShowUpdateToast(false); setView('notifications'); }}
                 className="bg-white text-blue-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase flex items-center gap-1"
               >
-                 Bekijk <ChevronRight size={12}/>
+                 View <ChevronRight size={12}/>
               </button>
            </div>
         </div>
@@ -844,21 +842,21 @@ const AppContent = () => {
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">App afsluiten?</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Weet je zeker dat je de Filament Manager wilt afsluiten?</p>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Exit App?</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Are you sure you want to exit the Filament Manager?</p>
             
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => setShowExitConfirm(false)}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <ArrowLeft size={20} /> Terug naar App
+                <ArrowLeft size={20} /> Back to App
               </button>
               <button 
                 onClick={() => CapacitorApp.exitApp()}
                 className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
               >
-                Afsluiten
+                Exit
               </button>
             </div>
           </div>

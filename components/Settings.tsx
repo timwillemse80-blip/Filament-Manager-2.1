@@ -48,15 +48,14 @@ const DiscordIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 const getDeleteReasons = (t: any) => [
-  t('reasonNotUsing'),
-  t('reasonMissingFeatures'),
-  t('reasonTooComplicated'),
-  t('reasonOtherApp'),
-  t('reasonTechnicalIssues'),
-  t('reasonOther')
+  "No longer using the app",
+  "Missing essential features",
+  "Too complicated to use",
+  "Switched to another app",
+  "Technical issues",
+  "Other"
 ];
 
-// Added missing TabKey type definition to fix line 67 error
 type TabKey = 'general' | 'notifications' | 'management' | 'account' | 'pro';
 
 export const Settings: React.FC<SettingsProps> = ({ 
@@ -67,7 +66,6 @@ export const Settings: React.FC<SettingsProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { language, setLanguage, t } = useLanguage();
-  // Use the defined TabKey type for activeTab state
   const [activeTab, setActiveTab] = useState<TabKey>('general');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -78,14 +76,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteReasonCustom, setDeleteReasonCustom] = useState("");
-
-  const availableLanguages = [
-     { code: 'nl', label: 'NL', name: 'Nederlands' },
-     { code: 'en', label: 'EN', name: 'English' },
-     { code: 'de', label: 'DE', name: 'Deutsch' },
-     { code: 'fr', label: 'FR', name: 'Français' },
-     { code: 'es', label: 'ES', name: 'Español' },
-  ];
 
   useEffect(() => {
      const checkPendingRequest = async () => {
@@ -161,7 +151,7 @@ export const Settings: React.FC<SettingsProps> = ({
         setHasPendingRequest(false);
         alert(t('requestCancelled'));
      } catch (e: any) {
-        alert("Fout: " + e.message);
+        alert("Error: " + e.message);
      } finally {
         setIsLoadingRequest(false);
      }
@@ -169,21 +159,21 @@ export const Settings: React.FC<SettingsProps> = ({
 
   const submitDeletionRequest = async () => {
      if (!deleteReason) return;
-     const finalReason = deleteReason === t('reasonOther') ? deleteReasonCustom : deleteReason;
+     const finalReason = deleteReason === "Other" ? deleteReasonCustom : deleteReason;
      setIsLoadingRequest(true);
      try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && user.email) {
            await supabase.from('deletion_requests').insert({
               email: user.email,
-              reason: finalReason || 'Geen reden opgegeven'
+              reason: finalReason || 'No reason provided'
            });
            setHasPendingRequest(true);
            setShowDeleteModal(false);
            alert(t('requestSent'));
         }
      } catch (e: any) {
-        alert("Fout: " + e.message);
+        alert("Error: " + e.message);
      } finally {
         setIsLoadingRequest(false);
      }
@@ -200,11 +190,11 @@ export const Settings: React.FC<SettingsProps> = ({
       {installPrompt && (
          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-xl shadow-lg flex items-center justify-between text-white transform transition-transform active:scale-[0.99] mb-4">
             <div>
-               <h4 className="font-bold text-lg flex items-center gap-2"><Download size={20}/> {t('installApp')}</h4>
-               <p className="text-xs text-blue-100 opacity-90">{t('installAppDesc')}</p>
+               <h4 className="font-bold text-lg flex items-center gap-2"><Download size={20}/> Install App</h4>
+               <p className="text-xs text-blue-100 opacity-90">Install on your home screen for full PWA experience.</p>
             </div>
             <button onClick={onInstall} className="bg-white text-blue-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-50 transition-colors">
-               {t('install')}
+               Install
             </button>
          </div>
       )}
@@ -273,18 +263,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         <button onClick={onToggleSnow} className={`w-12 h-6 rounded-full transition-colors relative ${isSnowEnabled ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-600'}`}><div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform shadow-sm ${isSnowEnabled ? 'left-7' : 'left-1'}`} /></button>
                      </div>
                   )}
-
-                  <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                     <div className="flex items-center gap-3 mb-2">
-                        <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full text-purple-600 dark:text-purple-400"><Languages size={20} /></div>
-                        <h4 className="font-semibold dark:text-white text-slate-800">{t('language')}</h4>
-                     </div>
-                     <div className="grid grid-cols-5 gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
-                        {availableLanguages.map((lang) => (
-                           <button key={lang.code} onClick={() => setLanguage(lang.code as any)} className={`px-2 py-1.5 rounded-md font-bold text-xs transition-colors ${language === lang.code ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>{lang.label}</button>
-                        ))}
-                     </div>
-                  </div>
 
                   <div className="flex flex-col gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                      <div className="flex items-center justify-between">
@@ -365,8 +343,8 @@ export const Settings: React.FC<SettingsProps> = ({
                      <h4 className="font-bold text-lg mb-4 text-amber-600 dark:text-amber-400 flex items-center gap-2"><Calculator size={20} /> {t('proTools')}</h4>
                      <p className="text-xs text-slate-500 mb-4 dark:text-slate-400">{t('proToolsDesc')}</p>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('electricityRate')}</label><input type="text" inputMode="decimal" value={settings.electricityRate ?? ''} onChange={e => onUpdate(prev => ({ ...prev, electricityRate: parseNum(e.target.value) }))} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white" placeholder={t('exampleElectricityRate')} /></div>
-                        <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('hourlyRate')}</label><input type="text" inputMode="decimal" value={settings.hourlyRate ?? ''} onChange={e => onUpdate(prev => ({ ...prev, hourlyRate: parseNum(e.target.value) }))} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white" placeholder={t('exampleHourlyRate')} /></div>
+                        <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('electricityRate')}</label><input type="text" inputMode="decimal" value={settings.electricityRate ?? ''} onChange={e => onUpdate(prev => ({ ...prev, electricityRate: parseNum(e.target.value) }))} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white" placeholder="0.35" /></div>
+                        <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">{t('hourlyRate')}</label><input type="text" inputMode="decimal" value={settings.hourlyRate ?? ''} onChange={e => onUpdate(prev => ({ ...prev, hourlyRate: parseNum(e.target.value) }))} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white" placeholder="2.00" /></div>
                         <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1"><Percent size={12}/> {t('profitMargin')}</label><input type="text" inputMode="numeric" value={settings.profitMargin ?? ''} onChange={e => onUpdate(prev => ({ ...prev, profitMargin: parseNum(e.target.value) }))} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 dark:text-white" placeholder="20" /></div>
                      </div>
                      <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800"><div className="flex items-center justify-between"><label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2"><ArrowUpFromLine size={14}/> {t('roundToNine')}</label><input type="checkbox" checked={!!settings.roundToNine} onChange={(e) => onUpdate(prev => ({ ...prev, roundToNine: e.target.checked }))} className="w-5 h-5 accent-blue-600 rounded" /></div></div>
@@ -381,8 +359,8 @@ export const Settings: React.FC<SettingsProps> = ({
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
                <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50"><h3 className="text-xl font-bold text-red-600 flex items-center gap-2"><AlertTriangle size={24} /> {t('deleteAccount')}</h3><button onClick={() => setShowDeleteModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={20} /></button></div>
-               <div className="p-6 space-y-6"><div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 text-sm text-amber-800 dark:text-amber-200 leading-relaxed"><strong>Let op:</strong> Na bevestiging worden al jouw gegevens binnen <strong>48 uur</strong> permanent verwijderd.</div><div><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Waarom wil je vertrekken?</label><select value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-red-500"><option value="">Kies een reden...</option>{getDeleteReasons(t).map((r) => <option key={r} value={r}>{r}</option>)}</select></div>{deleteReason === t('reasonOther') && <div className="animate-fade-in"><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Licht je keuze toe:</label><textarea value={deleteReasonCustom} onChange={(e) => setDeleteReasonCustom(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none" placeholder="Type hier..." /></div>}</div>
-               <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-700 flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl">{t('cancel')}</button><button onClick={submitDeletionRequest} disabled={!deleteReason || isLoadingRequest} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">{isLoadingRequest ? <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18} />} Definitief Verwijderen</button></div>
+               <div className="p-6 space-y-6"><div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 text-sm text-amber-800 dark:text-amber-200 leading-relaxed"><strong>Note:</strong> After confirmation, all your data will be permanently deleted within <strong>48 hours</strong>.</div><div><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Why are you leaving?</label><select value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-red-500"><option value="">Choose a reason...</option>{getDeleteReasons(t).map((r) => <option key={r} value={r}>{r}</option>)}</select></div>{deleteReason === "Other" && <div className="animate-fade-in"><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Explain your choice:</label><textarea value={deleteReasonCustom} onChange={(e) => setDeleteReasonCustom(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none" placeholder="Type here..." /></div>}</div>
+               <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-700 flex gap-3"><button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl">{t('cancel')}</button><button onClick={submitDeletionRequest} disabled={!deleteReason || isLoadingRequest} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">{isLoadingRequest ? <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18} />} Request Deletion</button></div>
             </div>
          </div>
       )}
