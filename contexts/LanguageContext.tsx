@@ -16,6 +16,23 @@ const translations: Record<Language, Record<string, string>> = {
     aiMaintenanceDesc: "The AI camera feature is currently undergoing scheduled maintenance to improve accuracy and speed. We'll be back online shortly!",
     aiMaintenanceButton: "Got it, thanks!",
     
+    // PRO Modal & Features
+    upgradeProTitle: "Upgrade to PRO",
+    proToolkitSubtitle: "The ultimate toolkit for the serious maker",
+    proComingSoonHeader: "Coming Soon",
+    proComingSoonDesc: "We are currently hard at work fully developing these features. Become a PRO supporter now and get instant access as soon as they go live!",
+    proKeepInformed: "Keep me informed",
+    featureUnlimitedTitle: "Unlimited Inventory",
+    featureUnlimitedDesc: "Remove the 50 spool limit and add unlimited printers.",
+    featureCalcTitle: "Advanced Calculator",
+    featureCalcDesc: "Calculate exact costs including electricity, labor, and depreciation.",
+    featureMaterialsTitle: "Materials Management",
+    featureMaterialsDesc: "Track your bolts, nuts, glue, and electronics stock as well.",
+    featureShowcaseTitle: "Public Showcase",
+    featureShowcaseDesc: "Share your available colors and materials with customers or friends.",
+    featureExportTitle: "Data Export",
+    featureExportDesc: "Export your full print history to CSV for Excel.",
+
     // Menu & Tabs
     inventory: "Inventory",
     filaments: "Filaments",
@@ -37,7 +54,7 @@ const translations: Record<Language, Record<string, string>> = {
     dashboard: "Dashboard",
     supportTitle: "Support Project",
     admin: "Admin Dashboard",
-    becomePro: "Get PRO",
+    becomePro: "Upgrade to PRO",
     help: "Help & Contact",
     userRatingText: "Users rate us with a",
     showcaseTitle: "Showcase",

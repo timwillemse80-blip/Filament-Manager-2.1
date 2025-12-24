@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Crown, Calculator, Box, Globe, BarChart3, Infinity as InfinityIcon, Clock, Bell } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -12,28 +13,28 @@ export const ProModal: React.FC<ProModalProps> = ({ onClose }) => {
   const features = [
     {
       icon: <InfinityIcon className="text-amber-500" size={20} />,
-      title: "Onbeperkte Voorraad",
-      desc: "Verwijder de limiet van 50 spoelen en voeg onbeperkt printers toe."
+      title: t('featureUnlimitedTitle'),
+      desc: t('featureUnlimitedDesc')
     },
     {
       icon: <Calculator className="text-blue-500" size={20} />,
-      title: "Geavanceerde Calculator",
-      desc: "Bereken exact je kosten inclusief stroom, arbeid en afschrijving."
+      title: t('featureCalcTitle'),
+      desc: t('featureCalcDesc')
     },
     {
       icon: <Box className="text-purple-500" size={20} />,
-      title: "Materialen Beheer",
-      desc: "Houd ook je boutjes, moeren en elektronica voorraad bij."
+      title: t('featureMaterialsTitle'),
+      desc: t('featureMaterialsDesc')
     },
     {
       icon: <Globe className="text-emerald-500" size={20} />,
-      title: "Publieke Showcase",
-      desc: "Deel je beschikbare kleuren en materialen met klanten of vrienden."
+      title: t('featureShowcaseTitle'),
+      desc: t('featureShowcaseDesc')
     },
     {
       icon: <BarChart3 className="text-orange-500" size={20} />,
-      title: "Data Export",
-      desc: "Exporteer je volledige printgeschiedenis naar CSV voor Excel."
+      title: t('featureExportTitle'),
+      desc: t('featureExportDesc')
     }
   ];
 
@@ -57,8 +58,8 @@ export const ProModal: React.FC<ProModalProps> = ({ onClose }) => {
             <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4 shadow-xl border border-white/30">
               <Crown size={32} fill="white" />
             </div>
-            <h2 className="text-3xl font-black tracking-tight mb-1">Upgrade naar PRO</h2>
-            <p className="text-amber-100 font-medium">De ultieme toolkit voor de serieuze maker</p>
+            <h2 className="text-3xl font-black tracking-tight mb-1">{t('upgradeProTitle')}</h2>
+            <p className="text-amber-100 font-medium">{t('proToolkitSubtitle')}</p>
           </div>
         </div>
 
@@ -69,9 +70,9 @@ export const ProModal: React.FC<ProModalProps> = ({ onClose }) => {
               <Clock size={20} className="animate-pulse" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300">Binnenkort Beschikbaar</h4>
+              <h4 className="text-sm font-bold text-blue-800 dark:text-blue-300">{t('proComingSoonHeader')}</h4>
               <p className="text-xs text-blue-600/80 dark:text-blue-400/80 leading-relaxed mt-0.5">
-                We zijn momenteel druk bezig om deze functies volledig te ontwikkelen. Word nu alvast PRO supporter en krijg direct toegang zodra ze live gaan!
+                {t('proComingSoonDesc')}
               </p>
             </div>
           </div>
@@ -102,7 +103,7 @@ export const ProModal: React.FC<ProModalProps> = ({ onClose }) => {
               onClick={onClose}
             >
               <Bell size={20} fill="white" />
-              Hou mij op de hoogte
+              {t('proKeepInformed')}
             </button>
           </div>
         </div>
