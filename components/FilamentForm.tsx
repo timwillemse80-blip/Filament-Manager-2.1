@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, COMMON_COLORS } from '../constants';
@@ -52,6 +52,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normal)');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAiScanning, setIsAiScanning] = useState(false);
+  const [showAiMaintenance, setShowAiMaintenance] = useState(false);
 
   const spoolWeights: Record<string, number> = {
     "Bambu Lab (Reusable)": 250,
@@ -135,6 +136,14 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
+    // Maintenance Intercept
+    // Set this to true to enable the maintenance message
+    const IS_MAINTENANCE = true;
+    if (IS_MAINTENANCE) {
+      setShowAiMaintenance(true);
+      return;
+    }
+
     setIsAiScanning(true);
     try {
       let base64Image = '';
@@ -398,6 +407,27 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           </div>
         </form>
       </div>
+
+      {/* --- AI Maintenance Modal --- */}
+      {showAiMaintenance && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
+            <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <Construction size={40} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">{t('aiMaintenanceTitle')}</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+              {t('aiMaintenanceDesc')}
+            </p>
+            <button 
+              onClick={() => setShowAiMaintenance(false)}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.98]"
+            >
+              {t('aiMaintenanceButton')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showWeighHelper && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">

@@ -12,6 +12,9 @@ const translations: Record<Language, Record<string, string>> = {
     aiAnalyzing: "AI is analyzing the label...",
     aiSuccess: "Label analyzed successfully!",
     aiError: "AI could not recognize the label. Please enter data manually.",
+    aiMaintenanceTitle: "AI Feature Maintenance",
+    aiMaintenanceDesc: "The AI camera feature is currently undergoing scheduled maintenance to improve accuracy and speed. We'll be back online shortly!",
+    aiMaintenanceButton: "Got it, thanks!",
     
     // Menu & Tabs
     inventory: "Inventory",
