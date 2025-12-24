@@ -42,7 +42,6 @@ export const HelpPage = () => {
     }
     
     setStatus('success');
-    // alert(t('emailSent'));
   };
 
   // Check for existing feedback on mount
@@ -60,7 +59,6 @@ export const HelpPage = () => {
            
            if (data && !error) {
               // Found existing feedback! Pre-fill form
-              // Strip technical info for cleaner editing if present
               const cleanMsg = data.message.split('--------------------------------')[0].trim();
               setFeedbackMsg(cleanMsg);
               setRating(data.rating);
@@ -85,17 +83,15 @@ export const HelpPage = () => {
         let error;
 
         if (existingFeedbackId) {
-           // Update existing
            const { error: updateError } = await supabase.from('feedback').update({
               message: fullMessage,
               rating,
-              created_at: new Date().toISOString(), // Update timestamp to bring it to top
+              created_at: new Date().toISOString(),
               platform: platform,
               user_agent: userAgent
            }).eq('id', existingFeedbackId);
            error = updateError;
         } else {
-           // Insert new
            const { error: insertError } = await supabase.from('feedback').insert({
               message: fullMessage,
               rating,
@@ -109,7 +105,6 @@ export const HelpPage = () => {
         if (error) throw error;
 
         setStatus('success');
-        // Don't clear message if updating, allows user to see what they saved
         if (!existingFeedbackId) {
            setFeedbackMsg('');
            setRating(0);
@@ -118,7 +113,6 @@ export const HelpPage = () => {
 
     } catch (e: any) {
         console.error("Feedback failed, falling back to mail", e);
-        // Fallback to mail
         openMail(`Feedback Filament Manager (${rating}/5)`, feedbackMsg);
         setFeedbackMsg('');
         setRating(0);
@@ -154,7 +148,7 @@ export const HelpPage = () => {
                 {activeTab === 'contact' && <Mail size={40} className="text-green-600 dark:text-green-400" strokeWidth={2} />}
              </div>
           </div>
-          <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{t('help')}</h2>
+          <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{t('helpTitle')}</h2>
        </div>
 
        {/* Tabs */}
@@ -189,7 +183,7 @@ export const HelpPage = () => {
                 <div className="space-y-6 animate-fade-in">
                    {existingFeedbackId && (
                       <div className="text-xs text-blue-500 font-bold bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg text-center">
-                         Je hebt al feedback gegeven. Je kunt het hieronder aanpassen.
+                         {t('alreadyFeedback')}
                       </div>
                    )}
                    <p className="text-center text-slate-600 dark:text-slate-300 text-sm">{t('feedbackSubtitle')}</p>
@@ -207,7 +201,7 @@ export const HelpPage = () => {
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 min-h-[150px] outline-none focus:ring-2 focus:ring-blue-500 dark:text-white resize-y"
                    />
                    <button onClick={submitFeedback} disabled={!feedbackMsg.trim() || isSending} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                      <Send size={20} /> {existingFeedbackId ? "Feedback Bijwerken" : t('feedbackSend')}
+                      <Send size={20} /> {existingFeedbackId ? t('saveChanges') : t('feedbackSend')}
                    </button>
                 </div>
              )}
@@ -236,7 +230,7 @@ export const HelpPage = () => {
                       type="text" 
                       value={contactName}
                       onChange={(e) => setContactName(e.target.value)}
-                      placeholder={t('name')}
+                      placeholder={t('contactNamePlaceholder')}
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
                    />
                    <textarea

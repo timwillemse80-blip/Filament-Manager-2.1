@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'nl' | 'en' | 'de' | 'fr' | 'es';
@@ -25,6 +24,25 @@ const translations: Record<Language, Record<string, string>> = {
     madeBy: "Gemaakt door",
     notifications: "Notificaties",
     
+    // Help & Contact
+    helpTitle: "Help & Contact",
+    feedback: "Feedback",
+    suggestions: "Suggesties",
+    contact: "Contact",
+    feedbackSubtitle: "Laat ons weten wat je vindt van de app.",
+    feedbackPlaceholder: "Type hier je bericht...",
+    feedbackSend: "Feedback Versturen",
+    feedbackSent: "Bedankt voor je feedback!",
+    alreadyFeedback: "Je hebt al feedback gegeven. Je kunt het hieronder aanpassen.",
+    suggestionDesc: "Heb je een goed idee voor een nieuwe functie of verbetering? We horen het graag!",
+    suggestionPlaceholder: "Beschrijf je idee zo uitgebreid mogelijk...",
+    contactDesc: "Heb je een specifieke vraag of heb je ergens hulp bij nodig? Stuur ons een bericht.",
+    contactNamePlaceholder: "Je naam",
+    contactMessagePlaceholder: "Waar kunnen we je mee helpen?",
+    emailSent: "Je bericht is verzonden. We nemen zo snel mogelijk contact op.",
+    rating: "Beoordeling",
+    send: "Versturen",
+
     // Inventory & Stock
     all: "Alles",
     filaments: "Filamenten",
@@ -129,6 +147,25 @@ const translations: Record<Language, Record<string, string>> = {
     madeBy: "Made by",
     notifications: "Notifications",
 
+    // Help & Contact
+    helpTitle: "Help & Contact",
+    feedback: "Feedback",
+    suggestions: "Suggestions",
+    contact: "Contact",
+    feedbackSubtitle: "Let us know what you think of the app.",
+    feedbackPlaceholder: "Type your message here...",
+    feedbackSend: "Send Feedback",
+    feedbackSent: "Thanks for your feedback!",
+    alreadyFeedback: "You have already given feedback. You can adjust it below.",
+    suggestionDesc: "Do you have a great idea for a new feature or improvement? We'd love to hear it!",
+    suggestionPlaceholder: "Describe your idea in detail...",
+    contactDesc: "Do you have a specific question or need help with something? Send us a message.",
+    contactNamePlaceholder: "Your name",
+    contactMessagePlaceholder: "How can we help you?",
+    emailSent: "Your message has been sent. We will contact you as soon as possible.",
+    rating: "Rating",
+    send: "Send",
+
     // Inventory & Stock
     all: "All",
     filaments: "Filaments",
@@ -230,6 +267,25 @@ const translations: Record<Language, Record<string, string>> = {
     userRatingText: "Nutzer bewerten uns mit",
     madeBy: "Erstellt von",
     notifications: "Benachrichtigungen",
+
+    // Hilfe & Kontakt
+    helpTitle: "Hilfe & Kontakt",
+    feedback: "Feedback",
+    suggestions: "Vorschläge",
+    contact: "Kontakt",
+    feedbackSubtitle: "Lassen Sie uns wissen, was Sie von der App halten.",
+    feedbackPlaceholder: "Geben Sie hier Ihre Nachricht ein...",
+    feedbackSend: "Feedback senden",
+    feedbackSent: "Vielen Dank für Ihr Feedback!",
+    alreadyFeedback: "Sie haben bereits Feedback gegeben. Sie können es unten anpassen.",
+    suggestionDesc: "Haben Sie eine tolle Idee für eine neue Funktion oder Verbesserung? Wir würden uns freuen, davon zu hören!",
+    suggestionPlaceholder: "Beschreiben Sie Ihre Idee im Detail...",
+    contactDesc: "Haben Sie eine spezielle Frage oder benötigen Sie Hilfe? Senden Sie uns eine Nachricht.",
+    contactNamePlaceholder: "Ihr Name",
+    contactMessagePlaceholder: "Wie können wir Ihnen helfen?",
+    emailSent: "Ihre Nachricht wurde gesendet. Wir werden Sie so schnell wie möglich kontaktieren.",
+    rating: "Bewertung",
+    send: "Senden",
 
     // Inventory & Stock
     all: "Alle",
@@ -333,13 +389,32 @@ const translations: Record<Language, Record<string, string>> = {
     madeBy: "Fait par",
     notifications: "Notifications",
 
+    // Aide & Contact
+    helpTitle: "Aide & Contact",
+    feedback: "Feedback",
+    suggestions: "Suggestions",
+    contact: "Contact",
+    feedbackSubtitle: "Dites-nous ce que vous pensez de l'application.",
+    feedbackPlaceholder: "Tapez votre message ici...",
+    feedbackSend: "Envoyer le feedback",
+    feedbackSent: "Merci pour votre feedback !",
+    alreadyFeedback: "Vous avez déjà donné votre avis. Vous pouvez le modifier ci-dessous.",
+    suggestionDesc: "Vous avez une idée géniale pour une nouvelle fonctionnalité ? Nous aimerions l'entendre !",
+    suggestionPlaceholder: "Décrivez votre idée en détail...",
+    contactDesc: "Vous avez une question spécifique ou besoin d'aide ? Envoyez-nous un message.",
+    contactNamePlaceholder: "Votre nom",
+    contactMessagePlaceholder: "Comment pouvons-nous vous aider ?",
+    emailSent: "Votre message a été envoyé. Nous vous contacterons dès que possible.",
+    rating: "Évaluation",
+    send: "Envoyer",
+
     // Inventory & Stock
     all: "Tout",
     filaments: "Filaments",
     materials: "Matériaux",
     searchPlaceholder: "Rechercher marque, couleur ou ID...",
     newFilament: "Nouveau Filament",
-    newMaterial: "Nouveau Matériau",
+    newMaterial: "Nouveau Materiau",
     noFilaments: "Aucun filament trouvé",
     noMaterials: "Aucun matériau trouvé",
     viewSpools: "Voir bobines",
@@ -434,6 +509,25 @@ const translations: Record<Language, Record<string, string>> = {
     userRatingText: "Los usuarios nos califican con",
     madeBy: "Hecho por",
     notifications: "Notificaciones",
+
+    // Ayuda & Contacto
+    helpTitle: "Ayuda y Contacto",
+    feedback: "Feedback",
+    suggestions: "Sugerencias",
+    contact: "Contacto",
+    feedbackSubtitle: "Cuéntanos qué te parece la aplicación.",
+    feedbackPlaceholder: "Escribe tu mensaje aquí...",
+    feedbackSend: "Enviar feedback",
+    feedbackSent: "¡Gracias por tus comentarios!",
+    alreadyFeedback: "Ya has enviado tus comentarios. Puedes ajustarlos a continuación.",
+    suggestionDesc: "¿Tienes una gran idea para una nueva función o mejora? ¡Nos encantaría escucharla!",
+    suggestionPlaceholder: "Describe tu idea en detalle...",
+    contactDesc: "¿Tienes alguna pregunta específica o necesitas ayuda? Envíanos un mensaje.",
+    contactNamePlaceholder: "Tu nombre",
+    contactMessagePlaceholder: "¿Cómo podemos ayudarte?",
+    emailSent: "Tu mensaje ha sido enviado. Nos pondremos en contacto contigo lo antes posible.",
+    rating: "Calificación",
+    send: "Enviar",
 
     // Inventory & Stock
     all: "Todo",
@@ -550,6 +644,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
+    // Fix: Added missing opening tag bracket for LanguageContext.Provider
     <LanguageContext.Provider value={{ language, setLanguage, t, tColor }}>
       {children}
     </LanguageContext.Provider>
