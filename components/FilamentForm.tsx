@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, AiSuggestion, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
@@ -65,7 +66,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [preferLogo, setPreferLogo] = useState(true);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [showWeighHelper, setShowWeighHelper] = useState(false);
-  const [showAiMaintenance, setShowAiMaintenance] = useState(false);
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
   const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normaal)');
   const [tareWeight, setTareWeight] = useState<number>(230);
@@ -79,13 +79,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const [dbBrands, setDbBrands] = useState<string[]>([]);
   const [dbMaterials, setDbMaterials] = useState<string[]>([]);
-  const [showContribute, setShowContribute] = useState(false);
-  const [contributeForm, setContributeForm] = useState({ brand: '', type: '', weight: '' });
 
-  const labelRef = useRef<HTMLDivElement>(null); 
-  const formDataRef = useRef(formData);
-  const showLabelRef = useRef(showLabel);
-  const initialDataRef = useRef(initialData);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const availableBrands = useMemo(() => {
     const combined = new Set([...COMMON_BRANDS, ...dbBrands, ...(existingBrands || [])]);
@@ -115,22 +111,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
      loadData();
   }, []);
 
-  useEffect(() => {
-     if (formData.brand && showWeighHelper) {
-        const brandLower = formData.brand.toLowerCase();
-        let bestMatch = '';
-        if (brandLower.includes('bambu')) bestMatch = "Bambu Lab (Reusable)";
-        else if (brandLower.includes('prusa')) bestMatch = "Prusament";
-        else if (brandLower.includes('esun')) bestMatch = "eSun (Zwart Plastic)";
-        else if (brandLower.includes('sunlu')) bestMatch = "Sunlu (Plastic)";
-        else if (brandLower.includes('polymaker')) bestMatch = "Polymaker (Karton)";
-        if (bestMatch && spoolWeights[bestMatch]) {
-           setSelectedSpoolType(bestMatch);
-           setTareWeight(spoolWeights[bestMatch]);
-        }
-     }
-  }, [formData.brand, showWeighHelper, spoolWeights]);
-
   const handleApplyWeight = () => {
      if (grossWeight && typeof grossWeight === 'number') {
         const net = Math.max(0, grossWeight - tareWeight);
@@ -138,27 +118,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         setShowWeighHelper(false);
      }
   };
-
-  const handleSendContribution = () => {
-     if (!contributeForm.brand || !contributeForm.weight) return;
-     const subject = encodeURIComponent(`Nieuwe Spoel Gewicht Suggestie`);
-     const body = encodeURIComponent(`Merk: ${contributeForm.brand}\nType: ${contributeForm.type}\nGewicht: ${contributeForm.weight}g`);
-     window.open(`mailto:info@filamentmanager.nl?subject=${subject}&body=${body}`, Capacitor.isNativePlatform() ? '_system' : undefined);
-     setShowContribute(false);
-  };
-
-  const handleOpenShopUrl = () => {
-    if (!formData.shopUrl) return;
-    let url = formData.shopUrl;
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    window.open(url, Capacitor.isNativePlatform() ? '_system' : '_blank');
-  };
-
-  useEffect(() => {
-    formDataRef.current = formData;
-    showLabelRef.current = showLabel;
-    initialDataRef.current = initialData;
-  }, [formData, showLabel, initialData]);
 
   const triggerSubmit = () => {
     const baseFilament: Filament = {
@@ -193,48 +152,24 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const checkIsDirty = () => {
-    const fd = formDataRef.current;
-    const id = initialDataRef.current;
+    const fd = formData;
+    const id = initialData;
     if (!id) return !!fd.brand || !!fd.notes || (fd.weightRemaining !== 1000);
     return fd.brand !== id.brand || fd.material !== id.material || fd.colorName !== id.colorName || fd.colorHex !== id.colorHex || fd.weightRemaining !== id.weightRemaining;
   };
 
   const attemptClose = () => checkIsDirty() ? setShowUnsavedDialog(true) : onCancel();
 
-  useEffect(() => {
-    if (initialData) {
-      if (initialData.brand && !availableBrands.includes(initialData.brand)) setIsCustomBrand(true);
-      if (initialData.material && !availableMaterials.includes(initialData.material)) setIsCustomMaterial(true);
-      if (initialData.colorName && !COMMON_COLORS.some(c => c.name === initialData.colorName)) setIsCustomColor(true);
-    }
-  }, [initialData, availableBrands, availableMaterials]);
-
-  useEffect(() => {
-    const generateQr = async () => {
-      const shortId = initialData?.shortId || formData.shortId;
-      if (!shortId || !showLabel) return;
-      try {
-        const qrDataUrl = await QRCode.toDataURL(`filament://${shortId}`, { errorCorrectionLevel: 'H', margin: 1, width: 500 });
-        setQrCodeUrl(qrDataUrl);
-      } catch(e) { console.error(e); }
-    };
-    generateQr();
-  }, [initialData?.shortId, formData.shortId, showLabel]);
-
   const [isScanning, setIsScanning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showWebCamera, setShowWebCamera] = useState(false);
 
   const processImage = async (rawBase64: string) => {
     setIsScanning(true);
     setIsAnalyzing(true);
-    setShowCamera(false); 
     try {
       const result: any = await analyzeSpoolImage(rawBase64);
-      if (!result.brand && !result.material && !result.colorName) { alert(t('none')); return; }
-
+      
       let aiBrand = result.brand;
       let matchedBrand = availableBrands.find(b => b.toLowerCase() === aiBrand?.toLowerCase());
       if (matchedBrand) aiBrand = matchedBrand;
@@ -258,9 +193,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
       setFormData(prev => ({
         ...prev,
-        brand: aiBrand,
-        material: aiMaterial,
-        colorName: aiColor,
+        brand: aiBrand || prev.brand,
+        material: aiMaterial || prev.material,
+        colorName: aiColor || prev.colorName,
         colorHex: aiHex || prev.colorHex,
         tempNozzle: result.tempNozzle || prev.tempNozzle,
         tempBed: result.tempBed || prev.tempBed
@@ -270,12 +205,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const startCamera = async () => {
-    // INTERCEPT: Show maintenance alert
-    setShowAiMaintenance(true);
-    return;
-    
-    // Original logic below (currently bypassed)
-    /*
     if (Capacitor.isNativePlatform()) {
       try {
         const image = await Camera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Camera, width: 1500 });
@@ -283,11 +212,18 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         return;
       } catch (e) {}
     }
-    setShowWebCamera(true);
-    */
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setShowWebCamera(true);
+      }
+    } catch (e) {
+      alert("Camera toegang geweigerd of niet beschikbaar.");
+    }
   };
 
-  const [showWebCamera, setShowWebCamera] = useState(false);
   const stopWebCamera = () => { if (videoRef.current?.srcObject) (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop()); setShowWebCamera(false); };
   const captureWebImage = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -325,7 +261,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
         <div className="p-6 overflow-y-auto space-y-6 scrollbar-hide">
            
-           {/* Smart AI Scanner Section with Collapse/Expand */}
            {!isEditMode && (
               <div className={`bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg relative overflow-hidden transition-all duration-300 ${isScannerCollapsed ? 'p-3' : 'p-6'}`}>
                  {!isScannerCollapsed && (
@@ -394,7 +329,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  )}
               </div>
 
-              {/* Responsieve layout voor Materiaal en Kleur */}
               <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('material')}</label>
@@ -423,7 +357,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  </div>
               </div>
 
-              {/* Responsieve layout voor Voorraad */}
               <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
                  <div className="flex justify-between items-center">
                     <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('stock')}</h4>
@@ -441,7 +374,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  </div>
               </div>
 
-              {/* Responsieve layout voor Instellingen */}
               <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
                  <div className="flex justify-between items-center"><h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Instellingen</h4><button type="button" onClick={handleAutoSettings} disabled={!formData.brand || !formData.material || isAnalyzing} className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-3 py-1.5 rounded-lg border border-amber-100 dark:border-amber-800 flex items-center gap-1.5"><Zap size={14} /> AI</button></div>
                  <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
@@ -479,26 +411,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   <div><label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">{t('spoolType')}</label><select value={selectedSpoolType} onChange={e => { const k=e.target.value; setSelectedSpoolType(k); setTareWeight(spoolWeights[k]||0); }} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none dark:text-white appearance-none">{Object.keys(spoolWeights).sort().map(k => <option key={k} value={k}>{k}</option>)}</select></div>
                   <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">{t('apply')}</button>
                </div>
-            </div>
-         </div>
-      )}
-
-      {showAiMaintenance && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-8 text-center shadow-2xl border border-slate-200 dark:border-slate-800">
-               <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <Construction size={40} className="text-amber-600 dark:text-amber-400" />
-               </div>
-               <h2 className="text-xl font-black dark:text-white mb-2">{t('aiCameraUnavailable')}</h2>
-               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
-                  {t('aiCameraUnavailableDesc')}
-               </p>
-               <button 
-                  onClick={() => setShowAiMaintenance(false)}
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-[0.98]"
-               >
-                  {t('close')}
-               </button>
             </div>
          </div>
       )}
