@@ -267,7 +267,6 @@ const AppContent = () => {
   const [showBackToast, setShowBackToast] = useState(false);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  // Lifting state for logbook details to catch it with back button
   const [viewingJob, setViewingJob] = useState<PrintJob | null>(null);
 
   const [showShowcaseModal, setShowShowcaseModal] = useState(false);
@@ -279,7 +278,6 @@ const AppContent = () => {
     localStorage.setItem('filament_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Refs for consistent state access in the backbutton closure
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -307,18 +305,14 @@ const AppContent = () => {
     viewingJobRef.current = viewingJob;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
-  // Central Android Hardware Back Button Handler
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
-      // 0. If Exit Confirmation is open, close it first
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
       }
-
-      // 1. Close heavy UI overlays
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
@@ -335,8 +329,6 @@ const AppContent = () => {
         setShowShowcaseModal(false);
         return;
       }
-
-      // 2. Close forms
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
@@ -348,38 +340,26 @@ const AppContent = () => {
         setEditingId(null);
         return;
       }
-
-      // 3. Close detail windows (e.g. logbook)
       if (viewingJobRef.current) {
         setViewingJob(null);
         return;
       }
-
-      // 4. Close mobile sidebar
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
-
-      // 5. Exit sub-inventory view (groups)
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
-
-      // 6. Navigate back to Dashboard if elsewhere
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
-        // Reset exit press timer when navigating back home
         lastBackPressRef.current = 0;
         return;
       }
-
-      // 7. If already on Dashboard and everything is closed: Implement Double-Press Timeout
       if (viewRef.current === 'dashboard') {
         const now = Date.now();
         const BACK_PRESS_TIMEOUT = 2000;
-        
         if (now - lastBackPressRef.current < BACK_PRESS_TIMEOUT) {
             setShowExitConfirm(true);
             setShowBackToast(false);
@@ -651,6 +631,55 @@ const AppContent = () => {
     } catch (e: any) { console.error(e); }
   };
 
+  const handleSaveJob = async (job: PrintJob, filamentDeductions: { id: string, amount: number }[]) => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    try {
+      // 1. Sla de print job op
+      const { error: jobError } = await supabase.from('print_jobs').insert({
+        ...job,
+        user_id: userId
+      });
+      if (jobError) throw jobError;
+
+      // 2. Trek filament gewicht af
+      for (const deduction of filamentDeductions) {
+        const filament = filaments.find(f => f.id === deduction.id);
+        if (filament) {
+          const newWeight = Math.max(0, filament.weightRemaining - deduction.amount);
+          await supabase.from('filaments').update({ weightRemaining: newWeight }).eq('id', deduction.id);
+        }
+      }
+
+      // 3. Trek overige materialen af
+      if (job.usedOtherMaterials) {
+        for (const usedMat of job.usedOtherMaterials) {
+          const material = materials.find(m => m.id === usedMat.materialId);
+          if (material) {
+            const newQty = Math.max(0, material.quantity - usedMat.quantity);
+            await supabase.from('other_materials').update({ quantity: newQty }).eq('id', usedMat.materialId);
+          }
+        }
+      }
+
+      fetchData();
+    } catch (e: any) {
+      alert("Fout bij opslaan van print opdracht: " + e.message);
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      const { error } = await supabase.from('print_jobs').delete().eq('id', id);
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) {
+      alert("Fout bij verwijderen van print opdracht: " + e.message);
+    }
+  };
+
   const lowStockFilaments = filaments.filter(f => (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold);
   const lowStockMaterials = materials.filter(m => m.minStock !== undefined && m.minStock > 0 && m.quantity <= m.minStock);
   const totalLowStock = lowStockFilaments.length + lowStockMaterials.length;
@@ -771,7 +800,7 @@ const AppContent = () => {
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
-           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={() => fetchData()} onDeleteJob={() => fetchData()} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
+           {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
@@ -851,7 +880,6 @@ const AppContent = () => {
 
       {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
 
-      {/* Back Button Toast Notification */}
       {showBackToast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] animate-fade-in pointer-events-none">
            <div className="bg-slate-800/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl border border-slate-700/50 flex items-center gap-2">
