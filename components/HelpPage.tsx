@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Lightbulb, Mail, Send, Star, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Lightbulb, Mail, Send, Star, CheckCircle2, AlertCircle, HelpCircle, Smartphone, Settings as SettingsIcon, ExternalLink, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { Capacitor } from '@capacitor/core';
 
-type HelpTab = 'feedback' | 'suggestions' | 'contact';
+type HelpTab = 'feedback' | 'suggestions' | 'contact' | 'faq';
 
 export const HelpPage = () => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<HelpTab>('feedback');
+  const [activeTab, setActiveTab] = useState<HelpTab>('faq');
   const [isSending, setIsSending] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
@@ -42,7 +42,6 @@ export const HelpPage = () => {
     }
     
     setStatus('success');
-    // alert(t('emailSent'));
   };
 
   // Check for existing feedback on mount
@@ -59,8 +58,6 @@ export const HelpPage = () => {
               .single();
            
            if (data && !error) {
-              // Found existing feedback! Pre-fill form
-              // Strip technical info for cleaner editing if present
               const cleanMsg = data.message.split('--------------------------------')[0].trim();
               setFeedbackMsg(cleanMsg);
               setRating(data.rating);
@@ -71,7 +68,6 @@ export const HelpPage = () => {
      checkExistingFeedback();
   }, []);
 
-  // 1. Handle Feedback (Database + Mail fallback)
   const submitFeedback = async () => {
     if (!feedbackMsg.trim()) return;
     setIsSending(true);
@@ -85,17 +81,15 @@ export const HelpPage = () => {
         let error;
 
         if (existingFeedbackId) {
-           // Update existing
            const { error: updateError } = await supabase.from('feedback').update({
               message: fullMessage,
               rating,
-              created_at: new Date().toISOString(), // Update timestamp to bring it to top
+              created_at: new Date().toISOString(),
               platform: platform,
               user_agent: userAgent
            }).eq('id', existingFeedbackId);
            error = updateError;
         } else {
-           // Insert new
            const { error: insertError } = await supabase.from('feedback').insert({
               message: fullMessage,
               rating,
@@ -109,7 +103,6 @@ export const HelpPage = () => {
         if (error) throw error;
 
         setStatus('success');
-        // Don't clear message if updating, allows user to see what they saved
         if (!existingFeedbackId) {
            setFeedbackMsg('');
            setRating(0);
@@ -118,7 +111,6 @@ export const HelpPage = () => {
 
     } catch (e: any) {
         console.error("Feedback failed, falling back to mail", e);
-        // Fallback to mail
         openMail(`Feedback Filament Manager (${rating}/5)`, feedbackMsg);
         setFeedbackMsg('');
         setRating(0);
@@ -127,14 +119,12 @@ export const HelpPage = () => {
     }
   };
 
-  // 2. Handle Suggestions (Mail Only)
   const submitSuggestion = () => {
      if (!suggestionMsg.trim()) return;
      openMail("Suggestie Filament Manager", suggestionMsg);
      setSuggestionMsg('');
   };
 
-  // 3. Handle Contact (Mail Only)
   const submitContact = () => {
      if (!contactMsg.trim()) return;
      const body = `Naam: ${contactName}\n\nBericht:\n${contactMsg}`;
@@ -149,6 +139,7 @@ export const HelpPage = () => {
        <div className="text-center space-y-4 mb-8">
           <div className="inline-block relative">
              <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center shadow-sm mx-auto transform rotate-3">
+                {activeTab === 'faq' && <HelpCircle size={40} className="text-blue-600 dark:text-blue-400" strokeWidth={2} />}
                 {activeTab === 'feedback' && <MessageSquare size={40} className="text-blue-600 dark:text-blue-400" strokeWidth={2} />}
                 {activeTab === 'suggestions' && <Lightbulb size={40} className="text-yellow-600 dark:text-yellow-400" strokeWidth={2} />}
                 {activeTab === 'contact' && <Mail size={40} className="text-green-600 dark:text-green-400" strokeWidth={2} />}
@@ -159,14 +150,17 @@ export const HelpPage = () => {
 
        {/* Tabs */}
        <div className="flex justify-center mb-6 px-4">
-          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex w-full max-w-md">
-             <button onClick={() => { setActiveTab('feedback'); setStatus('idle'); }} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex w-full max-w-lg overflow-x-auto scrollbar-hide">
+             <button onClick={() => { setActiveTab('faq'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'faq' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                Problemen
+             </button>
+             <button onClick={() => { setActiveTab('feedback'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {t('feedback')}
              </button>
-             <button onClick={() => { setActiveTab('suggestions'); setStatus('idle'); }} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'suggestions' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+             <button onClick={() => { setActiveTab('suggestions'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'suggestions' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {t('suggestions')}
              </button>
-             <button onClick={() => { setActiveTab('contact'); setStatus('idle'); }} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'contact' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+             <button onClick={() => { setActiveTab('contact'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'contact' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {t('contact')}
              </button>
           </div>
@@ -181,6 +175,54 @@ export const HelpPage = () => {
                 <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 p-4 rounded-xl flex items-center gap-3 animate-fade-in">
                    <CheckCircle2 size={24} />
                    <span className="font-bold">{activeTab === 'feedback' ? t('feedbackSent') : t('emailSent')}</span>
+                </div>
+             )}
+
+             {/* FAQ / COMMON PROBLEMS */}
+             {activeTab === 'faq' && (
+                <div className="space-y-6 animate-fade-in">
+                   <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                      <div className="flex items-center gap-3 mb-4">
+                         <div className="bg-blue-600 p-2 rounded-lg text-white">
+                            <Smartphone size={20} />
+                         </div>
+                         <h3 className="font-bold text-slate-800 dark:text-white">QR Code opent browser op Android</h3>
+                      </div>
+                      
+                      <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                         <p className="font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                            <strong>Belangrijke opmerking:</strong> Omdat je app niet uit de Google Play Store komt, zal Android de link-associatie niet automatisch vertrouwen.
+                         </p>
+                         
+                         <p>Je moet dit één keer handmatig instellen op je telefoon:</p>
+                         
+                         <div className="space-y-3 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
+                            <div className="flex items-start gap-3">
+                               <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
+                               <span>Ga naar <strong>Instellingen</strong> &rarr; <strong>Apps</strong> &rarr; <strong>Filament Manager</strong>.</span>
+                            </div>
+                            <div className="flex items-start gap-3">
+                               <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
+                               <span>Tik op <strong>Standaard openen</strong> (Open by default).</span>
+                            </div>
+                            <div className="flex items-start gap-3">
+                               <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
+                               <span>Zet <strong>Ondersteunde links openen</strong> AAN.</span>
+                            </div>
+                            <div className="flex items-start gap-3">
+                               <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
+                               <span>Voeg eventueel bij "Ondersteunde webadressen" <strong>filamentmanager.nl</strong> toe.</span>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                      <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                         <SettingsIcon size={18} className="text-slate-400" /> Andere vragen?
+                      </h4>
+                      <p className="text-xs text-slate-500">Staat je probleem er niet bij? Gebruik de 'Contact' tab om direct hulp te vragen via e-mail.</p>
+                   </div>
                 </div>
              )}
 
