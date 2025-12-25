@@ -5,7 +5,7 @@ import {
   Save, X, Trash2, Layers, Tag, MapPin, Truck, Link as LinkIcon, 
   Euro, ExternalLink, Camera, Image as ImageIcon, Sparkles, 
   Thermometer, Weight, Plus, RefreshCw, Loader2, Search, Check,
-  ChevronDown, ChevronUp, FileText, Hash
+  ChevronDown, ChevronUp, FileText, Hash, ScanLine
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Capacitor } from '@capacitor/core';
@@ -51,6 +51,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const [multiSpoolCount, setMultiSpoolCount] = useState(1);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [lastScannedImage, setLastScannedImage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Weigh Helper state
@@ -79,15 +80,17 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const handleAiScan = async () => {
     try {
       const image = await CapacitorCamera.getPhoto({
-        quality: 85,
+        quality: 90,
         allowEditing: false,
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
-        width: 1200
+        width: 1200,
+        correctOrientation: true
       });
 
       if (image.base64String) {
         setIsAiAnalyzing(true);
+        setLastScannedImage(`data:image/jpeg;base64,${image.base64String}`);
         const suggestion = await analyzeSpoolImage(image.base64String);
         applyAiSuggestion(suggestion);
       }
@@ -112,6 +115,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       shortId: suggestion.shortId || prev.shortId
     }));
     
+    // Auto-detect if we need to switch to "Custom" inputs
     if (suggestion.brand && !allBrands.includes(suggestion.brand)) {
         setIsCustomBrand(true);
     }
@@ -197,10 +201,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 type="button"
                 onClick={handleAiScan}
                 disabled={isAiAnalyzing}
-                className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-200 transition-colors"
-                title="Scan label met AI"
+                className="group relative flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
               >
-                {isAiAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+                {isAiAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <ScanLine size={20} />}
+                <span className="font-bold text-sm">AI Scan</span>
               </button>
               <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
                  <X size={24} />
@@ -208,7 +212,20 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
            </div>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-6 overflow-y-auto space-y-6 relative">
+           {isAiAnalyzing && (
+              <div className="absolute inset-0 z-50 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in">
+                 <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/50 rounded-3xl flex items-center justify-center mb-4 shadow-xl border border-indigo-200 dark:border-indigo-800">
+                    <Loader2 size={40} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
+                 </div>
+                 <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-300">Analyseer etiket...</h3>
+                 <p className="text-sm text-indigo-600/70 dark:text-indigo-400/60">Even geduld, Gemini AI leest de gegevens.</p>
+                 {lastScannedImage && (
+                    <img src={lastScannedImage} className="w-32 h-32 object-cover rounded-2xl mt-6 border-4 border-white dark:border-slate-800 shadow-2xl transform rotate-3" />
+                 )}
+              </div>
+           )}
+
            <form onSubmit={handleSubmit} className="space-y-6">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -418,6 +435,21 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         </div>
 
                         <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">Short ID (Label Code)</label>
+                           <div className="relative">
+                              <input 
+                                 type="text" 
+                                 value={formData.shortId || ''} 
+                                 onChange={e => setFormData({...formData, shortId: e.target.value.toUpperCase()})}
+                                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white pl-10"
+                                 placeholder="bv. #A1B2"
+                                 maxLength={10}
+                              />
+                              <Hash size={18} className="absolute left-3 top-3.5 text-slate-400" />
+                           </div>
+                        </div>
+
+                        <div>
                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('shopUrl')}</label>
                            <div className="relative">
                               <input 
@@ -431,7 +463,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                               {formData.shopUrl && (
                                  <button 
                                     type="button" 
-                                    /* Fix: handleOpenUrl was not defined, use handleOpenShop instead */
                                     onClick={handleOpenShop}
                                     className="absolute right-2 top-2 p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"
                                  >

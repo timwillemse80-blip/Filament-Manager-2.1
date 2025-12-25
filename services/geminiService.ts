@@ -29,7 +29,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: "Analyseer deze filament spoel afbeelding. Geef JSON terug met: brand, material, colorName (NL), colorHex, tempNozzle (number), tempBed (number), shortId (zoek naar een 4-cijferige code beginnend met # of losstaand)." }
+          { text: "Identify the 3D printer filament from this label. Extract: Brand, Material (e.g., PLA, PETG, ASA), Color Name (translated to Dutch if possible), HEX color code, recommended Nozzle Temperature, and Bed Temperature. If a range is given for temps, provide the middle value. Also look for a 4-character ID code (Short ID) if present." }
         ]
       },
       config: { 
@@ -37,19 +37,21 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            brand: { type: Type.STRING },
-            material: { type: Type.STRING },
-            colorName: { type: Type.STRING },
-            colorHex: { type: Type.STRING },
-            tempNozzle: { type: Type.NUMBER },
-            tempBed: { type: Type.NUMBER },
-            shortId: { type: Type.STRING },
-          }
+            brand: { type: Type.STRING, description: "The manufacturer brand name" },
+            material: { type: Type.STRING, description: "The type of material (PLA, PETG, etc.)" },
+            colorName: { type: Type.STRING, description: "Common name of the color in Dutch" },
+            colorHex: { type: Type.STRING, description: "Hexadecimal color code representing the filament" },
+            tempNozzle: { type: Type.NUMBER, description: "Ideal nozzle temperature in Celsius" },
+            tempBed: { type: Type.NUMBER, description: "Ideal bed temperature in Celsius" },
+            shortId: { type: Type.STRING, description: "A unique 4-character code found on the label" },
+          },
+          required: ["brand", "material"]
         }
       }
     });
 
-    return JSON.parse(cleanJsonString(response.text || "{}"));
+    const result = JSON.parse(cleanJsonString(response.text || "{}"));
+    return result;
   } catch (error: any) {
     console.error("Gemini Error:", error);
     throw new Error(error.message || "AI Analyse mislukt.");
@@ -61,14 +63,14 @@ export const parseCatalogText = async (text: string): Promise<{ brand: string, s
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Analyseer de volgende tekst en extraheer een lijst van lege spoelgewichten.
-      Geef een JSON ARRAY terug met objecten die de volgende velden hebben:
-      - brand (bv. 'Bambu Lab')
-      - size (bv. '1kg' of '250g')
-      - spool_material (bv. 'Plastic', 'Cardboard', 'Transparent Plastic')
-      - weight (getal in grammen)
+      contents: `Analyze the following text and extract a list of empty spool weights.
+      Return a JSON ARRAY of objects with:
+      - brand (e.g. 'Bambu Lab')
+      - size (e.g. '1kg' or '250g')
+      - spool_material (e.g. 'Plastic', 'Cardboard')
+      - weight (number in grams)
       
-      TEKST:
+      TEXT:
       ${text}`,
       config: { 
         responseMimeType: "application/json",
@@ -105,7 +107,7 @@ export const lookupSpoolFromImage = async (base64Image: string): Promise<string 
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: "Zoek op dit label naar een unieke 4-cijferige ID (Short ID). Geef enkel de code terug in JSON formaat." }
+          { text: "Find a unique 4-character ID code on this label. Return only the code in JSON format." }
         ]
       },
       config: { 
@@ -131,7 +133,7 @@ export const suggestSettings = async (brand: string, material: string): Promise<
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Geef aanbevolen temperaturen voor ${brand} ${material} filament in JSON formaat.`,
+      contents: `Provide recommended print settings for ${brand} ${material} filament in JSON format.`,
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
