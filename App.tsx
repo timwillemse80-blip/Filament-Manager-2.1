@@ -35,7 +35,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.33"; 
+const APP_VERSION = "2.1.34"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -225,6 +225,7 @@ const AppContent = () => {
   const [printers, setPrinters] = useState<Printer[]>([]); 
   const [globalBrands, setGlobalBrands] = useState<string[]>([]);
   const [globalMaterials, setGlobalMaterials] = useState<string[]>([]);
+  const [spoolWeights, setSpoolWeights] = useState<any[]>([]);
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
   
@@ -413,6 +414,9 @@ const AppContent = () => {
       if (gbData) setGlobalBrands(gbData.map(b => b.name));
       const { data: gmData } = await supabase.from('materials').select('name');
       if (gmData) setGlobalMaterials(gmData.map(m => m.name));
+      
+      const { data: swData } = await supabase.from('spool_weights').select('*').order('name');
+      if (swData) setSpoolWeights(swData);
 
       const { data: feedbackData } = await supabase.from('feedback').select('rating');
       if (feedbackData && feedbackData.length > 0) {
@@ -671,7 +675,7 @@ const AppContent = () => {
         </PullToRefresh>
       </main>
 
-      {showModal && <FilamentForm initialData={editingFilament} locations={locations} suppliers={suppliers} existingBrands={existingBrands} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); }} isAdmin={isAdmin} />}
+      {showModal && <FilamentForm initialData={editingFilament} locations={locations} suppliers={suppliers} existingBrands={existingBrands} spoolWeights={spoolWeights} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); }} isAdmin={isAdmin} />}
       {showLabelOnly && editingFilament && <LabelModal filament={editingFilament} onClose={() => { setShowLabelOnly(false); setEditingId(null); }} />}
       {showMaterialModal && <MaterialForm initialData={editingMaterial} locations={locations} suppliers={suppliers} onSave={handleSaveMaterial} onCancel={() => { setShowMaterialModal(false); setEditingId(null); }} />}
       {showProModal && <ProModal onClose={() => setShowProModal(false)} />}

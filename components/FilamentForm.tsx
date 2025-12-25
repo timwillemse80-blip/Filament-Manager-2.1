@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, ChevronUp, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction, Palette } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, ChevronUp, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction, Palette, Search } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, COMMON_MATERIALS, QUICK_COLORS } from '../constants';
@@ -16,6 +16,7 @@ interface FilamentFormProps {
   existingBrands?: string[];
   globalBrands?: string[];
   globalMaterials?: string[];
+  spoolWeights?: { id: number, name: string, weight: number }[];
   onSave: (filament: Filament | Filament[]) => void;
   onSaveLocation: (loc: Location) => void;
   onSaveSupplier: (sup: Supplier) => void;
@@ -25,7 +26,7 @@ interface FilamentFormProps {
 }
 
 export const FilamentForm: React.FC<FilamentFormProps> = ({ 
-  initialData, locations, suppliers, existingBrands, globalBrands = [], globalMaterials = [], onSave, onSaveLocation, onSaveSupplier, onCancel, isAdmin = false
+  initialData, locations, suppliers, existingBrands, globalBrands = [], globalMaterials = [], spoolWeights = [], onSave, onSaveLocation, onSaveSupplier, onCancel, isAdmin = false
 }) => {
   const { t, tColor } = useLanguage();
   
@@ -52,18 +53,15 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const [showWeighHelper, setShowWeighHelper] = useState(false);
   const [showExtraFields, setShowExtraFields] = useState(!!initialData?.locationId || !!initialData?.supplierId || !!initialData?.notes || !!initialData?.shopUrl);
+  
+  // Weight Helper States
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
-  const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normal)');
+  const [spoolSearch, setSpoolSearch] = useState('');
+  const [selectedSpoolId, setSelectedSpoolId] = useState<number | null>(null);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAiScanning, setIsAiScanning] = useState(false);
   const [showAiMaintenance, setShowAiMaintenance] = useState(false);
-
-  const spoolWeights: Record<string, number> = {
-    "Bambu Lab (Reusable)": 250,
-    "Generic (Plastic Normal)": 230,
-    "Generic (Cardboard)": 140,
-    "Generic (MasterSpool/Refill)": 0
-  };
 
   const brandsList = useMemo(() => {
     const combined = Array.from(new Set([...COMMON_BRANDS, ...globalBrands]));
@@ -74,6 +72,21 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     const list = globalMaterials.length > 0 ? globalMaterials : COMMON_MATERIALS;
     return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
   }, [globalMaterials]);
+
+  // Spool Database Filter
+  const filteredSpools = useMemo(() => {
+    if (!spoolSearch) return spoolWeights;
+    return spoolWeights.filter(s => s.name.toLowerCase().includes(spoolSearch.toLowerCase()));
+  }, [spoolWeights, spoolSearch]);
+
+  const selectedSpool = useMemo(() => 
+    spoolWeights.find(s => s.id === selectedSpoolId), [spoolWeights, selectedSpoolId]
+  );
+
+  const calculatedNet = useMemo(() => {
+     if (grossWeight === '' || !selectedSpool) return null;
+     return Math.max(0, grossWeight - selectedSpool.weight);
+  }, [grossWeight, selectedSpool]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,10 +111,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleApplyWeight = () => {
-    if (grossWeight !== '') {
-      const tare = spoolWeights[selectedSpoolType] || 0;
-      const net = Math.max(0, grossWeight - tare);
-      setFormData({ ...formData, weightRemaining: net });
+    if (calculatedNet !== null) {
+      setFormData({ ...formData, weightRemaining: Number(calculatedNet.toFixed(1)) });
       setShowWeighHelper(false);
     }
   };
@@ -544,38 +555,94 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         </div>
       )}
 
+      {/* --- REIMAGINED WEIGH HELPER WITH SPOOL DB --- */}
       {showWeighHelper && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-[#0f172a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col">
-               <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+            <div className="bg-[#0f172a] w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-800 flex flex-col max-h-[90vh]">
+               <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                   <h3 className="text-xl font-bold text-white flex items-center gap-3"><Scale size={24} className="text-blue-500" /> {t('weighHelper')}</h3>
-                  <button onClick={() => setShowWeighHelper(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                  <button onClick={() => setShowWeighHelper(false)} className="text-slate-500 hover:text-white p-1 hover:bg-slate-800 rounded-full transition-colors"><X size={24} /></button>
                </div>
-               <div className="p-6 space-y-6">
-                  <div className="bg-blue-500/10 p-5 rounded-2xl border border-blue-500/20">
-                     <label className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-2 block">{t('grossWeight')}</label>
+               
+               <div className="p-6 space-y-6 overflow-y-auto scrollbar-hide">
+                  {/* Brutogewicht Invoer */}
+                  <div className="bg-blue-500/10 p-6 rounded-2xl border border-blue-500/20">
+                     <label className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-2 block">{t('grossWeight')} (Spoel + Filament)</label>
                      <div className="flex items-center gap-4">
-                        <input type="number" autoFocus value={grossWeight} onChange={e => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))} className="flex-1 bg-[#1e293b] border-2 border-blue-500/30 rounded-xl p-4 text-2xl font-black text-white outline-none focus:border-blue-500" />
+                        <input 
+                           type="number" 
+                           autoFocus 
+                           value={grossWeight} 
+                           onChange={e => setGrossWeight(e.target.value === '' ? '' : parseFloat(e.target.value))} 
+                           className="flex-1 bg-[#1e293b] border-2 border-blue-500/30 rounded-xl p-4 text-3xl font-black text-white outline-none focus:border-blue-500 shadow-inner" 
+                           placeholder="0"
+                        />
                         <span className="text-xl font-bold text-slate-500">gram</span>
                      </div>
                   </div>
                   
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{t('spoolType')}</label>
-                    <select 
-                      value={selectedSpoolType}
-                      onChange={e => setSelectedSpoolType(e.target.value)}
-                      className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500"
-                    >
-                      {Object.keys(spoolWeights).map(type => (
-                        <option key={type} value={type}>{type} ({spoolWeights[type]}g)</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Spool DB Search & Picker */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                       <Disc size={12}/> {t('spoolType')} (Tare Gewicht)
+                    </label>
+                    
+                    <div className="relative">
+                       <input 
+                          type="text"
+                          value={spoolSearch}
+                          onChange={e => setSpoolSearch(e.target.value)}
+                          placeholder="Zoek merk of type spoel..."
+                          className="w-full bg-[#1e293b] border border-slate-700 rounded-xl p-3 pl-10 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500"
+                       />
+                       <Search size={16} className="absolute left-3 top-3.5 text-slate-500" />
+                    </div>
 
-                  <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">
-                    {t('apply')}
-                  </button>
+                    <div className="grid grid-cols-1 gap-2 max-h-[250px] overflow-y-auto pr-2 scrollbar-hide">
+                       {filteredSpools.length > 0 ? (
+                          filteredSpools.map(spool => (
+                             <button 
+                                key={spool.id}
+                                type="button"
+                                onClick={() => setSelectedSpoolId(spool.id)}
+                                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${selectedSpoolId === spool.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-[#1e293b] border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                             >
+                                <span className="font-bold text-sm truncate pr-2">{spool.name}</span>
+                                <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${selectedSpoolId === spool.id ? 'bg-white/20' : 'bg-slate-800'}`}>{spool.weight}g</span>
+                             </button>
+                          ))
+                       ) : (
+                          <div className="p-8 text-center text-slate-500 text-sm italic">
+                             Geen spoelen gevonden in de database.
+                          </div>
+                       )}
+                    </div>
+                  </div>
+               </div>
+
+               {/* Footer met resultaat */}
+               <div className="p-6 bg-slate-900/80 border-t border-slate-800">
+                  {calculatedNet !== null ? (
+                     <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-center px-2">
+                           <div className="flex flex-col">
+                              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Restant Filament</span>
+                              <span className="text-3xl font-black text-green-400">{calculatedNet.toFixed(1)} <span className="text-sm">gram</span></span>
+                           </div>
+                           <div className="text-right flex flex-col">
+                              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Correctie</span>
+                              <span className="text-lg font-bold text-slate-400">-{selectedSpool?.weight}g</span>
+                           </div>
+                        </div>
+                        <button onClick={handleApplyWeight} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                          <Check size={20} /> {t('apply')}
+                        </button>
+                     </div>
+                  ) : (
+                     <div className="text-center p-4 bg-slate-800/30 rounded-2xl border border-dashed border-slate-700">
+                        <p className="text-slate-500 text-sm">Vul een gewicht in en kies een spoel om te berekenen.</p>
+                     </div>
+                  )}
                </div>
             </div>
          </div>

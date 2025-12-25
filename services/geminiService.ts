@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AiSuggestion } from "../types";
 
@@ -6,6 +7,13 @@ const cleanJsonString = (str: string): string => {
   let cleaned = str.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "").trim();
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+  
+  // Handle both objects and arrays
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+     return cleaned.substring(firstBracket, lastBracket + 1);
+  }
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
@@ -46,6 +54,40 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
   } catch (error: any) {
     console.error("Gemini Error:", error);
     throw new Error(error.message || "AI Analyse mislukt.");
+  }
+};
+
+export const parseCatalogText = async (text: string): Promise<{ name: string, weight: number }[]> => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Analyseer de volgende tekst (gekopieerd van een website) en extraheer alle lege spoelgewichten (empty spool weights). 
+      Geef een JSON ARRAY terug van objecten met 'name' (string) en 'weight' (number in gram).
+      Zorg dat de namen duidelijk zijn (bv. 'Brand Name - Spool Type').
+      
+      TEKST:
+      ${text}`,
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              weight: { type: Type.NUMBER },
+            },
+            required: ["name", "weight"]
+          }
+        }
+      }
+    });
+
+    return JSON.parse(cleanJsonString(response.text || "[]"));
+  } catch (error) {
+    console.error("Catalog Parse Error:", error);
+    return [];
   }
 };
 
