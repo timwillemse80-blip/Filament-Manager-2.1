@@ -249,6 +249,20 @@ const translations: Record<Language, Record<string, string>> = {
     amsMatch: "CFS/AMS Match",
     stockMatch: "Stock Match",
 
+    // Printers
+    printer: "Printer",
+    selectPrinter: "Select printer...",
+    addPrinter: "Add Printer",
+    editPrinter: "Edit Printer",
+    printerName: "Printer Name",
+    printerModel: "Printer Model",
+    printerPower: "Power Usage (W)",
+    printerCost: "Purchase Price (€)",
+    printerLifespan: "Expected Lifespan (h)",
+    printerSpecs: "Printer Specs",
+    activeFilament: "Active Filament",
+    hasAMS: "Has AMS / CFS?",
+
     // Settings
     tabGeneral: "General",
     tabNotifications: "Notifications",
