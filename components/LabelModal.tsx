@@ -96,18 +96,18 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
         {/* Improved Label Card */}
         <div 
           ref={labelRef}
-          className="bg-white rounded-lg p-3 flex items-start gap-3 shadow-2xl mb-10 w-full aspect-[2.1/1] relative overflow-hidden select-none"
+          className="bg-white rounded-lg p-4 flex items-start gap-4 shadow-2xl mb-10 w-full aspect-[2.1/1] relative overflow-hidden select-none"
         >
           {/* QR Code Section */}
-          <div className="w-[46%] flex items-center justify-center self-center">
+          <div className="w-[44%] flex items-center justify-center self-center">
              {qrDataUrl ? (
                <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
                  
-                 {/* App Logo Overlay with White Stroke for better scanability */}
+                 {/* App Logo Overlay */}
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-[26%] h-[26%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm border-[1.5px] border-white">
-                       <Logo className="w-full h-full" strokeWidth={3.5} />
+                    <div className="w-[28%] h-[28%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm">
+                       <Logo className="w-full h-full text-black" strokeWidth={3} />
                     </div>
                  </div>
                </div>
@@ -117,22 +117,22 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
 
           {/* Text Content Section */}
-          <div className="flex-1 flex flex-col pt-3 pr-2">
-             <div className="space-y-0.5">
-                <h3 className="text-[#0f172a] font-black text-[1.4rem] leading-none uppercase italic tracking-tighter truncate">
+          <div className="flex-1 flex flex-col pt-1 pr-1 h-full">
+             <div className="space-y-1">
+                <h3 className="text-[#0f172a] font-black text-[1.25rem] leading-tight uppercase italic tracking-tighter truncate">
                   {filament.brand}
                 </h3>
-                <p className="text-[#0f172a] font-black text-[0.8rem] leading-none opacity-90 uppercase truncate">
+                <p className="text-[#1e293b] font-extrabold text-[0.9rem] leading-tight uppercase truncate">
                   {filament.material}
                 </p>
-                <p className="text-slate-500 font-bold text-[9px] leading-tight truncate mt-1">
+                <p className="text-slate-500 font-bold text-[10px] leading-normal truncate">
                   {tColor(filament.colorName)}
                 </p>
              </div>
              
              {/* Huge ID in bottom right corner */}
-             <div className="absolute bottom-2 right-3">
-                <span className="text-[#0f172a] font-black text-4xl tracking-tighter leading-none">
+             <div className="mt-auto flex justify-end">
+                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none mb-[-2px] mr-[-2px]">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
