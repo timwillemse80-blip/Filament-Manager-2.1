@@ -23,7 +23,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
   useEffect(() => {
     const generateQR = async () => {
       try {
-        // Deep link URL for the app
         const url = `filament://${filament.shortId || filament.id.substring(0, 4)}`;
         const dataUrl = await QRCode.toDataURL(url, {
           width: 512, 
@@ -44,23 +43,37 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
 
   const handlePrint = async () => {
     if (!labelRef.current) return;
+    setIsGenerating(true);
     
-    const canvas = await html2canvas(labelRef.current, { 
-      scale: 4, 
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      logging: false
-    });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: [62, 29] 
-    });
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, 62, 29);
-    pdf.autoPrint();
-    window.open(pdf.output('bloburl'), '_blank');
+    try {
+      // Forceer resolutie voor exacte 62x29mm verhouding
+      const canvas = await html2canvas(labelRef.current, { 
+        scale: 3, 
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        width: 620, // 62mm equivalent
+        height: 290  // 29mm equivalent
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [62, 29],
+        compress: true
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, 62, 29);
+      pdf.autoPrint();
+      
+      const blobUrl = pdf.output('bloburl');
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSaveImage = async () => {
@@ -70,7 +83,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
       const canvas = await html2canvas(labelRef.current, { 
         scale: 4, 
         backgroundColor: '#ffffff',
-        useCORS: true
+        useCORS: true,
+        width: 620,
+        height: 290
       });
       const link = document.createElement('a');
       link.download = `label-${filament.brand}-${filament.colorName}.png`;
@@ -94,13 +109,14 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
            <h2 className="text-white text-2xl font-black">{tColor(filament.colorName)} {filament.material}</h2>
         </div>
 
-        {/* Improved Label Card for Printing */}
+        {/* 62mm x 29mm Label Container (fixed pixels for capture) */}
         <div 
           ref={labelRef}
-          className="bg-white rounded-lg p-5 flex items-start gap-4 shadow-2xl mb-10 w-full aspect-[2.1/1] relative select-none overflow-visible"
+          style={{ width: '620px', height: '290px' }}
+          className="bg-white rounded-none p-8 flex items-start gap-8 shadow-2xl mb-10 relative select-none overflow-hidden origin-center scale-[0.5] sm:scale-[0.6] md:scale-1"
         >
           {/* QR Code Section */}
-          <div className="w-[40%] flex items-center justify-center self-center">
+          <div className="w-[200px] flex items-center justify-center self-center">
              {qrDataUrl ? (
                <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
@@ -118,37 +134,38 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
 
           {/* Text Content Section */}
-          <div className="flex-1 flex flex-col pt-1">
-             <div className="space-y-1.5">
-                <h3 className="text-[#0f172a] font-black text-[1.05rem] leading-relaxed uppercase italic tracking-tighter">
+          <div className="flex-1 flex flex-col h-full py-2">
+             <div className="space-y-2">
+                <h3 className="text-[#0f172a] font-black text-4xl leading-tight uppercase italic tracking-tighter truncate">
                   {filament.brand}
                 </h3>
                 <div className="space-y-1">
-                   <p className="text-[#1e293b] font-extrabold text-[0.7rem] leading-relaxed uppercase">
+                   <p className="text-[#1e293b] font-black text-2xl leading-tight uppercase">
                      {filament.material}
                    </p>
-                   <p className="text-slate-500 font-bold text-[8px] leading-relaxed">
+                   <p className="text-slate-500 font-bold text-lg leading-tight">
                      {tColor(filament.colorName)}
                    </p>
                 </div>
              </div>
              
-             {/* Huge ID in bottom right corner - position slightly higher to be safe */}
-             <div className="absolute bottom-1 right-3 flex justify-end">
-                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none">
+             {/* ID Code with extra safe padding for physical printer edges */}
+             <div className="absolute bottom-6 right-8 flex justify-end">
+                <span className="text-[#0f172a] font-black text-7xl tracking-tighter leading-[0.75] pb-2">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
           </div>
         </div>
 
-        <div className="w-full space-y-3">
+        <div className="w-full space-y-3 -mt-20 sm:-mt-10 md:mt-0">
           <button 
             onClick={handlePrint}
-            className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
+            disabled={isGenerating}
+            className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg disabled:opacity-70"
           >
-            <Printer size={24} />
-            Print Label
+            {isGenerating ? <Loader2 size={24} className="animate-spin" /> : <Printer size={24} />}
+            Print Label (62x29mm)
           </button>
           <button 
             onClick={handleSaveImage}
