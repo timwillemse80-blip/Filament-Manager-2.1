@@ -142,7 +142,7 @@ export const HelpPage = () => {
                 {activeTab === 'faq' && <HelpCircle size={40} className="text-blue-600 dark:text-blue-400" strokeWidth={2} />}
                 {activeTab === 'feedback' && <MessageSquare size={40} className="text-blue-600 dark:text-blue-400" strokeWidth={2} />}
                 {activeTab === 'suggestions' && <Lightbulb size={40} className="text-yellow-600 dark:text-yellow-400" strokeWidth={2} />}
-                {activeTab === 'contact' && <Mail size={40} className="text-green-600 dark:text-green-400" strokeWidth={2} />}
+                {activeTab === 'contact' && <CheckCircle2 size={40} className="text-green-600 dark:text-green-400" strokeWidth={2} />}
              </div>
           </div>
           <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{t('help')}</h2>
@@ -186,15 +186,15 @@ export const HelpPage = () => {
                          <div className="bg-blue-600 p-2 rounded-lg text-white">
                             <Smartphone size={20} />
                          </div>
-                         <h3 className="font-bold text-slate-800 dark:text-white">QR Code opens browser on Android</h3>
+                         <h3 className="font-bold text-slate-800 dark:text-white">QR Code opens browser instead of App</h3>
                       </div>
                       
                       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                          <p className="font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3 rounded-xl border border-amber-200 dark:border-amber-800/50">
-                            <strong>Important Note for Android:</strong> Since this app is installed outside of the Google Play Store, Android will not automatically trust the link association.
+                            <strong>Note for Android:</strong> Because this app is installed as an APK, Android needs manual permission to open <i>filamentmanager.nl</i> links automatically.
                          </p>
                          
-                         <p>You must configure this manually once on your phone:</p>
+                         <p>Configure this once to make QR-scanning seamless:</p>
                          
                          <div className="space-y-3 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
                             <div className="flex items-start gap-3">
@@ -211,7 +211,7 @@ export const HelpPage = () => {
                             </div>
                             <div className="flex items-start gap-3">
                                <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
-                               <span>(Optional) Under "Supported web addresses", add <strong>filamentmanager.nl</strong> if not present.</span>
+                               <span>Check <strong>Supported web addresses</strong>: ensure <i>filamentmanager.nl</i> is selected/checked.</span>
                             </div>
                          </div>
                       </div>
