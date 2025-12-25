@@ -99,7 +99,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           className="bg-white rounded-lg p-4 flex items-start gap-4 shadow-2xl mb-10 w-full aspect-[2.1/1] relative overflow-hidden select-none"
         >
           {/* QR Code Section */}
-          <div className="w-[44%] flex items-center justify-center self-center">
+          <div className="w-[42%] flex items-center justify-center self-center">
              {qrDataUrl ? (
                <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
@@ -117,22 +117,24 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
 
           {/* Text Content Section */}
-          <div className="flex-1 flex flex-col pt-1 pr-1 h-full">
-             <div className="space-y-1">
-                <h3 className="text-[#0f172a] font-black text-[1.25rem] leading-tight uppercase italic tracking-tighter truncate">
+          <div className="flex-1 flex flex-col pt-2 pr-1 h-full overflow-hidden">
+             <div className="space-y-1.5">
+                <h3 className="text-[#0f172a] font-black text-[1.15rem] leading-snug uppercase italic tracking-tighter truncate">
                   {filament.brand}
                 </h3>
-                <p className="text-[#1e293b] font-extrabold text-[0.9rem] leading-tight uppercase truncate">
-                  {filament.material}
-                </p>
-                <p className="text-slate-500 font-bold text-[10px] leading-normal truncate">
-                  {tColor(filament.colorName)}
-                </p>
+                <div className="space-y-0.5">
+                   <p className="text-[#1e293b] font-extrabold text-[0.8rem] leading-snug uppercase truncate">
+                     {filament.material}
+                   </p>
+                   <p className="text-slate-500 font-bold text-[9px] leading-snug truncate">
+                     {tColor(filament.colorName)}
+                   </p>
+                </div>
              </div>
              
              {/* Huge ID in bottom right corner */}
              <div className="mt-auto flex justify-end">
-                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none mb-[-2px] mr-[-2px]">
+                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none mb-[-4px] mr-[-4px]">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
