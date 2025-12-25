@@ -223,6 +223,8 @@ const AppContent = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [printJobs, setPrintJobs] = useState<PrintJob[]>([]); 
   const [printers, setPrinters] = useState<Printer[]>([]); 
+  const [globalBrands, setGlobalBrands] = useState<string[]>([]);
+  const [globalMaterials, setGlobalMaterials] = useState<string[]>([]);
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
   
@@ -503,6 +505,11 @@ const AppContent = () => {
       const { data: prData } = await supabase.from('printers').select('*').eq('user_id', userId);
       if (prData) setPrinters(prData);
       
+      const { data: gbData } = await supabase.from('brands').select('name');
+      if (gbData) setGlobalBrands(gbData.map(b => b.name));
+      const { data: gmData } = await supabase.from('materials').select('name');
+      if (gmData) setGlobalMaterials(gmData.map(m => m.name));
+
       const { data: feedbackData } = await supabase.from('feedback').select('rating');
       if (feedbackData && feedbackData.length > 0) {
          const rated = feedbackData.filter(f => f.rating > 0);
@@ -789,6 +796,8 @@ const AppContent = () => {
           locations={locations}
           suppliers={suppliers}
           existingBrands={existingBrands}
+          globalBrands={globalBrands}
+          globalMaterials={globalMaterials}
           onSave={handleSaveFilament}
           onSaveLocation={(loc) => fetchData()}
           onSaveSupplier={(sup) => fetchData()}
@@ -854,7 +863,7 @@ const AppContent = () => {
 
       {showExitConfirm && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
+          <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Logo className="w-12 h-12" />
             </div>

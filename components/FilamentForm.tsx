@@ -14,6 +14,8 @@ interface FilamentFormProps {
   locations: Location[];
   suppliers: Supplier[];
   existingBrands?: string[];
+  globalBrands?: string[];
+  globalMaterials?: string[];
   onSave: (filament: Filament | Filament[]) => void;
   onSaveLocation: (loc: Location) => void;
   onSaveSupplier: (sup: Supplier) => void;
@@ -23,7 +25,7 @@ interface FilamentFormProps {
 }
 
 export const FilamentForm: React.FC<FilamentFormProps> = ({ 
-  initialData, locations, suppliers, existingBrands, onSave, onSaveLocation, onSaveSupplier, onCancel, isAdmin = false
+  initialData, locations, suppliers, existingBrands, globalBrands = [], globalMaterials = [], onSave, onSaveLocation, onSaveSupplier, onCancel, isAdmin = false
 }) => {
   const { t, tColor } = useLanguage();
   
@@ -61,6 +63,16 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     "Generic (Cardboard)": 140,
     "Generic (MasterSpool/Refill)": 0
   };
+
+  const brandsList = useMemo(() => {
+    const combined = Array.from(new Set([...COMMON_BRANDS, ...globalBrands]));
+    return combined.sort((a, b) => a.localeCompare(b));
+  }, [globalBrands]);
+
+  const materialsList = useMemo(() => {
+    const list = globalMaterials.length > 0 ? globalMaterials : COMMON_MATERIALS;
+    return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
+  }, [globalMaterials]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,7 +307,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
                 />
                 <datalist id="brands-list">
-                  {COMMON_BRANDS.map(b => <option key={b} value={b} />)}
+                  {brandsList.map(b => <option key={b} value={b} />)}
                 </datalist>
               </div>
             </div>
@@ -307,7 +319,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   onChange={e => setFormData({...formData, material: e.target.value})}
                   className="flex-1 bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors appearance-none"
                 >
-                  {COMMON_MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
+                  {materialsList.map(m => <option key={m} value={m}>{m}</option>)}
                   <option value="Anders">Anders...</option>
                 </select>
                 <button 
