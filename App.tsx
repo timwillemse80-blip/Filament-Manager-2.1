@@ -24,6 +24,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { NotificationPage } from './components/NotificationPage';
 import { PrintPreview } from './components/PrintPreview';
 import { LabelModal } from './components/LabelModal';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronLeft, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
@@ -264,6 +265,7 @@ const AppContent = () => {
   const [showProModal, setShowProModal] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false); 
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
   
   const [showBackToast, setShowBackToast] = useState(false);
@@ -847,7 +849,7 @@ const AppContent = () => {
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} onToggleOrdered={handleToggleOrdered} />}
            {view === 'notifications' && <NotificationPage updateInfo={updateInfo} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={handleExport} onImport={handleImport} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={handleExport} onImport={handleImport} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} onOpenPrivacy={() => setShowPrivacy(true)} userId={session.user.id} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            {view === 'feedback' && <FeedbackPage />}
            {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
@@ -860,6 +862,7 @@ const AppContent = () => {
       {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
       {showShowcaseModal && isPremium && <ShowcaseModal filaments={filaments} settings={settings} onUpdateSettings={setSettings} onClose={() => setShowShowcaseModal(false)} onPreview={(filters) => { setPreviewFilters(filters); setShowShowcasePreview(true); }} userId={session.user.id} />}
       {showShowcasePreview && <ShowcasePreview filaments={filaments} onClose={() => setShowShowcasePreview(false)} publicName={settings.showcasePublicName} initialFilters={previewFilters} isAdminPreview={true} />}
+      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
     </div>
   );
 };
