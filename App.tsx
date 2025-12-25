@@ -501,6 +501,63 @@ const AppContent = () => {
     } catch (e: any) { alert("Error saving: " + e.message); }
   };
 
+  const handleSavePrinter = async (printer: Printer) => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    try {
+      const { error } = await supabase.from('printers').upsert({ ...printer, user_id: userId });
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error saving printer: " + e.message); }
+  };
+
+  const handleDeletePrinter = async (id: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      const { error } = await supabase.from('printers').delete().eq('id', id);
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error deleting printer: " + e.message); }
+  };
+
+  const handleSaveLocation = async (loc: Location) => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    try {
+      const { error } = await supabase.from('locations').upsert({ ...loc, user_id: userId });
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error saving location: " + e.message); }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      const { error } = await supabase.from('locations').delete().eq('id', id);
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error deleting location: " + e.message); }
+  };
+
+  const handleSaveSupplier = async (sup: Supplier) => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    try {
+      const { error } = await supabase.from('suppliers').upsert({ ...sup, user_id: userId });
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error saving supplier: " + e.message); }
+  };
+
+  const handleDeleteSupplier = async (id: string) => {
+    if (!confirm(t('confirmDelete'))) return;
+    try {
+      const { error } = await supabase.from('suppliers').delete().eq('id', id);
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Error deleting supplier: " + e.message); }
+  };
+
   const handleDeleteItem = async (id: string, type: 'filament' | 'material') => {
     if (!confirm(t('confirmDelete'))) return;
     try {
@@ -664,11 +721,11 @@ const AppContent = () => {
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
-           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
+           {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
            {view === 'notifications' && <NotificationPage updateInfo={updateInfo} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            {view === 'feedback' && <FeedbackPage />}
            {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
