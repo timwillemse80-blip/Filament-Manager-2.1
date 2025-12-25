@@ -25,10 +25,12 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     canvas.width = size;
     canvas.height = size;
 
+    // Gebruik level 'M' voor minder complexiteit (grotere blokjes)
+    // Margin 2 zorgt voor een betere 'quiet zone' voor de scanner
     await QRCode.toCanvas(canvas, text, {
       width: size,
-      margin: 0,
-      errorCorrectionLevel: 'H',
+      margin: 2,
+      errorCorrectionLevel: 'M',
       color: {
         dark: '#000000',
         light: '#ffffff',
@@ -39,11 +41,13 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     if (ctx) {
       const centerX = size / 2;
       const centerY = size / 2;
-      const iconContainerSize = size * 0.25;
+      // Iets kleiner icoon (20% ipv 25%) voor minder dataverlies
+      const iconContainerSize = size * 0.20;
       
+      // Teken een witte cirkel achter het icoon voor contrast
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(centerX, centerY, iconContainerSize / 2 + 10, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, iconContainerSize / 2 + 5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.save();
@@ -53,10 +57,11 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
       ctx.translate(-12, -12);
 
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3; // Iets dikkere lijnen voor het icoon
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
+      // Teken Filament Icoon
       ctx.beginPath();
       ctx.arc(12, 12, 9, 0, Math.PI * 1.6);
       ctx.stroke();
@@ -80,8 +85,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
 
   useEffect(() => {
     const code = (filament.shortId || filament.id.substring(0, 4)).toUpperCase();
-    // Gebruik de volledige domeinnaam. 
-    // Android/iOS herkent dit als een 'App Link' mits de verificatiebestanden op de server staan.
     const url = `https://filamentmanager.nl/?code=${code}`;
     generateQrWithIcon(url).then(setQrDataUrl).catch(console.error);
   }, [filament]);
@@ -147,7 +150,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
         
         <div className="text-center mb-8">
            <h2 className="text-white text-xl font-black mb-1 uppercase tracking-widest">Etiket Preview</h2>
-           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Met Icoon QR-code</p>
+           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Geoptimaliseerd voor scans</p>
         </div>
 
         <div 
@@ -158,9 +161,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
             fontFamily: 'Arial, Helvetica, sans-serif',
             backgroundColor: '#ffffff'
           }}
-          className="rounded-none flex items-stretch shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-12 relative select-none overflow-hidden origin-center scale-[0.5] sm:scale-[0.7] md:scale-1"
+          className="rounded-none flex items-stretch shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-12 relative select-none overflow-hidden origin-center scale-[0.45] xs:scale-[0.55] sm:scale-[0.75] md:scale-1"
         >
-          <div className="w-[250px] flex items-center justify-center p-8 border-r-2 border-black">
+          <div className="w-[260px] flex items-center justify-center p-6 border-r-2 border-black">
              {qrDataUrl ? (
                <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
              ) : (
@@ -170,28 +173,28 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
 
           <div className="flex-1 flex flex-col p-8 text-black">
              <div className="flex-1">
-                <div style={{ fontSize: '34px' }} className="font-bold uppercase leading-none mb-4 tracking-normal">
+                <div style={{ fontSize: '36px' }} className="font-bold uppercase leading-none mb-4 tracking-normal">
                   {filament.brand}
                 </div>
                 <div className="space-y-1">
-                   <div style={{ fontSize: '26px' }} className="font-black uppercase tracking-wide">
+                   <div style={{ fontSize: '28px' }} className="font-black uppercase tracking-wide">
                      {filament.material}
                    </div>
-                   <div style={{ fontSize: '20px' }} className="font-medium opacity-90">
+                   <div style={{ fontSize: '22px' }} className="font-medium opacity-90">
                      {tColor(filament.colorName)}
                    </div>
                 </div>
              </div>
 
              <div className="flex justify-end items-end mt-auto pt-4 border-t-4 border-black">
-                <div style={{ fontSize: '110px' }} className="font-bold leading-[0.5] tracking-tighter">
+                <div style={{ fontSize: '115px' }} className="font-bold leading-[0.5] tracking-tighter">
                    {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </div>
              </div>
           </div>
         </div>
 
-        <div className="w-full max-w-sm space-y-3 -mt-24 sm:-mt-16 md:mt-0 pb-10">
+        <div className="w-full max-w-sm space-y-3 -mt-20 sm:-mt-10 md:mt-0 pb-10">
           <button 
             onClick={handlePrint}
             disabled={isGenerating}
