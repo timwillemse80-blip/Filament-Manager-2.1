@@ -29,13 +29,13 @@ import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { supabase } from './services/supabase';
-import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { LanguageProvider as LanguageContextProvider, useLanguage } from './contexts/LanguageContext';
 import { LogoProvider } from './contexts/LogoContext';
 import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.31"; 
+const APP_VERSION = "2.1.33"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -389,82 +389,6 @@ const AppContent = () => {
     return Array.from(new Set(filaments.map(f => f.brand)));
   }, [filaments]);
 
-  useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('filament_welcome_seen');
-    if (!hasSeenWelcome) {
-      setShowWelcome(true);
-    }
-
-    const checkUpdates = async () => {
-      try {
-        const res = await fetch('/version.json');
-        const data = await res.json();
-        if (data.version && data.version !== APP_VERSION) {
-          setUpdateInfo({ 
-            version: data.version, 
-            notes: data.releaseNotes,
-            downloadUrl: data.downloadUrl
-          });
-        }
-      } catch (e) {
-        console.warn("Update check failed", e);
-      }
-    };
-    checkUpdates();
-
-    const params = new URLSearchParams(window.location.search);
-    const shopId = params.get('shop');
-    if (shopId) {
-      const fetchPublicStock = async () => {
-        setIsLoading(true);
-        try {
-          const { data: fData } = await supabase.from('filaments').select('*').eq('user_id', shopId);
-          const { data: sData } = await supabase.from('profiles').select('showcase_name').eq('id', shopId).single();
-          
-          if (fData) {
-            const filters = params.get('materials')?.split(',') || [];
-            setPublicViewData({
-              filaments: fData,
-              name: sData?.showcase_name || 'Shared Inventory',
-              filters: filters
-            });
-          }
-        } catch (e) {
-          console.error("Public fetch error", e);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchPublicStock();
-    }
-
-    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive && session?.user?.id) {
-        fetchData(session.user.id);
-      }
-    });
-
-    CapacitorApp.addListener('appUrlOpen', (data: any) => {
-       const url = data.url;
-       if (url.startsWith('filament://')) {
-          const shortId = url.split('filament://')[1];
-          if (shortId) {
-             handleSpoolDeepLink(shortId);
-          }
-       }
-    });
-
-  }, [session]);
-
-  const handleSpoolDeepLink = (shortId: string) => {
-     const spool = filaments.find(f => f.shortId?.toLowerCase() === shortId.toLowerCase());
-     if (spool) {
-        setEditingId(spool.id);
-        setView('inventory');
-        setShowModal(true);
-     }
-  };
-
   const fetchData = async (uid?: string) => {
     const userId = uid || session?.user?.id;
     if (!userId) return;
@@ -519,7 +443,7 @@ const AppContent = () => {
             const wasPro = isPro;
             setIsPro(payload.new.is_pro);
             if (payload.new.is_pro && !wasPro) {
-               alert("Congratulations! Your account has just been upgraded to PRO. All features are now unlocked.");
+               alert("Congratulations! Your account has just been upgraded to PRO.");
             }
           })
           .subscribe();
@@ -541,12 +465,11 @@ const AppContent = () => {
       subscription.unsubscribe();
       if (profileSubscription) supabase.removeChannel(profileSubscription);
     };
-  }, [isPro]);
+  }, []);
 
   const handleSaveFilament = async (filament: Filament | Filament[]) => {
     const userId = session?.user?.id;
     if (!userId) return;
-
     try {
       const items = Array.isArray(filament) ? filament : [filament];
       const payload = items.map(item => ({
@@ -554,35 +477,24 @@ const AppContent = () => {
         user_id: userId,
         shortId: item.shortId || generateShortId()
       }));
-
       const { error } = await supabase.from('filaments').upsert(payload);
       if (error) throw error;
-      
       setShowModal(false);
       setEditingId(null);
       fetchData();
-    } catch (e: any) {
-      alert("Error saving: " + e.message);
-    }
+    } catch (e: any) { alert("Error saving: " + e.message); }
   };
 
   const handleSaveMaterial = async (material: OtherMaterial) => {
     const userId = session?.user?.id;
     if (!userId) return;
-
     try {
-      const { error } = await supabase.from('other_materials').upsert({
-        ...material,
-        user_id: userId
-      });
+      const { error } = await supabase.from('other_materials').upsert({ ...material, user_id: userId });
       if (error) throw error;
-      
       setShowMaterialModal(false);
       setEditingId(null);
       fetchData();
-    } catch (e: any) {
-      alert("Error saving: " + e.message);
-    }
+    } catch (e: any) { alert("Error saving: " + e.message); }
   };
 
   const handleDeleteItem = async (id: string, type: 'filament' | 'material') => {
@@ -592,9 +504,7 @@ const AppContent = () => {
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
       fetchData();
-    } catch (e: any) {
-      alert("Error deleting: " + e.message);
-    }
+    } catch (e: any) { alert("Error deleting: " + e.message); }
   };
 
   const handleBatchDelete = async (ids: string[], type: 'filament' | 'material') => {
@@ -604,9 +514,7 @@ const AppContent = () => {
       const { error } = await supabase.from(table).delete().in('id', ids);
       if (error) throw error;
       fetchData();
-    } catch (e: any) {
-      alert("Batch delete failed: " + e.message);
-    }
+    } catch (e: any) { alert("Batch delete failed: " + e.message); }
   };
 
   const handleQuickAdjust = async (id: string, amount: number) => {
@@ -634,26 +542,15 @@ const AppContent = () => {
   const handleSaveJob = async (job: PrintJob, filamentDeductions: { id: string, amount: number }[]) => {
     const userId = session?.user?.id;
     if (!userId) return;
-
     try {
-      // 1. Database-vriendelijke data preparatie (UUID velden mogen geen lege string zijn)
       const sanitizedJob = {
         ...job,
         user_id: userId,
         printerId: job.printerId === '' ? null : job.printerId
       };
-
-      // 2. Sla de print job op
       const { error: jobError } = await supabase.from('print_jobs').insert(sanitizedJob);
-      if (jobError) {
-          console.error("Supabase Save Job Error:", jobError);
-          throw jobError;
-      }
-
-      // 3. Trek voorraad af (Parallel voor snelheid)
+      if (jobError) throw jobError;
       const stockUpdates: Promise<any>[] = [];
-
-      // Filamenten
       for (const deduction of filamentDeductions) {
         const filament = filaments.find(f => f.id === deduction.id);
         if (filament) {
@@ -661,8 +558,6 @@ const AppContent = () => {
           stockUpdates.push(supabase.from('filaments').update({ weightRemaining: newWeight }).eq('id', deduction.id));
         }
       }
-
-      // Overige materialen
       if (job.usedOtherMaterials) {
         for (const usedMat of job.usedOtherMaterials) {
           const material = materials.find(m => m.id === usedMat.materialId);
@@ -672,60 +567,47 @@ const AppContent = () => {
           }
         }
       }
-
-      // Wacht op alle updates
-      const updateResults = await Promise.all(stockUpdates);
-      const updateErrors = updateResults.filter(r => r.error).map(r => r.error.message);
-      
-      if (updateErrors.length > 0) {
-          alert("Waarschuwing: Opdracht opgeslagen, maar voorraad kon niet volledig worden bijgewerkt: " + updateErrors.join(', '));
-      }
-
+      await Promise.all(stockUpdates);
       fetchData();
-    } catch (e: any) {
-      console.error("handleSaveJob Global Error:", e);
-      alert("Fout bij opslaan van print opdracht: " + (e.message || "Onbekende database fout."));
-    }
+    } catch (e: any) { alert("Fout bij opslaan: " + e.message); }
   };
 
   const handleDeleteJob = async (id: string) => {
     if (!confirm(t('confirmDelete'))) return;
     try {
+      const job = printJobs.find(j => j.id === id);
+      if (!job) return;
+      const stockUpdates: Promise<any>[] = [];
+      if (job.usedFilaments) {
+        for (const uf of job.usedFilaments) {
+          const filament = filaments.find(f => f.id === uf.filamentId);
+          if (filament) {
+            const newWeight = filament.weightRemaining + uf.amount;
+            stockUpdates.push(supabase.from('filaments').update({ weightRemaining: newWeight }).eq('id', uf.filamentId));
+          }
+        }
+      }
+      if (job.usedOtherMaterials) {
+        for (const um of job.usedOtherMaterials) {
+          const material = materials.find(m => m.id === um.materialId);
+          if (material) {
+            const newQty = material.quantity + um.quantity;
+            stockUpdates.push(supabase.from('other_materials').update({ quantity: newQty }).eq('id', um.materialId));
+          }
+        }
+      }
+      if (stockUpdates.length > 0) await Promise.all(stockUpdates);
       const { error } = await supabase.from('print_jobs').delete().eq('id', id);
       if (error) throw error;
       fetchData();
-    } catch (e: any) {
-      alert("Fout bij verwijderen van print opdracht: " + e.message);
-    }
+    } catch (e: any) { alert("Fout bij verwijderen: " + e.message); }
   };
 
-  const lowStockFilaments = filaments.filter(f => (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold);
-  const lowStockMaterials = materials.filter(m => m.minStock !== undefined && m.minStock > 0 && m.quantity <= m.minStock);
-  const totalLowStock = lowStockFilaments.length + lowStockMaterials.length;
-
-  const updateBadgeCount = (settings.enableUpdateNotifications && updateInfo) ? 1 : 0;
-
+  const totalLowStock = filaments.filter(f => (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold).length + materials.filter(m => m.minStock && m.quantity <= m.minStock).length;
   const editingFilament = useMemo(() => filaments.find(f => f.id === editingId), [editingId, filaments]);
   const editingMaterial = useMemo(() => materials.find(m => m.id === editingId), [editingId, materials]);
 
-  const handleCloseWelcome = () => {
-    localStorage.setItem('filament_welcome_seen', 'true');
-    setShowWelcome(false);
-  };
-
-  if (isLoading) return <div className="h-screen w-full flex items-center justify-center dark:bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div></div>;
-  
-  if (publicViewData) {
-    return (
-      <ShowcasePreview 
-        filaments={publicViewData.filaments} 
-        onClose={() => setPublicViewData(null)} 
-        publicName={publicViewData.name}
-        initialFilters={publicViewData.filters}
-      />
-    );
-  }
-
+  if (isLoading) return <div className="h-screen w-full flex items-center justify-center dark:bg-slate-900"><RefreshCw className="animate-spin text-blue-600" size={48} /></div>;
   if (!session) return <AuthScreen onOfflineLogin={() => {}} />;
 
   return (
@@ -736,18 +618,8 @@ const AppContent = () => {
           <span className="font-bold text-lg dark:text-white truncate">Filament Manager</span>
         </div>
         <SidebarContent 
-          view={view} 
-          setView={setView} 
-          filaments={filaments} 
-          lowStockCount={totalLowStock} 
-          onClose={() => {}} 
-          t={t} 
-          isAdmin={isAdmin} 
-          isPremium={isPremium}
-          onBecomePro={() => setShowProModal(true)} 
-          onOpenShowcase={() => setShowShowcaseModal(true)} 
-          adminBadgeCount={adminBadgeCount} 
-          avgRating={avgRating} 
+          view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => {}} t={t} isAdmin={isAdmin} isPremium={isPremium}
+          onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowShowcaseModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} 
         />
       </aside>
 
@@ -756,18 +628,8 @@ const AppContent = () => {
           <div className="bg-black/60 inset-0 backdrop-blur-sm fixed" onClick={() => setSidebarOpen(false)}></div>
           <div className="bg-white dark:bg-slate-950 w-80 h-full relative">
             <SidebarContent 
-              view={view} 
-              setView={setView} 
-              filaments={filaments} 
-              lowStockCount={totalLowStock} 
-              onClose={() => setSidebarOpen(false)} 
-              t={t} 
-              isAdmin={isAdmin} 
-              isPremium={isPremium}
-              onBecomePro={() => setShowProModal(true)} 
-              onOpenShowcase={() => setShowShowcaseModal(true)}
-              adminBadgeCount={adminBadgeCount} 
-              avgRating={avgRating} 
+              view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} isAdmin={isAdmin} isPremium={isPremium}
+              onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowShowcaseModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} 
             />
           </div>
         </div>
@@ -778,39 +640,17 @@ const AppContent = () => {
           <div className="flex items-center gap-1">
              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-500"><Menu size={24} /></button>
              {view !== 'dashboard' && (
-                <button 
-                  onClick={() => {
-                     if (activeGroupKey) setActiveGroupKey(null);
-                     else setView('dashboard');
-                  }}
-                  className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                  title={t('back')}
-                >
+                <button onClick={() => { if (activeGroupKey) setActiveGroupKey(null); else setView('dashboard'); }} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors" title={t('back')}>
                    <ChevronLeft size={24} strokeWidth={3} />
                 </button>
              )}
           </div>
           <h1 className="dark:text-white flex-1 font-bold px-2 truncate text-center md:text-left">{t(view)}</h1>
-          
           <div className="shrink-0 flex items-center gap-1">
-             <button 
-                onClick={() => setView('notifications')}
-                className={`p-2 rounded-full relative transition-colors ${updateBadgeCount > 0 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                title="Notifications"
-             >
-                <Bell size={20} className={updateBadgeCount > 0 ? 'animate-pulse' : ''} />
-                {updateBadgeCount > 0 && (
-                   <span className="bg-blue-500 border-white dark:border-slate-950 border-2 rounded-full w-4 h-4 flex items-center justify-center font-bold text-white text-[10px] absolute top-0 right-0">
-                      {updateBadgeCount}
-                   </span>
-                )}
+             <button onClick={() => setView('notifications')} className={`p-2 rounded-full relative transition-colors ${updateInfo ? 'text-blue-600' : 'text-slate-400'}`} title="Notifications">
+                <Bell size={20} className={updateInfo ? 'animate-pulse' : ''} />
              </button>
-
-             <button 
-                onClick={() => setIsSnowEnabled(!isSnowEnabled)} 
-                className={`p-2 rounded-full transition-colors ${isSnowEnabled ? 'bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                title={t('winterEdition')}
-             >
+             <button onClick={() => setIsSnowEnabled(!isSnowEnabled)} className={`p-2 rounded-full transition-colors ${isSnowEnabled ? 'bg-sky-100 text-sky-600' : 'text-slate-400'}`} title={t('winterEdition')}>
                 <Snowflake size={20} />
              </button>
           </div>
@@ -822,121 +662,31 @@ const AppContent = () => {
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={() => fetchData()} onDelete={() => fetchData()} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
-           {view === 'notifications' && <NotificationPage updateInfo={settings.enableUpdateNotifications ? updateInfo : null} />}
+           {view === 'notifications' && <NotificationPage updateInfo={updateInfo} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} onOpenShowcase={(filters) => { setPreviewFilters(filters || []); setShowShowcasePreview(true); }} onBecomePro={() => setShowProModal(true)} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={() => fetchData()} onDeleteLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onDeleteSupplier={() => fetchData()} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            {view === 'feedback' && <FeedbackPage />}
-           
-           {view === 'print-preview' && (
-              <PrintPreview 
-                filaments={filaments} 
-                printers={printers} 
-                onNavigate={setView}
-              />
-           )}
+           {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
         </PullToRefresh>
       </main>
 
-      {showModal && (
-        <FilamentForm 
-          initialData={editingFilament}
-          locations={locations}
-          suppliers={suppliers}
-          existingBrands={existingBrands}
-          globalBrands={globalBrands}
-          globalMaterials={globalMaterials}
-          onSave={handleSaveFilament}
-          onSaveLocation={(loc) => fetchData()}
-          onSaveSupplier={(sup) => fetchData()}
-          onCancel={() => { setShowModal(false); setEditingId(null); }}
-          isAdmin={isAdmin}
-        />
-      )}
-
-      {showLabelOnly && editingFilament && (
-        <LabelModal 
-          filament={editingFilament}
-          onClose={() => { setShowLabelOnly(false); setEditingId(null); }}
-        />
-      )}
-
-      {showMaterialModal && (
-        <MaterialForm 
-          initialData={editingMaterial}
-          locations={locations}
-          suppliers={suppliers}
-          onSave={handleSaveMaterial}
-          onCancel={() => { setShowMaterialModal(false); setEditingId(null); }}
-        />
-      )}
-      
+      {showModal && <FilamentForm initialData={editingFilament} locations={locations} suppliers={suppliers} existingBrands={existingBrands} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); }} isAdmin={isAdmin} />}
+      {showLabelOnly && editingFilament && <LabelModal filament={editingFilament} onClose={() => { setShowLabelOnly(false); setEditingId(null); }} />}
+      {showMaterialModal && <MaterialForm initialData={editingMaterial} locations={locations} suppliers={suppliers} onSave={handleSaveMaterial} onCancel={() => { setShowMaterialModal(false); setEditingId(null); }} />}
       {showProModal && <ProModal onClose={() => setShowProModal(false)} />}
-      
-      {showShowcaseModal && isPremium && (
-        <ShowcaseModal 
-          filaments={filaments} 
-          settings={settings} 
-          onUpdateSettings={setSettings} 
-          onClose={() => setShowShowcaseModal(false)} 
-          onPreview={(filters) => { 
-            setPreviewFilters(filters); 
-            setShowShowcasePreview(true); 
-          }} 
-          userId={session.user.id}
-        />
-      )}
-
-      {showShowcasePreview && (
-        <ShowcasePreview 
-          filaments={filaments} 
-          onClose={() => setShowShowcasePreview(false)} 
-          publicName={settings.showcasePublicName}
-          initialFilters={previewFilters}
-          isAdminPreview={true}
-        />
-      )}
-
-      {showWelcome && <WelcomeScreen onComplete={handleCloseWelcome} />}
-
-      {showBackToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] animate-fade-in pointer-events-none">
-           <div className="bg-slate-800/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold shadow-xl border border-slate-700/50 flex items-center gap-2">
-              <ArrowLeft size={14} />
-              Druk nogmaals om af te sluiten
-           </div>
-        </div>
-      )}
-
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-6 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 p-8 text-center">
-            <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <Logo className="w-12 h-12" />
-            </div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">App afsluiten?</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Weet je zeker dat je de Filament Manager wilt sluiten?</p>
-            
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => setShowExitConfirm(false)}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={20} /> Terug naar App
-              </button>
-              <button 
-                onClick={() => CapacitorApp.exitApp()}
-                className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition-colors"
-              >
-                Afsluiten
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showShowcaseModal && isPremium && <ShowcaseModal filaments={filaments} settings={settings} onUpdateSettings={setSettings} onClose={() => setShowShowcaseModal(false)} onPreview={(filters) => { setPreviewFilters(filters); setShowShowcasePreview(true); }} userId={session.user.id} />}
+      {showShowcasePreview && <ShowcasePreview filaments={filaments} onClose={() => setShowShowcasePreview(false)} publicName={settings.showcasePublicName} initialFilters={previewFilters} isAdminPreview={true} />}
     </div>
   );
 };
 
-const App = () => (<LanguageProvider><LogoProvider><AppContent /></LogoProvider></LanguageProvider>);
+const App = () => (
+  <LanguageContextProvider>
+    <LogoProvider>
+      <AppContent />
+    </LogoProvider>
+  </LanguageContextProvider>
+);
+
 export default App;
