@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction, Palette } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, ChevronUp, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction, Palette } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
 import { COMMON_BRANDS, COMMON_MATERIALS, QUICK_COLORS } from '../constants';
@@ -51,6 +51,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   });
 
   const [showWeighHelper, setShowWeighHelper] = useState(false);
+  const [showExtraFields, setShowExtraFields] = useState(!!initialData?.locationId || !!initialData?.supplierId || !!initialData?.notes || !!initialData?.shopUrl);
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
   const [selectedSpoolType, setSelectedSpoolType] = useState<string>('Generic (Plastic Normal)');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -77,38 +78,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    let finalLocationId = initialData?.locationId || null;
-    let finalSupplierId = initialData?.supplierId || null;
-
-    if (locationName.trim()) {
-      const existingLoc = locations.find(l => l.name.toLowerCase() === locationName.trim().toLowerCase());
-      if (existingLoc) {
-        finalLocationId = existingLoc.id;
-      } else {
-        const newLoc: Location = { id: crypto.randomUUID(), name: locationName.trim() };
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('locations').insert({ ...newLoc, user_id: user.id });
-          onSaveLocation(newLoc);
-          finalLocationId = newLoc.id;
-        }
-      }
-    }
-
-    if (supplierName.trim()) {
-      const existingSup = suppliers.find(s => s.name.toLowerCase() === supplierName.trim().toLowerCase());
-      if (existingSup) {
-        finalSupplierId = existingSup.id;
-      } else {
-        const newSup: Supplier = { id: crypto.randomUUID(), name: supplierName.trim() };
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('suppliers').insert({ ...newSup, user_id: user.id });
-          onSaveSupplier(newSup);
-          finalSupplierId = newSup.id;
-        }
-      }
-    }
+    let finalLocationId = formData.locationId || null;
+    let finalSupplierId = formData.supplierId || null;
 
     const finalFilament: Filament = {
       ...formData as Filament,
@@ -413,6 +384,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
+          {/* Temperaturen */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('tempNozzle')}</label>
@@ -438,6 +410,107 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 <span className="absolute right-3 top-3 text-slate-500 font-bold">°C</span>
               </div>
             </div>
+          </div>
+
+          {/* Meer Opties - Accordion */}
+          <div className="pt-2">
+             <button 
+                type="button"
+                onClick={() => setShowExtraFields(!showExtraFields)}
+                className="w-full flex items-center justify-between p-4 bg-slate-800/50 hover:bg-slate-800 rounded-xl border border-slate-700 transition-colors group"
+             >
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                      {showExtraFields ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                   </div>
+                   <span className="text-sm font-bold text-slate-300 group-hover:text-white">Meer Opties</span>
+                </div>
+                <div className="flex gap-2">
+                   {!formData.locationId && <MapPin size={14} className="text-slate-500" />}
+                   {!formData.supplierId && <Truck size={14} className="text-slate-500" />}
+                   {formData.shopUrl && <LinkIcon size={14} className="text-blue-500" />}
+                </div>
+             </button>
+
+             {showExtraFields && (
+                <div className="mt-4 p-5 bg-slate-800/30 rounded-2xl border border-slate-700/50 space-y-6 animate-fade-in">
+                   
+                   {/* Locatie & Leverancier */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                           <MapPin size={10} /> {t('location')}
+                        </label>
+                        <select 
+                           value={formData.locationId || ''} 
+                           onChange={e => setFormData({...formData, locationId: e.target.value || undefined})}
+                           className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500"
+                        >
+                           <option value="">-- {t('none')} --</option>
+                           {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                           <Truck size={10} /> {t('supplier')}
+                        </label>
+                        <select 
+                           value={formData.supplierId || ''} 
+                           onChange={e => setFormData({...formData, supplierId: e.target.value || undefined})}
+                           className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500"
+                        >
+                           <option value="">-- {t('none')} --</option>
+                           {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+                   </div>
+
+                   {/* Prijs & Shop URL */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <Euro size={10} /> {t('price')}
+                         </label>
+                         <div className="relative">
+                            <input 
+                               type="number" 
+                               step="0.01"
+                               value={formData.price || ''} 
+                               onChange={e => setFormData({...formData, price: e.target.value === '' ? undefined : parseFloat(e.target.value)})}
+                               placeholder="0.00"
+                               className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 pl-8"
+                            />
+                            <span className="absolute left-3 top-3.5 text-slate-500 font-bold text-sm">€</span>
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <LinkIcon size={10} /> {t('shopUrl')}
+                         </label>
+                         <input 
+                            type="text" 
+                            value={formData.shopUrl || ''} 
+                            onChange={e => setFormData({...formData, shopUrl: e.target.value})}
+                            placeholder="https://shop.com/..."
+                            className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500"
+                         />
+                      </div>
+                   </div>
+
+                   {/* Notities */}
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                         <FileText size={10} /> {t('notes')}
+                      </label>
+                      <textarea 
+                         value={formData.notes || ''} 
+                         onChange={e => setFormData({...formData, notes: e.target.value})}
+                         placeholder="bv. Batch nummer, speciale instellingen..."
+                         className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 h-24 resize-none"
+                      />
+                   </div>
+                </div>
+             )}
           </div>
 
           <div className="pt-4 sticky bottom-0 bg-[#0f172a] pb-2">
