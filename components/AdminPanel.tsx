@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft, History, Edit2, ClipboardList, ListPlus } from 'lucide-react';
+import { Upload, Save, ZoomIn, ZoomOut, Image as ImageIcon, CheckCircle2, AlertCircle, MessageSquare, Trash2, UserX, Database, Copy, RefreshCw, LayoutGrid, Weight, Tag, Layers, Plus, Server, Check, Activity, HardDrive, Shield, Share2, Square, CheckSquare, Users, Clock, Mail, Crown, ToggleLeft, ToggleRight, Loader2, X, Globe, Smartphone, Zap, Star, Sparkles, Disc, AlertTriangle, Eye, EyeOff, BarChart3, PieChart as PieChartIcon, TrendingUp, Box, ChevronRight, LogOut, ArrowLeft, History, Edit2, ClipboardList, ListPlus, Search, Package, Printer } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { supabase } from '../services/supabase';
 import { useLogo } from '../contexts/LogoContext';
@@ -82,6 +82,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
   const [spoolWeights, setSpoolWeights] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -157,10 +158,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('profiles').select('id, email, is_pro, created_at').order('created_at', { ascending: false });
+      // Haal profielen op
+      const { data: profiles, error } = await supabase.from('profiles').select('id, email, is_pro, created_at').order('created_at', { ascending: false });
       if (error) throw error;
-      setUsers(data || []);
-    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
+      
+      // Haal alle tellers op (voor alle gebruikers tegelijk is efficiënter)
+      const [{ data: filCounts }, { data: matCounts }, { data: logCounts }] = await Promise.all([
+        supabase.from('filaments').select('user_id'),
+        supabase.from('other_materials').select('user_id'),
+        supabase.from('print_jobs').select('user_id')
+      ]);
+
+      const countsMap: any = {};
+      profiles?.forEach(p => {
+        countsMap[p.id] = { filaments: 0, materials: 0, logs: 0 };
+      });
+
+      filCounts?.forEach((f: any) => { if(countsMap[f.user_id]) countsMap[f.user_id].filaments++; });
+      matCounts?.forEach((m: any) => { if(countsMap[m.user_id]) countsMap[m.user_id].materials++; });
+      logCounts?.forEach((l: any) => { if(countsMap[l.user_id]) countsMap[l.user_id].logs++; });
+
+      setUsers(profiles?.map(p => ({
+        ...p,
+        stats: countsMap[p.id]
+      })) || []);
+
+    } catch (e: any) { 
+      alert(e.message); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const toggleProStatus = async (userId: string, currentStatus: boolean) => {
@@ -228,7 +255,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
          size: newSpool.size, 
          spool_material: newSpool.spool_material, 
          weight: Number(newSpool.weight),
-         name: `${newSpool.brand} (${newSpool.size})` // Vul de oude 'name' kolom voor compatibiliteit
+         name: `${newSpool.brand} (${newSpool.size})` 
        });
        setNewSpool({ brand: '', size: '1000g', spool_material: 'Plastic', weight: '' });
        loadSpoolWeights();
@@ -293,6 +320,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
      setEditingSpoolData({ brand: s.brand || '', size: s.size || '1000g', spool_material: s.spool_material || 'Plastic', weight: s.weight.toString() });
   };
 
+  const filteredUsers = useMemo(() => {
+    if(!userSearch) return users;
+    const lower = userSearch.toLowerCase();
+    return users.filter(u => u.email?.toLowerCase().includes(lower));
+  }, [users, userSearch]);
+
   return (
     <div className="max-w-7xl mx-auto pb-20 animate-fade-in flex flex-col gap-8">
        <div className="space-y-6 w-full">
@@ -345,29 +378,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
              {activeTab === 'users' && (
                 <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-3"><Users size={20}/> Gebruikers Lijst</h3>
-                      <button onClick={loadUsers} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
+                   <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                      <div className="flex items-center gap-3">
+                         <Users size={20} className="text-blue-500" />
+                         <h3 className="font-bold text-slate-800 dark:text-white">Gebruikers ({filteredUsers.length})</h3>
+                      </div>
+                      <div className="flex items-center gap-3 w-full md:w-auto">
+                         <div className="relative flex-1 md:w-64">
+                            <input 
+                              type="text" 
+                              placeholder="Zoek e-mail..." 
+                              value={userSearch}
+                              onChange={e => setUserSearch(e.target.value)}
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 pl-10 text-sm dark:text-white"
+                            />
+                            <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                         </div>
+                         <button onClick={loadUsers} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
+                      </div>
                    </div>
                    <div className="overflow-x-auto">
                       <table className="w-full text-left">
                          <thead className="bg-slate-50 dark:bg-slate-900">
                             <tr>
-                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase">E-mail</th>
-                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">PRO Status</th>
-                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-right">Registratie</th>
+                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase">Gebruiker</th>
+                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">Statistieken</th>
+                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">Status</th>
+                               <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-right">Geregistreerd</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {users.map(u => (
-                               <tr key={u.id}>
-                                  <td className="p-4 text-sm font-bold dark:text-white">{u.email}</td>
+                            {filteredUsers.map(u => (
+                               <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                                  <td className="p-4">
+                                     <div className="font-bold dark:text-white text-sm">{u.email}</div>
+                                     <div className="text-[10px] text-slate-400 font-mono">{u.id}</div>
+                                  </td>
+                                  <td className="p-4">
+                                     <div className="flex items-center justify-center gap-4">
+                                        <div className="flex flex-col items-center" title="Filamenten">
+                                           <Layers size={14} className="text-blue-500 mb-0.5" />
+                                           <span className="text-xs font-black dark:text-white">{u.stats?.filaments || 0}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center" title="Andere Materialen">
+                                           <Package size={14} className="text-indigo-500 mb-0.5" />
+                                           <span className="text-xs font-black dark:text-white">{u.stats?.materials || 0}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center" title="Print Logs">
+                                           <Printer size={14} className="text-emerald-500 mb-0.5" />
+                                           <span className="text-xs font-black dark:text-white">{u.stats?.logs || 0}</span>
+                                        </div>
+                                     </div>
+                                  </td>
                                   <td className="p-4 text-center">
-                                     <button onClick={() => toggleProStatus(u.id, u.is_pro)} disabled={updatingUserId === u.id} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                                        {updatingUserId === u.id ? <Loader2 size={12} className="animate-spin"/> : u.is_pro ? 'PRO Lid' : 'Maak PRO'}
+                                     <button onClick={() => toggleProStatus(u.id, u.is_pro)} disabled={updatingUserId === u.id} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all flex items-center gap-2 mx-auto ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                        {updatingUserId === u.id ? <Loader2 size={12} className="animate-spin"/> : u.is_pro ? <><Crown size={12} fill="currentColor" /> PRO</> : 'Free'}
                                      </button>
                                   </td>
-                                  <td className="p-4 text-right text-xs text-slate-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                                  <td className="p-4 text-right">
+                                     <div className="text-xs font-bold dark:text-white">{new Date(u.created_at).toLocaleDateString()}</div>
+                                     <div className="text-[10px] text-slate-400">{new Date(u.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                  </td>
                                </tr>
                             ))}
                          </tbody>
