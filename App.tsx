@@ -307,14 +307,12 @@ const AppContent = () => {
     viewingJobRef.current = viewingJob;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
-  // Initial check for URL parameters (e.g. from QR scan)
   useEffect(() => {
     const search = window.location.search || (window.location.hash.includes('?') ? window.location.hash.substring(window.location.hash.indexOf('?')) : '');
     const params = new URLSearchParams(search);
     const code = params.get('code');
     if (code) {
        setPendingScanCode(code.toUpperCase());
-       // Opschonen van de URL zonder de pagina te herladen
        window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -328,13 +326,11 @@ const AppContent = () => {
         code = url.split('://')[1]?.split(/[?&]/)[0]?.toUpperCase();
       } 
       
-      // Ook checken op domein URL parameters
       if (url.includes('code=')) {
         const urlObj = new URL(url);
         const searchParams = urlObj.searchParams;
         code = searchParams.get('code')?.toUpperCase();
         
-        // Fallback voor hash-based routing indien nodig
         if (!code && url.includes('#')) {
            const hashSearch = url.substring(url.indexOf('?'));
            code = new URLSearchParams(hashSearch).get('code')?.toUpperCase();
@@ -346,12 +342,10 @@ const AppContent = () => {
       }
     };
 
-    // Listener voor Deep Linking (QR code scans die de app openen)
     const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
       handleInboundUrl(data.url);
     });
 
-    // Check for launch URL (cold start)
     CapacitorApp.getLaunchUrl().then(data => {
       if (data && data.url) {
         handleInboundUrl(data.url);
@@ -429,7 +423,6 @@ const AppContent = () => {
     };
   }, []);
 
-  // Effect om pending scans af te handelen zodra filaments geladen zijn
   useEffect(() => {
     if (pendingScanCode && filaments.length > 0 && !isLoading) {
        const match = filaments.find(f => f.shortId?.toUpperCase() === pendingScanCode || f.id.startsWith(pendingScanCode));
@@ -668,7 +661,6 @@ const AppContent = () => {
   const handleToggleOrdered = async (id: string, type: 'filament' | 'material', currentStatus: boolean) => {
     try {
       const table = type === 'filament' ? 'filaments' : 'other_materials';
-      // Use snake_case is_ordered to match DB standard
       const { error } = await supabase.from(table).update({ is_ordered: !currentStatus }).eq('id', id);
       if (error) throw error;
       fetchData();
@@ -793,7 +785,7 @@ const AppContent = () => {
         </header>
 
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
-           {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} />}
+           {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} threshold={settings.lowStockThreshold} />}
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}

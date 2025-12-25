@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Filament, PrintJob, OtherMaterial } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 import { Layers, Weight, Euro, TrendingUp, AlertTriangle, Disc, BarChart2, Crown, CheckCircle2, XCircle, Snowflake, Lock, Box } from 'lucide-react';
@@ -10,25 +10,24 @@ interface DashboardProps {
   materials?: OtherMaterial[];
   onNavigate: (view: any) => void;
   isAdmin?: boolean;
-  history?: PrintJob[]; // Add history prop
+  history?: PrintJob[];
   isSnowEnabled?: boolean;
   onInspectItem?: (id: string) => void;
-  onBecomePro?: () => void; // New prop
+  onBecomePro?: () => void;
+  threshold?: number; // Nieuwe prop voor de drempelwaarde uit instellingen
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4'];
 
-// Snow Generation Component
 const SnowFall = () => {
   const [flakes, setFlakes] = useState<any[]>([]);
 
   useEffect(() => {
-    // Generate flakes once on mount
-    const count = 20; // Number of snowflakes
+    const count = 20;
     const newFlakes = Array.from({ length: count }).map((_, i) => ({
       id: i,
       left: Math.random() * 100 + 'vw',
-      animationDuration: (Math.random() * 5 + 5) + 's', // 5-10s
+      animationDuration: (Math.random() * 5 + 5) + 's',
       animationDelay: (Math.random() * 5) + 's',
       opacity: Math.random() * 0.5 + 0.3,
       size: Math.random() * 10 + 10 + 'px'
@@ -57,7 +56,6 @@ const SnowFall = () => {
   );
 };
 
-// --- PRO Chart Overlay Component ---
 const ProChartOverlay = ({ t, onClick }: { t: any, onClick?: () => void }) => (
    <div 
       onClick={onClick}
@@ -73,14 +71,12 @@ const ProChartOverlay = ({ t, onClick }: { t: any, onClick?: () => void }) => (
    </div>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [], onNavigate, isAdmin, history = [], isSnowEnabled = true, onInspectItem, onBecomePro }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [], onNavigate, isAdmin, history = [], isSnowEnabled = true, onInspectItem, onBecomePro, threshold = 20 }) => {
   const { t } = useLanguage();
 
-  // 1. Calculate Statistics
   const totalSpools = filaments.length;
   const totalWeight = filaments.reduce((acc, f) => acc + f.weightRemaining, 0);
   
-  // Calculate value: (Price / TotalWeight) * RemainingWeight
   const filamentValue = filaments.reduce((acc, f) => {
     if (f.price && f.weightTotal > 0) {
       const pricePerGram = f.price / f.weightTotal;
@@ -89,29 +85,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
     return acc;
   }, 0);
 
-  // Calculate Material Value
   const materialValue = materials.reduce((acc, m) => {
-     // Basic calculation: price * quantity (assumes price is per unit)
      return acc + ((m.price || 0) * m.quantity);
   }, 0);
 
   const totalCombinedValue = filamentValue + materialValue;
 
-  // 2. Prepare Chart Data: Material Distribution
   const materialData = React.useMemo(() => {
     const counts: Record<string, number> = {};
     filaments.forEach(f => {
-      // Normalize material names roughly
-      const mat = f.material.toUpperCase().split(' ')[0]; // "PLA+" -> "PLA"
+      const mat = f.material.toUpperCase().split(' ')[0];
       counts[mat] = (counts[mat] || 0) + 1;
     });
     
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value); // Biggest first
+      .sort((a, b) => b.value - a.value);
   }, [filaments]);
 
-  // Helper: Count occurrences of identical filaments (Brand + Material + Color)
   const stockMap = React.useMemo(() => {
     const map = new Map<string, number>();
     filaments.forEach(f => {
@@ -121,31 +112,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
     return map;
   }, [filaments]);
 
-  // 3. Prepare Chart Data: Low Stock (Top 5 lowest %)
-  const lowStockData = React.useMemo(() => {
-    return [...filaments]
+  // Added useMemo to the React import to fix compilation errors on lines 116 and 120.
+  // Berekening van lage voorraad, exclusief items die al besteld zijn
+  const lowStockFilaments = useMemo(() => {
+    return filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= threshold);
+  }, [filaments, threshold]);
+
+  // Added useMemo to the React import to fix compilation errors on lines 116 and 120.
+  const lowStockMaterialsCount = useMemo(() => {
+    return materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
+  }, [materials]);
+
+  const totalLowStockCount = lowStockFilaments.length + lowStockMaterialsCount;
+
+  const lowStockChartData = React.useMemo(() => {
+    return lowStockFilaments
       .map(f => {
         const key = `${f.brand}-${f.material}-${f.colorName}`.toLowerCase().trim();
         const totalCount = stockMap.get(key) || 1;
-        const extraStock = totalCount - 1; // Amount of *other* spools
+        const extraStock = totalCount - 1;
 
         return {
-          id: f.id, // Include ID for click handling
+          id: f.id,
           name: `${f.brand} ${f.colorName}`,
           pct: Math.round((f.weightRemaining / f.weightTotal) * 100),
           color: f.colorHex,
           extraStock: extraStock,
-          extraLabel: extraStock > 0 ? `+ ${extraStock} items` : '' // Label for the chart
+          extraLabel: extraStock > 0 ? `+ ${extraStock} items` : ''
         };
       })
       .sort((a, b) => a.pct - b.pct)
       .slice(0, 5);
-  }, [filaments, stockMap]);
+  }, [lowStockFilaments, stockMap]);
 
-  // 4. [PRO] Prepare Chart Data: Value per Brand
   const valueByBrandData = React.useMemo(() => {
      if (!isAdmin) {
-        // Return dummy data for locked state visualization
         return [
            { name: 'Polymaker', value: 450 },
            { name: 'eSun', value: 320 },
@@ -156,19 +157,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
      }
      const brandValues: Record<string, number> = {};
      filaments.forEach(f => {
-        const val = f.price || 0; // Use full spool price as investment metric
+        const val = f.price || 0;
         brandValues[f.brand] = (brandValues[f.brand] || 0) + val;
      });
      return Object.entries(brandValues)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
-        .slice(0, 8); // Top 8 brands
+        .slice(0, 8);
   }, [filaments, isAdmin]);
 
-  // 5. [PRO] Success vs Fail Chart
   const successData = React.useMemo(() => {
      if (!isAdmin) {
-        // Return dummy data for locked state
         return [
            { name: t('success'), value: 85, color: '#10b981' },
            { name: t('failed'), value: 15, color: '#ef4444' }
@@ -183,7 +182,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
      ];
   }, [history, isAdmin, t]);
 
-  // Custom Tooltip for Charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -193,9 +191,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
         <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg shadow-xl z-50">
           <p className="text-white font-bold text-sm">{label || payload[0].name}</p>
           <p className="text-blue-400 text-sm">
-            {isCurrency ? '€' : ''}{payload[0].value.toFixed(isCurrency ? 2 : 0)}{data.pct ? '%' : (isCurrency ? '' : '')}
+            {isCurrency ? '€' : ''}{payload[0].value.toFixed(isCurrency ? 2 : 0)}{data.pct ? '%' : ''}
           </p>
-          {/* Show extra stock info if available */}
           {data.extraStock > 0 && (
              <p className="text-xs text-green-400 mt-1 font-medium">
                 Extra: {data.extraStock} {t('items')}
@@ -222,9 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
          </h2>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Spools */}
         <div 
           onClick={() => onNavigate('inventory')}
           className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.02] pt-8"
@@ -239,7 +234,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
         </div>
 
-        {/* Total Weight */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group pt-8">
            {isSnowEnabled && <div className="snow-drift"></div>}
            <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity mt-4">
@@ -251,7 +245,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
         </div>
 
-        {/* Total Value (SPLIT) */}
         <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group pt-8 flex flex-col justify-between">
            {isSnowEnabled && <div className="snow-drift"></div>}
            <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity mt-4">
@@ -274,7 +267,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
         </div>
 
-        {/* Low Stock Alert */}
         <div 
            onClick={() => onNavigate('shopping')}
            className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.02] pt-8"
@@ -285,14 +277,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
            <div className="relative z-10">
               <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{t('lowStock')}</p>
-              <h3 className="text-3xl font-bold text-red-500">{lowStockData.filter(x => x.pct < 20).length}</h3>
+              <h3 className="text-3xl font-bold text-red-500">{totalLowStockCount}</h3>
            </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Material Chart */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-[400px] flex flex-col relative pt-8">
            {isSnowEnabled && <div className="snow-drift" style={{width: '30%', right: 'auto'}}></div>}
            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
@@ -334,7 +325,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
         </div>
 
-        {/* Low Stock Chart */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm h-[400px] flex flex-col relative pt-8">
            {isSnowEnabled && <div className="snow-drift" style={{width: '30%', right: 'auto'}}></div>}
            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
@@ -342,10 +332,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
               {t('lowestStock')} (%)
            </h3>
            <div className="flex-1 min-h-0">
-             {lowStockData.length > 0 ? (
+             {lowStockChartData.length > 0 ? (
                <ResponsiveContainer width="100%" height="100%">
                  <BarChart
-                   data={lowStockData}
+                   data={lowStockChartData}
                    layout="vertical"
                    margin={{ top: 5, right: 40, left: 10, bottom: 5 }}
                  >
@@ -354,7 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                    <YAxis 
                      dataKey="name" 
                      type="category" 
-                     width={80} // Reduced from 100 to give more space to bars on mobile
+                     width={80} 
                      tick={{fill: '#94a3b8', fontSize: 11}} 
                      tickLine={false}
                      axisLine={false}
@@ -363,7 +353,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                    <Bar 
                       dataKey="pct" 
                       radius={[0, 4, 4, 0]} 
-                      barSize={24} // Increased bar size for better visibility
+                      barSize={24} 
                       cursor="pointer"
                       onClick={(data) => {
                          if (onInspectItem && data && data.payload) {
@@ -371,14 +361,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                          }
                       }}
                    >
-                      {/* Added LabelList to show count behind the bar */}
                       <LabelList 
                         dataKey="extraLabel" 
                         position="right" 
                         style={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
                       />
-                      {lowStockData.map((entry, index) => (
-                       <Cell key={`cell-${index}`} fill={entry.pct < 20 ? '#ef4444' : '#f59e0b'} />
+                      {lowStockChartData.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={entry.pct < threshold ? '#ef4444' : '#f59e0b'} />
                      ))}
                    </Bar>
                  </BarChart>
@@ -393,26 +382,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
 
       </div>
 
-      {/* --- PRO FEATURES: VALUE & SUCCESS CHARTS --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-         
-         {/* Value Chart - PRO STYLE */}
          <div className="bg-amber-50 dark:bg-amber-900/10 p-6 rounded-xl border border-amber-200 dark:border-amber-900/30 shadow-md relative overflow-hidden group pt-8 transition-all">
             {isSnowEnabled && <div className="snow-drift" style={{width: '30%', right: 'auto'}}></div>}
-            
-            {/* Overlay for Non-Admins */}
             {!isAdmin && <ProChartOverlay t={t} onClick={onBecomePro} />}
-            
-            {/* PRO Badge */}
             <div className="absolute top-0 right-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-bl-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 z-10 border-b border-l border-amber-200 dark:border-amber-800">
                <Crown size={12} fill="currentColor" /> PRO
             </div>
-            
             <h3 className="text-lg font-bold text-amber-700 dark:text-amber-400 mb-4 flex items-center gap-2">
                <BarChart2 size={20} className="text-amber-500" />
                {t('investmentBrand')}
             </h3>
-            
             <div className={`h-[300px] ${!isAdmin ? 'blur-[4px] opacity-70' : ''}`}>
                {valueByBrandData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -435,24 +415,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
             </div>
          </div>
 
-         {/* Success/Fail Chart - PRO STYLE */}
          <div className="bg-amber-50 dark:bg-amber-900/10 p-6 rounded-xl border border-amber-200 dark:border-amber-900/30 shadow-md relative overflow-hidden group pt-8 transition-all">
             {isSnowEnabled && <div className="snow-drift" style={{width: '30%', right: 'auto'}}></div>}
-            
-            {/* Overlay for Non-Admins */}
             {!isAdmin && <ProChartOverlay t={t} onClick={onBecomePro} />}
-            
-            {/* PRO Badge */}
             <div className="absolute top-0 right-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-bl-xl text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 z-10 border-b border-l border-amber-200 dark:border-amber-800">
                <Crown size={12} fill="currentColor" /> PRO
             </div>
-            
             <h3 className="text-lg font-bold text-amber-700 dark:text-amber-400 mb-4 flex items-center gap-2">
-               {/* Default to Green Check (Optimistic), only show red if Fails > Success */}
                {successData.length > 0 && successData[1].value > successData[0].value ? <XCircle size={20} className="text-red-500" /> : <CheckCircle2 size={20} className="text-green-500" />}
                {t('successRate')}
             </h3>
-            
             <div className={`h-[300px] ${!isAdmin ? 'blur-[4px] opacity-70' : ''}`}>
                {successData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
