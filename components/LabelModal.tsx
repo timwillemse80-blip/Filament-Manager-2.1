@@ -26,9 +26,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
         // Deep link URL for the app
         const url = `filament://${filament.shortId || filament.id.substring(0, 4)}`;
         const dataUrl = await QRCode.toDataURL(url, {
-          width: 512, // Higher resolution for cleaner logo overlay
+          width: 512, 
           margin: 1,
-          errorCorrectionLevel: 'H', // High error correction is vital when placing logos in the center
+          errorCorrectionLevel: 'H', 
           color: {
             dark: '#000000',
             light: '#ffffff',
@@ -45,17 +45,16 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
   const handlePrint = async () => {
     if (!labelRef.current) return;
     
-    // Create a temporary window for printing to ensure high quality and correct scale
     const canvas = await html2canvas(labelRef.current, { 
-      scale: 3, 
+      scale: 4, 
       backgroundColor: '#ffffff',
-      useCORS: true // Necessary if the custom logo is from a different origin
+      useCORS: true 
     });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
-      format: [62, 29] // Standard small label size
+      format: [62, 29] 
     });
     
     pdf.addImage(imgData, 'PNG', 0, 0, 62, 29);
@@ -68,7 +67,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     setIsGenerating(true);
     try {
       const canvas = await html2canvas(labelRef.current, { 
-        scale: 3, 
+        scale: 4, 
         backgroundColor: '#ffffff',
         useCORS: true
       });
@@ -89,59 +88,64 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0b1221]/95 backdrop-blur-md p-4 animate-fade-in">
       <div className="w-full max-w-sm flex flex-col items-center">
         
-        {/* Top Header info matching screenshot */}
         <div className="text-center mb-8">
            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">{filament.brand}</p>
            <h2 className="text-white text-2xl font-black">{tColor(filament.colorName)} {filament.material}</h2>
         </div>
 
-        {/* The Label Card */}
+        {/* Improved Label Card */}
         <div 
           ref={labelRef}
-          className="bg-white rounded-lg p-4 flex items-center gap-4 shadow-2xl mb-10 w-full aspect-[2/1] relative overflow-hidden select-none"
+          className="bg-white rounded-lg p-3 flex items-start gap-3 shadow-2xl mb-10 w-full aspect-[2.1/1] relative overflow-hidden select-none"
         >
           {/* QR Code Section */}
-          <div className="w-1/2 flex items-center justify-center">
+          <div className="w-[46%] flex items-center justify-center self-center">
              {qrDataUrl ? (
                <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
                  
-                 {/* App Logo Overlay in center of QR */}
+                 {/* App Logo Overlay with White Stroke for better scanability */}
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-[24%] h-[24%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm border border-slate-100">
-                       <Logo className="w-full h-full" strokeWidth={3} />
+                    <div className="w-[26%] h-[26%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm border-[1.5px] border-white">
+                       <Logo className="w-full h-full" strokeWidth={3.5} />
                     </div>
                  </div>
                </div>
              ) : (
-               <div className="w-full h-full bg-slate-100 animate-pulse rounded" />
+               <div className="w-full h-full bg-slate-50 animate-pulse rounded" />
              )}
           </div>
 
           {/* Text Content Section */}
-          <div className="w-1/2 flex flex-col justify-between h-full py-1">
+          <div className="flex-1 flex flex-col pt-3 pr-2">
              <div className="space-y-0.5">
-                <h3 className="text-[#0f172a] font-black text-xl leading-none uppercase truncate">{filament.brand}</h3>
-                <p className="text-[#0f172a] font-black text-sm leading-tight">{filament.material}</p>
-                <p className="text-slate-500 font-bold text-[10px] leading-tight truncate">{tColor(filament.colorName)}</p>
+                <h3 className="text-[#0f172a] font-black text-[1.4rem] leading-none uppercase italic tracking-tighter truncate">
+                  {filament.brand}
+                </h3>
+                <p className="text-[#0f172a] font-black text-[0.8rem] leading-none opacity-90 uppercase truncate">
+                  {filament.material}
+                </p>
+                <p className="text-slate-500 font-bold text-[9px] leading-tight truncate mt-1">
+                  {tColor(filament.colorName)}
+                </p>
              </div>
              
-             <div className="mt-auto self-end">
-                <span className="text-[#0f172a] font-black text-3xl tracking-tighter">
+             {/* Huge ID in bottom right corner */}
+             <div className="absolute bottom-2 right-3">
+                <span className="text-[#0f172a] font-black text-4xl tracking-tighter leading-none">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
           </div>
         </div>
 
-        {/* Action Buttons matching screenshot */}
         <div className="w-full space-y-3">
           <button 
             onClick={handlePrint}
             className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
           >
             <Printer size={24} />
-            Print
+            Print Label
           </button>
           <button 
             onClick={handleSaveImage}
@@ -149,11 +153,10 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
             className={`w-full ${isSaved ? 'bg-emerald-600' : 'bg-[#2563eb] hover:bg-[#1d4ed8]'} text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg disabled:opacity-70`}
           >
             {isGenerating ? <Loader2 size={24} className="animate-spin" /> : isSaved ? <Check size={24} /> : <Download size={24} />}
-            {isSaved ? 'Saved!' : 'Save'}
+            {isSaved ? 'Saved!' : 'Save Image'}
           </button>
         </div>
 
-        {/* Close Button Top Right */}
         <button 
           onClick={onClose}
           className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
