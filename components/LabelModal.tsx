@@ -79,10 +79,10 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
   };
 
   useEffect(() => {
-    const code = filament.shortId || filament.id.substring(0, 4).toUpperCase();
-    // Gebruik de vaste URL van de app voor consistente App Link herkenning
-    const baseUrl = "https://filamentmanager.nl/";
-    const url = `${baseUrl}?code=${code}`;
+    const code = (filament.shortId || filament.id.substring(0, 4)).toUpperCase();
+    // Gebruik de volledige domeinnaam. 
+    // Android/iOS herkent dit als een 'App Link' mits de verificatiebestanden op de server staan.
+    const url = `https://filamentmanager.nl/?code=${code}`;
     generateQrWithIcon(url).then(setQrDataUrl).catch(console.error);
   }, [filament]);
 
