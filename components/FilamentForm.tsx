@@ -2,10 +2,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filament, FilamentMaterial, Location, Supplier } from '../types';
 import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
-import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction } from 'lucide-react';
+import { X, Save, RefreshCw, Link as LinkIcon, Euro, Layers, Check, Edit2, Scale, Plus, Zap, ChevronDown, MapPin, Truck, Thermometer, FileText, ExternalLink, Disc, Sparkles, Camera, Loader2, AlertCircle, Construction, Palette } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../services/supabase';
-import { COMMON_BRANDS, COMMON_COLORS } from '../constants';
+import { COMMON_BRANDS, COMMON_MATERIALS, QUICK_COLORS } from '../constants';
 import { Capacitor } from '@capacitor/core';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 
@@ -36,8 +36,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
 
   const [formData, setFormData] = useState<Partial<Filament>>(initialData || {
     brand: '',
-    material: FilamentMaterial.PLA,
-    colorName: 'Black',
+    material: 'PLA',
+    colorName: 'Zwart',
     colorHex: '#000000',
     weightTotal: 1000,
     weightRemaining: 1000,
@@ -137,14 +137,12 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   };
 
   const handleAiScan = async () => {
-    // 0. CHECK API KEY FIRST to prevent silent crash
     if (!process.env.API_KEY || process.env.API_KEY.length < 5) {
        alert("AI sleutel is niet geconfigureerd. Neem contact op met de beheerder.");
        return;
     }
 
-    // Maintenance Intercept: Bypass for Admins
-    const IS_MAINTENANCE = true;
+    const IS_MAINTENANCE = false;
     if (IS_MAINTENANCE && !isAdmin) {
       setShowAiMaintenance(true);
       return;
@@ -153,8 +151,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     setIsAiScanning(true);
     try {
       let base64Image = '';
-      
-      // Native Platform logic
       if (Capacitor.isNativePlatform()) {
         try {
           const status = await CapacitorCamera.checkPermissions();
@@ -183,7 +179,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
           throw e;
         }
       } 
-      // Web / PWA Fallback
       else {
         const input = document.createElement('input');
         input.type = 'file';
@@ -206,7 +201,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             reader.readAsDataURL(file);
           };
           
-          // Safety: Close if no file chosen
           window.addEventListener('focus', () => {
              setTimeout(() => { if (!input.files?.length) resolve(''); }, 1000);
           }, { once: true });
@@ -240,6 +234,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     } finally {
       setIsAiScanning(false);
     }
+  };
+
+  const selectQuickColor = (color: { name: string, hex: string }) => {
+    setFormData({ ...formData, colorName: color.name, colorHex: color.hex });
   };
 
   return (
@@ -282,7 +280,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
              </button>
           )}
 
-          {/* Form Fields */}
+          {/* Merk & Materiaal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('brand')}</label>
@@ -293,6 +291,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   required 
                   value={formData.brand} 
                   onChange={e => setFormData({...formData, brand: e.target.value})}
+                  placeholder="bv. Bambu Lab, eSun..."
                   className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
                 />
                 <datalist id="brands-list">
@@ -303,18 +302,20 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('material')}</label>
               <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  required 
+                <select 
                   value={formData.material} 
                   onChange={e => setFormData({...formData, material: e.target.value})}
-                  className="flex-1 bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
-                />
+                  className="flex-1 bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors appearance-none"
+                >
+                  {COMMON_MATERIALS.map(m => <option key={m} value={m}>{m}</option>)}
+                  <option value="Anders">Anders...</option>
+                </select>
                 <button 
                   type="button" 
                   onClick={handleAutoSettings}
                   disabled={isAnalyzing}
                   className="p-3 bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-colors border border-slate-700"
+                  title="Aanbevolen temperaturen ophalen"
                 >
                   <RefreshCw size={20} className={isAnalyzing ? 'animate-spin' : ''} />
                 </button>
@@ -322,8 +323,26 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('color')}</label>
+          {/* Kleur Selectie */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+               <Palette size={14} /> {t('color')}
+            </label>
+            
+            {/* Quick Palette */}
+            <div className="grid grid-cols-6 sm:grid-cols-9 gap-2 mb-2">
+              {QUICK_COLORS.map(color => (
+                <button
+                  key={color.hex + color.name}
+                  type="button"
+                  onClick={() => selectQuickColor(color)}
+                  className={`aspect-square rounded-lg border-2 transition-all transform active:scale-90 ${formData.colorHex === color.hex ? 'border-blue-500 scale-110 shadow-lg z-10' : 'border-slate-800 hover:border-slate-600'}`}
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+
             <div className="flex gap-2">
               <div className="flex-1 relative flex items-center bg-[#1e293b] border border-slate-700 rounded-lg overflow-hidden pr-3">
                 <div className="p-3">
@@ -335,6 +354,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   value={formData.colorName} 
                   onChange={e => setFormData({...formData, colorName: e.target.value})}
                   className="flex-1 bg-transparent py-3 text-white outline-none"
+                  placeholder="Kleurnaam..."
                 />
               </div>
               <div className="relative group">
@@ -391,7 +411,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   onChange={e => setFormData({...formData, tempNozzle: parseInt(e.target.value)})}
                   className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
                 />
-                <span className="absolute right-3 top-3 text-slate-500">°C</span>
+                <span className="absolute right-3 top-3 text-slate-500 font-bold">°C</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -403,7 +423,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   onChange={e => setFormData({...formData, tempBed: parseInt(e.target.value)})}
                   className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500 transition-colors"
                 />
-                <span className="absolute right-3 top-3 text-slate-500">°C</span>
+                <span className="absolute right-3 top-3 text-slate-500 font-bold">°C</span>
               </div>
             </div>
           </div>
@@ -454,6 +474,20 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         <span className="text-xl font-bold text-slate-500">gram</span>
                      </div>
                   </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">{t('spoolType')}</label>
+                    <select 
+                      value={selectedSpoolType}
+                      onChange={e => setSelectedSpoolType(e.target.value)}
+                      className="w-full bg-[#1e293b] border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-blue-500"
+                    >
+                      {Object.keys(spoolWeights).map(type => (
+                        <option key={type} value={type}>{type} ({spoolWeights[type]}g)</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <button onClick={handleApplyWeight} disabled={grossWeight === ''} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg active:scale-[0.98] disabled:opacity-50">
                     {t('apply')}
                   </button>
