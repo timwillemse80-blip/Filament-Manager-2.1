@@ -35,7 +35,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.30"; 
+const APP_VERSION = "2.1.31"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {
@@ -636,36 +636,55 @@ const AppContent = () => {
     if (!userId) return;
 
     try {
-      // 1. Sla de print job op
-      const { error: jobError } = await supabase.from('print_jobs').insert({
+      // 1. Database-vriendelijke data preparatie (UUID velden mogen geen lege string zijn)
+      const sanitizedJob = {
         ...job,
-        user_id: userId
-      });
-      if (jobError) throw jobError;
+        user_id: userId,
+        printerId: job.printerId === '' ? null : job.printerId
+      };
 
-      // 2. Trek filament gewicht af
+      // 2. Sla de print job op
+      const { error: jobError } = await supabase.from('print_jobs').insert(sanitizedJob);
+      if (jobError) {
+          console.error("Supabase Save Job Error:", jobError);
+          throw jobError;
+      }
+
+      // 3. Trek voorraad af (Parallel voor snelheid)
+      const stockUpdates: Promise<any>[] = [];
+
+      // Filamenten
       for (const deduction of filamentDeductions) {
         const filament = filaments.find(f => f.id === deduction.id);
         if (filament) {
           const newWeight = Math.max(0, filament.weightRemaining - deduction.amount);
-          await supabase.from('filaments').update({ weightRemaining: newWeight }).eq('id', deduction.id);
+          stockUpdates.push(supabase.from('filaments').update({ weightRemaining: newWeight }).eq('id', deduction.id));
         }
       }
 
-      // 3. Trek overige materialen af
+      // Overige materialen
       if (job.usedOtherMaterials) {
         for (const usedMat of job.usedOtherMaterials) {
           const material = materials.find(m => m.id === usedMat.materialId);
           if (material) {
             const newQty = Math.max(0, material.quantity - usedMat.quantity);
-            await supabase.from('other_materials').update({ quantity: newQty }).eq('id', usedMat.materialId);
+            stockUpdates.push(supabase.from('other_materials').update({ quantity: newQty }).eq('id', usedMat.materialId));
           }
         }
       }
 
+      // Wacht op alle updates
+      const updateResults = await Promise.all(stockUpdates);
+      const updateErrors = updateResults.filter(r => r.error).map(r => r.error.message);
+      
+      if (updateErrors.length > 0) {
+          alert("Waarschuwing: Opdracht opgeslagen, maar voorraad kon niet volledig worden bijgewerkt: " + updateErrors.join(', '));
+      }
+
       fetchData();
     } catch (e: any) {
-      alert("Fout bij opslaan van print opdracht: " + e.message);
+      console.error("handleSaveJob Global Error:", e);
+      alert("Fout bij opslaan van print opdracht: " + (e.message || "Onbekende database fout."));
     }
   };
 
