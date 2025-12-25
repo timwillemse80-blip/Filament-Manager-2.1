@@ -228,6 +228,7 @@ const AppContent = () => {
   const [spoolWeights, setSpoolWeights] = useState<any[]>([]);
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
+  const [pendingScanCode, setPendingScanCode] = useState<string | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('filament_settings');
@@ -309,6 +310,17 @@ const AppContent = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    // Listener voor Deep Linking (QR code scans die de app openen)
+    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
+      const url = data.url;
+      if (url.startsWith('filament://')) {
+        const code = url.split('://')[1]?.toUpperCase();
+        if (code) {
+           setPendingScanCode(code);
+        }
+      }
+    });
+
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
@@ -376,8 +388,24 @@ const AppContent = () => {
 
     return () => {
       backButtonListener.then(l => l.remove());
+      urlListener.then(l => l.remove());
     };
   }, []);
+
+  // Effect om pending scans af te handelen zodra filaments geladen zijn
+  useEffect(() => {
+    if (pendingScanCode && filaments.length > 0) {
+       const match = filaments.find(f => f.shortId?.toUpperCase() === pendingScanCode || f.id.startsWith(pendingScanCode));
+       if (match) {
+          setEditingId(match.id);
+          setShowModal(true);
+          setView('inventory');
+       } else {
+          console.warn("Scan code matched no inventory items:", pendingScanCode);
+       }
+       setPendingScanCode(null);
+    }
+  }, [pendingScanCode, filaments]);
 
   const isAdmin = useMemo(() => {
      const email = session?.user?.email?.toLowerCase();
