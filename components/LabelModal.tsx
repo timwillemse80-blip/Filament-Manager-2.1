@@ -19,18 +19,16 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
   const [isSaved, setIsSaved] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
 
-  // Verbeterde functie om QR code met een duidelijk icoon in het midden te genereren
   const generateQrWithIcon = async (text: string) => {
     const canvas = document.createElement('canvas');
-    const size = 800; // Iets grotere basis voor scherpte
+    const size = 800; 
     canvas.width = size;
     canvas.height = size;
 
-    // 1. Genereer basis QR op canvas
     await QRCode.toCanvas(canvas, text, {
       width: size,
       margin: 0,
-      errorCorrectionLevel: 'H', // Cruciaal voor icon overlay
+      errorCorrectionLevel: 'H',
       color: {
         dark: '#000000',
         light: '#ffffff',
@@ -41,43 +39,34 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     if (ctx) {
       const centerX = size / 2;
       const centerY = size / 2;
-      const iconContainerSize = size * 0.25; // 25% van de QR code
+      const iconContainerSize = size * 0.25;
       
-      // 2. Teken een witte cirkel achter het icoon (vrijstaand van de QR blokjes)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(centerX, centerY, iconContainerSize / 2 + 10, 0, Math.PI * 2);
       ctx.fill();
 
-      // 3. Teken het Filament Spoel Icoon
       ctx.save();
       ctx.translate(centerX, centerY);
-      
-      // Schaal naar de gewenste grootte (op basis van een 24x24 grid)
       const scale = (iconContainerSize * 0.8) / 24;
       ctx.scale(scale, scale);
-      
-      // Centreer het 24x24 icoon
       ctx.translate(-12, -12);
 
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2.5; // Relatief aan de 24px grid
+      ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // Teken de Spoel (buitenste cirkel)
       ctx.beginPath();
-      ctx.arc(12, 12, 9, 0, Math.PI * 1.6); // Open cirkel voor filament look
+      ctx.arc(12, 12, 9, 0, Math.PI * 1.6);
       ctx.stroke();
 
-      // Teken de filament draad (haakje bovenin)
       ctx.beginPath();
       ctx.moveTo(21, 12);
       ctx.lineTo(21, 4);
       ctx.lineTo(15, 4);
       ctx.stroke();
 
-      // Teken het hart van de spoel
       ctx.fillStyle = '#000000';
       ctx.beginPath();
       ctx.arc(12, 12, 3, 0, Math.PI * 2);
@@ -91,7 +80,9 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
 
   useEffect(() => {
     const code = filament.shortId || filament.id.substring(0, 4).toUpperCase();
-    const url = `filament://${code}`;
+    // Gebruik de huidige URL van de app als basis voor de QR code
+    const baseUrl = window.location.origin + window.location.pathname;
+    const url = `${baseUrl}?code=${code}`;
     generateQrWithIcon(url).then(setQrDataUrl).catch(console.error);
   }, [filament]);
 
@@ -159,7 +150,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Met Icoon QR-code</p>
         </div>
 
-        {/* Label Container */}
         <div 
           ref={labelRef}
           style={{ 
@@ -170,7 +160,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           }}
           className="rounded-none flex items-stretch shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-12 relative select-none overflow-hidden origin-center scale-[0.5] sm:scale-[0.7] md:scale-1"
         >
-          {/* Linker Paneel: QR CODE met Icoon */}
           <div className="w-[250px] flex items-center justify-center p-8 border-r-2 border-black">
              {qrDataUrl ? (
                <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
@@ -179,7 +168,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
              )}
           </div>
 
-          {/* Rechter Paneel: INFO */}
           <div className="flex-1 flex flex-col p-8 text-black">
              <div className="flex-1">
                 <div style={{ fontSize: '34px' }} className="font-bold uppercase leading-none mb-4 tracking-normal">
@@ -195,7 +183,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
                 </div>
              </div>
 
-             {/* Footer: ID CODE */}
              <div className="flex justify-end items-end mt-auto pt-4 border-t-4 border-black">
                 <div style={{ fontSize: '110px' }} className="font-bold leading-[0.5] tracking-tighter">
                    {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
@@ -204,7 +191,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
         </div>
 
-        {/* Acties */}
         <div className="w-full max-w-sm space-y-3 -mt-24 sm:-mt-16 md:mt-0 pb-10">
           <button 
             onClick={handlePrint}

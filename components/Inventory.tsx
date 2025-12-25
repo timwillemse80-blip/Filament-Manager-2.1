@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial } from '../types';
-import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles, Construction } from 'lucide-react';
+import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles, Construction, PackageCheck, Clock } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -345,6 +345,12 @@ export const Inventory: React.FC<InventoryProps> = ({
            </div>
         )}
 
+        {filament.isOrdered && !isSelectionMode && (
+           <div className="absolute top-3 right-12 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
+              <Truck size={10} /> BESTELD
+           </div>
+        )}
+
         <button onClick={(e) => { e.stopPropagation(); onShowLabel(filament.id); }} className={`absolute top-4 right-4 text-slate-300 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400 transition-colors p-1 ${isSelectionMode ? 'hidden' : ''}`} title={t('printLabel')}>
           <QrCode size={20} />
         </button>
@@ -427,6 +433,12 @@ export const Inventory: React.FC<InventoryProps> = ({
         {isSelectionMode && (
            <div className="absolute top-3 right-3 z-10 text-blue-500">
               {isSelected ? <CheckSquare size={24} fill="currentColor" className="text-white" /> : <Square size={24} className="text-slate-300" />}
+           </div>
+        )}
+
+        {material.isOrdered && !isSelectionMode && (
+           <div className="absolute top-3 right-3 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
+              <Truck size={10} /> BESTELD
            </div>
         )}
 

@@ -31,6 +31,7 @@ export interface Filament {
   locationId?: string | null; // Allow null for DB compatibility
   supplierId?: string | null; // Allow null for DB compatibility
   shopUrl?: string;
+  isOrdered?: boolean; // New: tracking if item is ordered
 }
 
 export interface OtherMaterial {
@@ -47,6 +48,7 @@ export interface OtherMaterial {
   notes?: string;
   purchaseDate: string;
   image?: string; // Base64 image string
+  isOrdered?: boolean; // New: tracking if item is ordered
 }
 
 export interface Location {

@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Filament, OtherMaterial } from '../types';
-import { ShoppingCart, ExternalLink, Search, Box, Tag, Sparkles, ArrowRight } from 'lucide-react';
+import { ShoppingCart, ExternalLink, Search, Box, Tag, Sparkles, ArrowRight, Truck, PackageCheck, CheckCircle2, Clock } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -8,9 +9,10 @@ interface ShoppingListProps {
   filaments: Filament[];
   materials?: OtherMaterial[];
   threshold: number;
+  onToggleOrdered?: (id: string, type: 'filament' | 'material', currentStatus: boolean) => void;
 }
 
-export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials = [], threshold }) => {
+export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials = [], threshold, onToggleOrdered }) => {
   const { t, tColor } = useLanguage();
   
   // Filter Filaments
@@ -72,6 +74,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                   <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('filament')}</th>
                   <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('color')}</th>
                   <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('weightRemaining')}</th>
+                  <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400 text-center">{t('status')}</th>
                   <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400 text-right">{t('action')}</th>
                 </tr>
               </thead>
@@ -82,9 +85,9 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                   const targetUrl = f.shopUrl || googleSearchUrl;
 
                   return (
-                    <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <tr key={f.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${f.isOrdered ? 'opacity-60 grayscale-[0.5]' : ''}`}>
                       <td className="p-4">
-                        <div className="font-bold dark:text-white text-slate-800">{f.brand}</div>
+                        <div className={`font-bold dark:text-white text-slate-800 ${f.isOrdered ? 'line-through text-slate-400' : ''}`}>{f.brand}</div>
                         <div className="text-sm text-slate-500">{f.material}</div>
                       </td>
                       <td className="p-4">
@@ -94,8 +97,17 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="text-orange-500 font-bold">{pct}%</div>
+                        <div className={`${f.isOrdered ? 'text-slate-400' : 'text-orange-500'} font-bold`}>{pct}%</div>
                         <div className="text-xs text-slate-500">{f.weightRemaining}g</div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button 
+                          onClick={() => onToggleOrdered?.(f.id, 'filament', !!f.isOrdered)}
+                          className={`p-2 rounded-full transition-all group ${f.isOrdered ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-500 dark:bg-slate-800'}`}
+                          title={f.isOrdered ? 'Gemarkeerd als besteld' : 'Markeren als besteld'}
+                        >
+                          {f.isOrdered ? <PackageCheck size={20} /> : <Truck size={20} className="group-hover:translate-x-1 transition-transform" />}
+                        </button>
                       </td>
                       <td className="p-4 text-right">
                         <button 
@@ -126,6 +138,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('name')}</th>
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('category')}</th>
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400">{t('stock')}</th>
+                     <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400 text-center">{t('status')}</th>
                      <th className="p-4 font-semibold text-sm text-slate-500 dark:text-slate-400 text-right">{t('action')}</th>
                   </tr>
                   </thead>
@@ -135,9 +148,9 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                      const targetUrl = m.shopUrl || googleSearchUrl;
 
                      return (
-                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <tr key={m.id} className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${m.isOrdered ? 'opacity-60 grayscale-[0.5]' : ''}`}>
                            <td className="p-4">
-                              <div className="font-bold dark:text-white text-slate-800 flex items-center gap-2">
+                              <div className={`font-bold dark:text-white text-slate-800 flex items-center gap-2 ${m.isOrdered ? 'line-through text-slate-400' : ''}`}>
                                  <Box size={16} className="text-slate-400" />
                                  {m.name}
                               </div>
@@ -150,9 +163,18 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                            </td>
                            <td className="p-4">
                               <div className="flex flex-col">
-                                 <span className="text-red-500 font-bold">{m.quantity} / {m.minStock}</span>
+                                 <span className={`${m.isOrdered ? 'text-slate-400' : 'text-red-500'} font-bold`}>{m.quantity} / {m.minStock}</span>
                                  <span className="text-xs text-slate-500 uppercase">{m.unit}</span>
                               </div>
+                           </td>
+                           <td className="p-4 text-center">
+                              <button 
+                                onClick={() => onToggleOrdered?.(m.id, 'material', !!m.isOrdered)}
+                                className={`p-2 rounded-full transition-all group ${m.isOrdered ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-500 dark:bg-slate-800'}`}
+                                title={m.isOrdered ? 'Gemarkeerd als besteld' : 'Markeren als besteld'}
+                              >
+                                {m.isOrdered ? <PackageCheck size={20} /> : <Truck size={20} className="group-hover:translate-x-1 transition-transform" />}
+                              </button>
                            </td>
                            <td className="p-4 text-right">
                               <button 

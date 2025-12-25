@@ -307,17 +307,48 @@ const AppContent = () => {
     viewingJobRef.current = viewingJob;
   }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
 
+  // Initial check for URL parameters (e.g. from QR scan)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+       setPendingScanCode(code.toUpperCase());
+       // Opschonen van de URL zonder de pagina te herladen
+       window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Listener voor Deep Linking (QR code scans die de app openen)
+    // Listener voor Deep Linking (QR code scans die de app openen via protocol of URL)
     const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
       const url = data.url;
+      let code = null;
+      
       if (url.startsWith('filament://')) {
-        const code = url.split('://')[1]?.toUpperCase();
-        if (code) {
-           setPendingScanCode(code);
+        code = url.split('://')[1]?.toUpperCase();
+      } else if (url.includes('code=')) {
+        const urlParams = new URLSearchParams(new URL(url).search);
+        code = urlParams.get('code')?.toUpperCase();
+      }
+
+      if (code) {
+         setPendingScanCode(code);
+      }
+    });
+
+    // Check for launch URL (cold start)
+    CapacitorApp.getLaunchUrl().then(data => {
+      if (data && data.url) {
+        let code = null;
+        if (data.url.startsWith('filament://')) {
+          code = data.url.split('://')[1]?.toUpperCase();
+        } else if (data.url.includes('code=')) {
+          const urlParams = new URLSearchParams(new URL(data.url).search);
+          code = urlParams.get('code')?.toUpperCase();
         }
+        if (code) setPendingScanCode(code);
       }
     });
 
@@ -628,6 +659,15 @@ const AppContent = () => {
     } catch (e: any) { console.error(e); }
   };
 
+  const handleToggleOrdered = async (id: string, type: 'filament' | 'material', currentStatus: boolean) => {
+    try {
+      const table = type === 'filament' ? 'filaments' : 'other_materials';
+      const { error } = await supabase.from(table).update({ isOrdered: !currentStatus }).eq('id', id);
+      if (error) throw error;
+      fetchData();
+    } catch (e: any) { alert("Fout bij bijwerken status: " + e.message); }
+  };
+
   const handleSaveJob = async (job: PrintJob, filamentDeductions: { id: string, amount: number }[]) => {
     const userId = session?.user?.id;
     if (!userId) return;
@@ -750,7 +790,7 @@ const AppContent = () => {
            {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
-           {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} />}
+           {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} onToggleOrdered={handleToggleOrdered} />}
            {view === 'notifications' && <NotificationPage updateInfo={updateInfo} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
            {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
