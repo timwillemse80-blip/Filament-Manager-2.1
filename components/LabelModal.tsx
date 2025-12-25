@@ -29,7 +29,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
         const dataUrl = await QRCode.toDataURL(url, {
           width: 600, 
           margin: 0,
-          errorCorrectionLevel: 'H', // High error correction voor maximale betrouwbaarheid
+          errorCorrectionLevel: 'H',
           color: {
             dark: '#000000',
             light: '#ffffff',
@@ -49,7 +49,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     
     try {
       const canvas = await html2canvas(labelRef.current, { 
-        scale: 4, // 4 is vaak de sweet spot voor browsers/printers
+        scale: 4, 
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
@@ -99,11 +99,11 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     }
   };
 
-  // Functie voor dynamische tekstgrootte gebaseerd op lengte
+  // Verfijnde fontgroottes voor betere horizontale fit
   const getBrandFontSize = (name: string) => {
-    if (name.length > 15) return 'text-xl';
-    if (name.length > 10) return 'text-2xl';
-    return 'text-4xl';
+    if (name.length > 15) return 'text-lg';
+    if (name.length > 10) return 'text-xl';
+    return 'text-3xl';
   };
 
   return (
@@ -115,14 +115,19 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{filament.brand} • {filament.material}</p>
         </div>
 
-        {/* Optimale Label Container */}
+        {/* Label Container - Geforceerde font-stack en overzichtelijke layout */}
         <div 
           ref={labelRef}
-          style={{ width: '620px', height: '290px', fontFamily: 'sans-serif' }}
+          style={{ 
+            width: '620px', 
+            height: '290px', 
+            fontFamily: 'Arial, Helvetica, sans-serif',
+            WebkitFontSmoothing: 'antialiased'
+          }}
           className="bg-white rounded-none flex items-stretch shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-12 relative select-none overflow-hidden origin-center scale-[0.5] sm:scale-[0.7] md:scale-1"
         >
-          {/* QR Code Sectie (Links) - Iets ruimer voor betere scanner focus */}
-          <div className="w-[250px] flex items-center justify-center bg-white p-8">
+          {/* QR Code Sectie (Links) */}
+          <div className="w-[260px] flex items-center justify-center bg-white p-10">
              {qrDataUrl ? (
                <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
              ) : (
@@ -131,32 +136,35 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
 
           {/* Informatie Sectie (Rechts) */}
-          <div className="flex-1 flex flex-col justify-between py-8 pr-10 pl-2 text-black">
-             <div className="space-y-4">
-                {/* Merknaam: Ruime tracking en bold font voor maximale leesbaarheid */}
-                <h3 className={`font-bold leading-tight uppercase tracking-wider truncate ${getBrandFontSize(filament.brand)}`}>
+          <div className="flex-1 flex flex-col justify-between py-10 pr-10 pl-2 text-black overflow-hidden">
+             <div className="space-y-6">
+                {/* Merknaam: Gebruik van Medium gewicht en normale spatiëring om 'klonteren' te voorkomen */}
+                <h3 
+                  className={`font-medium leading-none uppercase overflow-hidden whitespace-nowrap ${getBrandFontSize(filament.brand)}`}
+                  style={{ letterSpacing: '0.02em' }}
+                >
                   {filament.brand}
                 </h3>
                 
-                <div>
-                   <p className="font-extrabold text-2xl leading-none uppercase tracking-wide">
+                <div className="space-y-1">
+                   <p className="font-black text-2xl leading-none uppercase" style={{ letterSpacing: '0.05em' }}>
                      {filament.material}
                    </p>
-                   <p className="font-semibold text-lg leading-tight mt-1 opacity-90">
+                   <p className="font-semibold text-lg leading-tight opacity-80">
                      {tColor(filament.colorName)}
                    </p>
                 </div>
              </div>
              
-             {/* Grote ID code onderin - Met veilige afstand tot de rand */}
+             {/* Grote ID code onderin - Duidelijk contrast en veilige marges */}
              <div className="flex justify-end items-baseline">
-                <span className="font-bold text-[100px] tracking-normal leading-[0.5] pb-6 pr-2">
+                <span className="font-bold text-[110px] tracking-tight leading-[0.4] pr-4 pb-4">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
           </div>
 
-          {/* Logo branding - Subtiel in de hoek */}
+          {/* Logo branding - Zeer subtiel */}
           <div className="absolute top-4 right-4 opacity-5">
              <Logo className="w-8 h-8 text-black" strokeWidth={5} />
           </div>
