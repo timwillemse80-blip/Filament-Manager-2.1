@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial } from './types';
+import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial, AiSuggestion } from './types';
 import { Inventory } from './components/Inventory';
 import { FilamentForm } from './components/FilamentForm';
 import { MaterialForm } from './components/MaterialForm';
@@ -230,6 +230,7 @@ const AppContent = () => {
   const [adminBadgeCount, setAdminBadgeCount] = useState(0);
   const [avgRating, setAvgRating] = useState<number>(5.0);
   const [pendingScanCode, setPendingScanCode] = useState<string | null>(null);
+  const [aiPreFill, setAiPreFill] = useState<Partial<Filament> | null>(null);
   
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('filament_settings');
@@ -378,6 +379,7 @@ const AppContent = () => {
       if (showModalRef.current) {
         setShowModal(false);
         setEditingId(null);
+        setAiPreFill(null);
         setShowLabelOnly(false);
         return; 
       }
@@ -545,6 +547,7 @@ const AppContent = () => {
       if (error) throw error;
       setShowModal(false);
       setEditingId(null);
+      setAiPreFill(null);
       fetchData();
     } catch (e: any) { alert("Error saving: " + e.message); }
   };
@@ -843,7 +846,7 @@ const AppContent = () => {
 
         <PullToRefresh onRefresh={() => fetchData()} className="flex-1 p-4 md:p-8 overflow-auto">
            {view === 'dashboard' && <Dashboard filaments={filaments} materials={materials} onNavigate={setView} isAdmin={isPremium} history={printJobs} isSnowEnabled={isSnowEnabled} onBecomePro={() => setShowProModal(true)} onInspectItem={(id) => { setEditingId(id); setView('inventory'); setActiveGroupKey(null); }} threshold={settings.lowStockThreshold} />}
-           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type) => { setEditingId(null); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
+           {view === 'inventory' && <Inventory filaments={filaments} materials={materials} locations={locations} suppliers={suppliers} onEdit={(item, type) => { setEditingId(item.id); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onQuickAdjust={handleQuickAdjust} onMaterialAdjust={handleMaterialAdjust} onDelete={handleDeleteItem} onBatchDelete={handleBatchDelete} onNavigate={setView} onShowLabel={(id) => { setEditingId(id); setShowLabelOnly(true); }} threshold={settings.lowStockThreshold} activeGroupKey={activeGroupKey} onSetActiveGroupKey={setActiveGroupKey} isAdmin={isPremium} onAddClick={(type, preFill) => { setEditingId(null); if (preFill) setAiPreFill(preFill); type === 'filament' ? setShowModal(true) : setShowMaterialModal(true); }} onUnlockPro={() => setShowProModal(true)} />}
            {view === 'history' && <PrintHistory filaments={filaments} materials={materials} history={printJobs} printers={printers} onSaveJob={handleSaveJob} onDeleteJob={handleDeleteJob} settings={settings} isAdmin={isPremium} onUnlockPro={() => setShowProModal(true)} viewingJob={viewingJob} setViewingJob={setViewingJob} />}
            {view === 'printers' && <PrinterManager printers={printers} filaments={filaments} onSave={handleSavePrinter} onDelete={handleDeletePrinter} isAdmin={isPremium} onLimitReached={() => setShowProModal(true)} />}
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} onToggleOrdered={handleToggleOrdered} />}
@@ -856,7 +859,7 @@ const AppContent = () => {
         </PullToRefresh>
       </main>
 
-      {showModal && <FilamentForm initialData={editingFilament} locations={locations} suppliers={suppliers} existingBrands={existingBrands} spoolWeights={spoolWeights} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); }} isAdmin={isAdmin} />}
+      {showModal && <FilamentForm initialData={editingFilament || aiPreFill} locations={locations} suppliers={suppliers} existingBrands={existingBrands} spoolWeights={spoolWeights} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); setAiPreFill(null); }} isAdmin={isAdmin} />}
       {showLabelOnly && editingFilament && <LabelModal filament={editingFilament} onClose={() => { setShowLabelOnly(false); setEditingId(null); }} />}
       {showMaterialModal && <MaterialForm initialData={editingMaterial} locations={locations} suppliers={suppliers} onSave={handleSaveMaterial} onCancel={() => { setShowMaterialModal(false); setEditingId(null); }} />}
       {showProModal && <ProModal onClose={() => setShowProModal(false)} />}

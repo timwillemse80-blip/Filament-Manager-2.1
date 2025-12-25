@@ -29,7 +29,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: "Identify the 3D printer filament from this label. Extract: Brand, Material (e.g., PLA, PETG, ASA), Color Name (translated to Dutch if possible), HEX color code, recommended Nozzle Temperature, and Bed Temperature. If a range is given for temps, provide the middle value. Also look for a 4-character ID code (Short ID) if present." }
+          { text: "Strictly identify the 3D printer filament from this label. Extract the exact Brand, Material (e.g., PLA, PETG, ABS, ASA, TPU), Color Name (in Dutch), most accurate HEX color code, recommended Nozzle Temp (°C), and Bed Temp (°C). If temps are ranges, give the middle value. Look for a 4-character ID code (Short ID) like 'A1B2'. Return ONLY valid JSON." }
         ]
       },
       config: { 

@@ -14,7 +14,7 @@ import { analyzeSpoolImage, suggestSettings } from '../services/geminiService';
 import { QUICK_COLORS, COMMON_BRANDS, COMMON_MATERIALS } from '../constants';
 
 interface FilamentFormProps {
-  initialData?: Filament;
+  initialData?: Partial<Filament>;
   locations: Location[];
   suppliers: Supplier[];
   existingBrands: string[];
@@ -83,7 +83,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         quality: 90,
         allowEditing: false,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
+        source: CameraSource.Prompt, // Safert on mobile browsers/apps
         width: 1200,
         correctOrientation: true
       });
@@ -91,12 +91,17 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       if (image.base64String) {
         setIsAiAnalyzing(true);
         setLastScannedImage(`data:image/jpeg;base64,${image.base64String}`);
-        const suggestion = await analyzeSpoolImage(image.base64String);
-        applyAiSuggestion(suggestion);
+        try {
+          const suggestion = await analyzeSpoolImage(image.base64String);
+          applyAiSuggestion(suggestion);
+        } catch (e: any) {
+          alert(t('aiError') + "\n\n" + e.message);
+        }
       }
     } catch (error: any) {
       if (!error.message?.includes('User cancelled')) {
         console.error('AI Scan Error:', error);
+        alert("Camera fout: " + error.message);
       }
     } finally {
       setIsAiAnalyzing(false);
@@ -145,7 +150,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
         return;
     }
 
-    if (!initialData && multiSpoolCount > 1) {
+    if (!initialData?.id && multiSpoolCount > 1) {
         const items: Filament[] = [];
         for (let i = 0; i < multiSpoolCount; i++) {
             items.push({
@@ -192,7 +197,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               </div>
               <div>
                  <h2 className="text-xl font-bold dark:text-white text-slate-800">
-                    {initialData ? t('formEditTitle') : t('formNewTitle')}
+                    {formData.id ? t('formEditTitle') : t('formNewTitle')}
                  </h2>
               </div>
            </div>
@@ -485,7 +490,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                            </div>
                         </div>
 
-                        {!initialData && (
+                        {!formData.id && (
                            <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800/30">
                               <label className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 mb-2 block tracking-widest flex items-center gap-2">
                                  <Hash size={14}/> Batch Toevoegen
@@ -538,7 +543,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl shadow-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
               >
                 <Save size={24} />
-                {initialData ? t('saveChanges') : t('addToInventory')}
+                {formData.id ? t('saveChanges') : t('addToInventory')}
               </button>
 
            </form>

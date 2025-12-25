@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Filament, Location, Supplier, OtherMaterial } from '../types';
+import { Filament, Location, Supplier, OtherMaterial, AiSuggestion } from '../types';
 import { Edit2, Trash2, Weight, MapPin, Truck, ShoppingCart, Euro, Layers, QrCode, ArrowLeft, Package, Search, ArrowUpDown, CheckSquare, Square, X, Filter, Globe, Wrench, Box, Plus, Lock, Crown, ArrowRight, Maximize2, ZoomIn, ScanLine, Loader2, Camera, Sparkles, Construction, PackageCheck, Clock } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { lookupSpoolFromImage } from '../services/geminiService';
+import { lookupSpoolFromImage, analyzeSpoolImage } from '../services/geminiService';
 
 interface InventoryProps {
   filaments: Filament[];
@@ -24,7 +24,7 @@ interface InventoryProps {
   activeGroupKey: string | null;
   onSetActiveGroupKey: (key: string | null) => void;
   isAdmin?: boolean;
-  onAddClick: (type: 'filament' | 'material') => void;
+  onAddClick: (type: 'filament' | 'material', preFill?: Partial<Filament>) => void;
   onUnlockPro?: () => void;
 }
 
@@ -82,7 +82,7 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [showAiMaintenance, setShowAiMaintenance] = useState(false);
+  const [isAiAdding, setIsAiAdding] = useState(false);
   
   // Web Camera State
   const [showWebCamera, setShowWebCamera] = useState(false);
@@ -273,6 +273,35 @@ export const Inventory: React.FC<InventoryProps> = ({
         alert(t('failed') + ": Camera niet toegankelijk.");
         setShowWebCamera(false);
      }
+  };
+
+  const handleAiAddScan = async () => {
+    try {
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Prompt,
+        width: 1200,
+        correctOrientation: true
+      });
+
+      if (image.base64String) {
+        setIsAiAdding(true);
+        try {
+          const suggestion = await analyzeSpoolImage(image.base64String);
+          onAddClick('filament', suggestion);
+        } catch (e: any) {
+          alert(t('aiError') + "\n\n" + e.message);
+        } finally {
+          setIsAiAdding(false);
+        }
+      }
+    } catch (error: any) {
+      if (!error.message?.includes('User cancelled')) {
+        console.error('AI Scan Error:', error);
+      }
+    }
   };
 
   const stopWebCamera = () => {
@@ -694,6 +723,17 @@ export const Inventory: React.FC<InventoryProps> = ({
                         {isScanning ? <Loader2 size={20} className="animate-spin" /> : <ScanLine size={20} />}
                      </button>
                   </div>
+                  
+                  <button 
+                    onClick={handleAiAddScan}
+                    disabled={isAiAdding}
+                    className="p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50"
+                    title="AI Scan & Voeg toe"
+                  >
+                    {isAiAdding ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />}
+                    <span className="hidden md:inline font-bold">AI Toevoegen</span>
+                  </button>
+
                   <button 
                      onClick={() => onAddClick('filament')}
                      className="p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
