@@ -10,7 +10,50 @@ type AdminTab = 'dashboard' | 'users' | 'sql' | 'logo' | 'spools' | 'data' | 'fe
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
-const MASTER_SQL = `-- 1. LOCATIES ... (SQL content omitted for brevity as it remains the same) ...`;
+const MASTER_SQL = `-- 1. LOCATIES
+create table if not exists public.locations (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz default now()
+);
+alter table public.locations enable row level security;
+create policy "Users manage own locations" on public.locations for all using (auth.uid() = user_id);
+
+-- 2. LEVERANCIERS
+create table if not exists public.suppliers (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  website text,
+  created_at timestamptz default now()
+);
+alter table public.suppliers enable row level security;
+create policy "Users manage own suppliers" on public.suppliers for all using (auth.uid() = user_id);
+
+-- 3. FILAMENTEN
+create table if not exists public.filaments (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  brand text not null,
+  material text not null,
+  "colorName" text,
+  "colorHex" text,
+  "weightTotal" numeric default 1000,
+  "weightRemaining" numeric default 1000,
+  "tempNozzle" numeric,
+  "tempBed" numeric,
+  price numeric,
+  notes text,
+  "purchaseDate" timestamptz default now(),
+  "locationId" uuid references public.locations(id) on delete set null,
+  "supplierId" uuid references public.suppliers(id) on delete set null,
+  "shopUrl" text,
+  "shortId" text
+);
+alter table public.filaments enable row level security;
+create policy "Users manage own filaments" on public.filaments for all using (auth.uid() = user_id);`;
 
 interface AdminPanelProps {
   onClose?: () => void;
@@ -111,25 +154,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      // Gebruik relationele counts om filamenten en prints direct mee te halen
+      // Vereenvoudigde query om relatie-fouten (schema cache errors) te voorkomen
+      // We halen enkel de basisgegevens op uit 'profiles'
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          id, 
-          email, 
-          is_pro, 
-          created_at,
-          filaments(count),
-          print_jobs(count)
-        `)
+        .select('id, email, is_pro, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
       const mapped = (data || []).map((u: any) => ({
         ...u,
-        filament_count: u.filaments?.[0]?.count || 0,
-        print_count: u.print_jobs?.[0]?.count || 0
+        filament_count: '---', // Counts worden nu overgeslagen om crashes te voorkomen
+        print_count: '---'
       }));
 
       setUsers(mapped);
@@ -452,38 +489,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                   <span>{entry.name}: {entry.value}</span>
                                </div>
                             ))}
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-                      <div className="bg-white dark:bg-slate-800 p-8 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-                         <h3 className="text-slate-800 dark:text-white font-bold mb-4 flex items-center gap-2"><Activity size={20} className="text-orange-500" /> Platform Actie Vereist</h3>
-                         <div className="space-y-3 flex-1">
-                            {requests.length > 0 && (
-                               <button onClick={() => setActiveTab('requests')} className="w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl hover:scale-[1.02] transition-transform group">
-                                  <div className="flex items-center gap-3 text-red-700 dark:text-red-400">
-                                     <AlertTriangle size={20} />
-                                     <span className="font-bold">{requests.length} Verwijder verzoeken</span>
-                                  </div>
-                                  <ChevronRight size={18} className="text-red-300 group-hover:translate-x-1 transition-transform" />
-                                </button>
-                            )}
-                            {feedbacks.filter(f => !f.is_read).length > 0 && (
-                               <button onClick={() => setActiveTab('feedback')} className="w-full flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-xl hover:scale-[1.02] transition-transform group">
-                                  <div className="flex items-center gap-3 text-purple-700 dark:text-purple-400">
-                                     <MessageSquare size={20} />
-                                     <span className="font-bold">{feedbacks.filter(f => !f.is_read).length} Ongelezen feedback</span>
-                                  </div>
-                                  <ChevronRight size={18} className="text-purple-300 group-hover:translate-x-1 transition-transform" />
-                                </button>
-                            )}
-                            {requests.length === 0 && feedbacks.filter(f => !f.is_read).length === 0 && (
-                               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60 min-h-[100px]">
-                                  <CheckCircle2 size={48} className="mb-3 text-emerald-500" />
-                                  <p className="font-bold">Alles bijgewerkt!</p>
-                               </div>
-                            )}
                          </div>
                       </div>
                    </div>

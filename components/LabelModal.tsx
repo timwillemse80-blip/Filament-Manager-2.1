@@ -48,7 +48,8 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     const canvas = await html2canvas(labelRef.current, { 
       scale: 4, 
       backgroundColor: '#ffffff',
-      useCORS: true 
+      useCORS: true,
+      logging: false
     });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
@@ -93,20 +94,20 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
            <h2 className="text-white text-2xl font-black">{tColor(filament.colorName)} {filament.material}</h2>
         </div>
 
-        {/* Improved Label Card */}
+        {/* Improved Label Card for Printing */}
         <div 
           ref={labelRef}
-          className="bg-white rounded-lg p-4 flex items-start gap-4 shadow-2xl mb-10 w-full aspect-[2.1/1] relative select-none"
+          className="bg-white rounded-lg p-5 flex items-start gap-4 shadow-2xl mb-10 w-full aspect-[2.1/1] relative select-none overflow-visible"
         >
           {/* QR Code Section */}
-          <div className="w-[42%] flex items-center justify-center self-center">
+          <div className="w-[40%] flex items-center justify-center self-center">
              {qrDataUrl ? (
                <div className="relative w-full aspect-square flex items-center justify-center">
                  <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
                  
                  {/* App Logo Overlay */}
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-[28%] h-[28%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm">
+                    <div className="w-[28%] h-[28%] bg-white rounded-full flex items-center justify-center p-0.5 shadow-sm border border-white/50">
                        <Logo className="w-full h-full text-black" strokeWidth={3} />
                     </div>
                  </div>
@@ -117,24 +118,24 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
           </div>
 
           {/* Text Content Section */}
-          <div className="flex-1 flex flex-col pt-1 pr-1">
-             <div className="space-y-1">
-                <h3 className="text-[#0f172a] font-black text-[1.1rem] leading-normal uppercase italic tracking-tighter truncate">
+          <div className="flex-1 flex flex-col pt-1">
+             <div className="space-y-1.5">
+                <h3 className="text-[#0f172a] font-black text-[1.05rem] leading-relaxed uppercase italic tracking-tighter">
                   {filament.brand}
                 </h3>
-                <div className="space-y-0.5">
-                   <p className="text-[#1e293b] font-extrabold text-[0.75rem] leading-normal uppercase truncate">
+                <div className="space-y-1">
+                   <p className="text-[#1e293b] font-extrabold text-[0.7rem] leading-relaxed uppercase">
                      {filament.material}
                    </p>
-                   <p className="text-slate-500 font-bold text-[9px] leading-normal truncate">
+                   <p className="text-slate-500 font-bold text-[8px] leading-relaxed">
                      {tColor(filament.colorName)}
                    </p>
                 </div>
              </div>
              
-             {/* Huge ID in bottom right corner */}
-             <div className="absolute bottom-2 right-3 flex justify-end">
-                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none mb-[-2px] mr-[-2px]">
+             {/* Huge ID in bottom right corner - position slightly higher to be safe */}
+             <div className="absolute bottom-1 right-3 flex justify-end">
+                <span className="text-[#0f172a] font-black text-5xl tracking-tighter leading-none">
                   {filament.shortId || filament.id.substring(0, 4).toUpperCase()}
                 </span>
              </div>
