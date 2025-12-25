@@ -309,7 +309,7 @@ const AppContent = () => {
 
   // Initial check for URL parameters (e.g. from QR scan)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search || window.location.hash.substring(window.location.hash.indexOf('?')));
     const code = params.get('code');
     if (code) {
        setPendingScanCode(code.toUpperCase());
@@ -329,7 +329,7 @@ const AppContent = () => {
       if (url.startsWith('filament://')) {
         code = url.split('://')[1]?.toUpperCase();
       } else if (url.includes('code=')) {
-        const urlParams = new URLSearchParams(new URL(url).search);
+        const urlParams = new URLSearchParams(new URL(url).search || new URL(url).hash.substring(new URL(url).hash.indexOf('?')));
         code = urlParams.get('code')?.toUpperCase();
       }
 
@@ -345,7 +345,7 @@ const AppContent = () => {
         if (data.url.startsWith('filament://')) {
           code = data.url.split('://')[1]?.toUpperCase();
         } else if (data.url.includes('code=')) {
-          const urlParams = new URLSearchParams(new URL(data.url).search);
+          const urlParams = new URLSearchParams(new URL(data.url).search || new URL(data.url).hash.substring(new URL(data.url).hash.indexOf('?')));
           code = urlParams.get('code')?.toUpperCase();
         }
         if (code) setPendingScanCode(code);
@@ -425,7 +425,7 @@ const AppContent = () => {
 
   // Effect om pending scans af te handelen zodra filaments geladen zijn
   useEffect(() => {
-    if (pendingScanCode && filaments.length > 0) {
+    if (pendingScanCode && filaments.length > 0 && !isLoading) {
        const match = filaments.find(f => f.shortId?.toUpperCase() === pendingScanCode || f.id.startsWith(pendingScanCode));
        if (match) {
           setEditingId(match.id);
@@ -436,7 +436,7 @@ const AppContent = () => {
        }
        setPendingScanCode(null);
     }
-  }, [pendingScanCode, filaments]);
+  }, [pendingScanCode, filaments, isLoading]);
 
   const isAdmin = useMemo(() => {
      const email = session?.user?.email?.toLowerCase();
@@ -662,7 +662,8 @@ const AppContent = () => {
   const handleToggleOrdered = async (id: string, type: 'filament' | 'material', currentStatus: boolean) => {
     try {
       const table = type === 'filament' ? 'filaments' : 'other_materials';
-      const { error } = await supabase.from(table).update({ isOrdered: !currentStatus }).eq('id', id);
+      // Use snake_case is_ordered to match DB standard
+      const { error } = await supabase.from(table).update({ is_ordered: !currentStatus }).eq('id', id);
       if (error) throw error;
       fetchData();
     } catch (e: any) { alert("Fout bij bijwerken status: " + e.message); }

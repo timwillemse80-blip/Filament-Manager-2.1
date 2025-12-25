@@ -345,7 +345,7 @@ export const Inventory: React.FC<InventoryProps> = ({
            </div>
         )}
 
-        {filament.isOrdered && !isSelectionMode && (
+        {filament.is_ordered && !isSelectionMode && (
            <div className="absolute top-3 right-12 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
               <Truck size={10} /> BESTELD
            </div>
@@ -436,7 +436,7 @@ export const Inventory: React.FC<InventoryProps> = ({
            </div>
         )}
 
-        {material.isOrdered && !isSelectionMode && (
+        {material.is_ordered && !isSelectionMode && (
            <div className="absolute top-3 right-3 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
               <Truck size={10} /> BESTELD
            </div>
