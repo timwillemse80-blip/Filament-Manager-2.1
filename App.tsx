@@ -309,7 +309,8 @@ const AppContent = () => {
 
   // Initial check for URL parameters (e.g. from QR scan)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search || window.location.hash.substring(window.location.hash.indexOf('?')));
+    const search = window.location.search || (window.location.hash.includes('?') ? window.location.hash.substring(window.location.hash.indexOf('?')) : '');
+    const params = new URLSearchParams(search);
     const code = params.get('code');
     if (code) {
        setPendingScanCode(code.toUpperCase());
@@ -321,34 +322,39 @@ const AppContent = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Listener voor Deep Linking (QR code scans die de app openen via protocol of URL)
-    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
-      const url = data.url;
+    const handleInboundUrl = (url: string) => {
       let code = null;
-      
       if (url.startsWith('filament://')) {
-        code = url.split('://')[1]?.toUpperCase();
-      } else if (url.includes('code=')) {
-        const urlParams = new URLSearchParams(new URL(url).search || new URL(url).hash.substring(new URL(url).hash.indexOf('?')));
-        code = urlParams.get('code')?.toUpperCase();
+        code = url.split('://')[1]?.split(/[?&]/)[0]?.toUpperCase();
+      } 
+      
+      // Ook checken op domein URL parameters
+      if (url.includes('code=')) {
+        const urlObj = new URL(url);
+        const searchParams = urlObj.searchParams;
+        code = searchParams.get('code')?.toUpperCase();
+        
+        // Fallback voor hash-based routing indien nodig
+        if (!code && url.includes('#')) {
+           const hashSearch = url.substring(url.indexOf('?'));
+           code = new URLSearchParams(hashSearch).get('code')?.toUpperCase();
+        }
       }
 
       if (code) {
          setPendingScanCode(code);
       }
+    };
+
+    // Listener voor Deep Linking (QR code scans die de app openen)
+    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
+      handleInboundUrl(data.url);
     });
 
     // Check for launch URL (cold start)
     CapacitorApp.getLaunchUrl().then(data => {
       if (data && data.url) {
-        let code = null;
-        if (data.url.startsWith('filament://')) {
-          code = data.url.split('://')[1]?.toUpperCase();
-        } else if (data.url.includes('code=')) {
-          const urlParams = new URLSearchParams(new URL(data.url).search || new URL(data.url).hash.substring(new URL(data.url).hash.indexOf('?')));
-          code = urlParams.get('code')?.toUpperCase();
-        }
-        if (code) setPendingScanCode(code);
+        handleInboundUrl(data.url);
       }
     });
 
@@ -733,7 +739,7 @@ const AppContent = () => {
     } catch (e: any) { alert("Fout bij verwijderen: " + e.message); }
   };
 
-  const totalLowStock = filaments.filter(f => (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold).length + materials.filter(m => m.minStock && m.quantity <= m.minStock).length;
+  const totalLowStock = filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold).length + materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
   const editingFilament = useMemo(() => filaments.find(f => f.id === editingId), [editingId, filaments]);
   const editingMaterial = useMemo(() => materials.find(m => m.id === editingId), [editingId, materials]);
 

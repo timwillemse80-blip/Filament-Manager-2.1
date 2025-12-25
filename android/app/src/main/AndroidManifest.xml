@@ -1,3 +1,4 @@
+
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -23,12 +24,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Custom Scheme for QR Codes -->
+            <!-- Custom Scheme for QR Codes (filament://) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="filament" />
+            </intent-filter>
+
+            <!-- Web Link (App Link) for QR Codes (https://filamentmanager.nl) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="filamentmanager.nl" />
+                <data android:scheme="https" android:host="www.filamentmanager.nl" />
             </intent-filter>
 
         </activity>

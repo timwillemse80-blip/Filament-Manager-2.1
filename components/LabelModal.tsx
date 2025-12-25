@@ -80,8 +80,8 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
 
   useEffect(() => {
     const code = filament.shortId || filament.id.substring(0, 4).toUpperCase();
-    // Gebruik de huidige URL van de app als basis voor de QR code
-    const baseUrl = window.location.origin + window.location.pathname;
+    // Gebruik de vaste URL van de app voor consistente App Link herkenning
+    const baseUrl = "https://filamentmanager.nl/";
     const url = `${baseUrl}?code=${code}`;
     generateQrWithIcon(url).then(setQrDataUrl).catch(console.error);
   }, [filament]);
