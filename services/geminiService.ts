@@ -10,7 +10,6 @@ const cleanJsonString = (str: string): string => {
   const firstBracket = cleaned.indexOf('[');
   const lastBracket = cleaned.lastIndexOf(']');
   
-  // Handle both objects and arrays
   if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
      return cleaned.substring(firstBracket, lastBracket + 1);
   }
@@ -57,14 +56,17 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
   }
 };
 
-export const parseCatalogText = async (text: string): Promise<{ name: string, weight: number }[]> => {
+export const parseCatalogText = async (text: string): Promise<{ brand: string, size: string, spool_material: string, weight: number }[]> => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Analyseer de volgende tekst (gekopieerd van een website) en extraheer alle lege spoelgewichten (empty spool weights). 
-      Geef een JSON ARRAY terug van objecten met 'name' (string) en 'weight' (number in gram).
-      Zorg dat de namen duidelijk zijn (bv. 'Brand Name - Spool Type').
+      contents: `Analyseer de volgende tekst en extraheer een lijst van lege spoelgewichten.
+      Geef een JSON ARRAY terug met objecten die de volgende velden hebben:
+      - brand (bv. 'Bambu Lab')
+      - size (bv. '1kg' of '250g')
+      - spool_material (bv. 'Plastic', 'Cardboard', 'Transparent Plastic')
+      - weight (getal in grammen)
       
       TEKST:
       ${text}`,
@@ -75,10 +77,12 @@ export const parseCatalogText = async (text: string): Promise<{ name: string, we
           items: {
             type: Type.OBJECT,
             properties: {
-              name: { type: Type.STRING },
+              brand: { type: Type.STRING },
+              size: { type: Type.STRING },
+              spool_material: { type: Type.STRING },
               weight: { type: Type.NUMBER },
             },
-            required: ["name", "weight"]
+            required: ["brand", "weight"]
           }
         }
       }
