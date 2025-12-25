@@ -25,9 +25,9 @@ export const HelpPage = () => {
 
   // Helper to get system info
   const getSystemInfo = () => {
-    const appVersion = localStorage.getItem('app_version') || 'Onbekend';
+    const appVersion = localStorage.getItem('app_version') || 'Unknown';
     const platform = Capacitor.getPlatform();
-    return `\n\n--------------------------------\nApp Versie: ${appVersion}\nPlatform: ${platform}\n--------------------------------`;
+    return `\n\n--------------------------------\nApp Version: ${appVersion}\nPlatform: ${platform}\n--------------------------------`;
   };
 
   // Helper to open mailto
@@ -121,14 +121,14 @@ export const HelpPage = () => {
 
   const submitSuggestion = () => {
      if (!suggestionMsg.trim()) return;
-     openMail("Suggestie Filament Manager", suggestionMsg);
+     openMail("Suggestion Filament Manager", suggestionMsg);
      setSuggestionMsg('');
   };
 
   const submitContact = () => {
      if (!contactMsg.trim()) return;
-     const body = `Naam: ${contactName}\n\nBericht:\n${contactMsg}`;
-     openMail("Vraag/Contact Filament Manager", body);
+     const body = `Name: ${contactName}\n\nMessage:\n${contactMsg}`;
+     openMail("Question/Contact Filament Manager", body);
      setContactMsg('');
      setContactName('');
   };
@@ -152,7 +152,7 @@ export const HelpPage = () => {
        <div className="flex justify-center mb-6 px-4">
           <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex w-full max-w-lg overflow-x-auto scrollbar-hide">
              <button onClick={() => { setActiveTab('faq'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'faq' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                Problemen
+                Common Issues
              </button>
              <button onClick={() => { setActiveTab('feedback'); setStatus('idle'); }} className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'feedback' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 {t('feedback')}
@@ -186,32 +186,32 @@ export const HelpPage = () => {
                          <div className="bg-blue-600 p-2 rounded-lg text-white">
                             <Smartphone size={20} />
                          </div>
-                         <h3 className="font-bold text-slate-800 dark:text-white">QR Code opent browser op Android</h3>
+                         <h3 className="font-bold text-slate-800 dark:text-white">QR Code opens browser on Android</h3>
                       </div>
                       
                       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                          <p className="font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 p-3 rounded-xl border border-amber-200 dark:border-amber-800/50">
-                            <strong>Belangrijke opmerking:</strong> Omdat je app niet uit de Google Play Store komt, zal Android de link-associatie niet automatisch vertrouwen.
+                            <strong>Important Note for Android:</strong> Since this app is installed outside of the Google Play Store, Android will not automatically trust the link association.
                          </p>
                          
-                         <p>Je moet dit één keer handmatig instellen op je telefoon:</p>
+                         <p>You must configure this manually once on your phone:</p>
                          
                          <div className="space-y-3 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
                             <div className="flex items-start gap-3">
                                <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">1</span>
-                               <span>Ga naar <strong>Instellingen</strong> &rarr; <strong>Apps</strong> &rarr; <strong>Filament Manager</strong>.</span>
+                               <span>Go to <strong>Settings</strong> &rarr; <strong>Apps</strong> &rarr; <strong>Filament Manager</strong>.</span>
                             </div>
                             <div className="flex items-start gap-3">
                                <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">2</span>
-                               <span>Tik op <strong>Standaard openen</strong> (Open by default).</span>
+                               <span>Tap on <strong>Open by default</strong>.</span>
                             </div>
                             <div className="flex items-start gap-3">
                                <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">3</span>
-                               <span>Zet <strong>Ondersteunde links openen</strong> AAN.</span>
+                               <span>Switch <strong>Open supported links</strong> to ON.</span>
                             </div>
                             <div className="flex items-start gap-3">
                                <span className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">4</span>
-                               <span>Voeg eventueel bij "Ondersteunde webadressen" <strong>filamentmanager.nl</strong> toe.</span>
+                               <span>(Optional) Under "Supported web addresses", add <strong>filamentmanager.nl</strong> if not present.</span>
                             </div>
                          </div>
                       </div>
@@ -219,9 +219,9 @@ export const HelpPage = () => {
 
                    <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
                       <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                         <SettingsIcon size={18} className="text-slate-400" /> Andere vragen?
+                         <SettingsIcon size={18} className="text-slate-400" /> Other questions?
                       </h4>
-                      <p className="text-xs text-slate-500">Staat je probleem er niet bij? Gebruik de 'Contact' tab om direct hulp te vragen via e-mail.</p>
+                      <p className="text-xs text-slate-500">Don't see your issue here? Use the 'Contact' tab to request help directly via email.</p>
                    </div>
                 </div>
              )}
@@ -231,7 +231,7 @@ export const HelpPage = () => {
                 <div className="space-y-6 animate-fade-in">
                    {existingFeedbackId && (
                       <div className="text-xs text-blue-500 font-bold bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg text-center">
-                         Je hebt al feedback gegeven. Je kunt het hieronder aanpassen.
+                         You have already provided feedback. You can update it below.
                       </div>
                    )}
                    <p className="text-center text-slate-600 dark:text-slate-300 text-sm">{t('feedbackSubtitle')}</p>
@@ -249,7 +249,7 @@ export const HelpPage = () => {
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 min-h-[150px] outline-none focus:ring-2 focus:ring-blue-500 dark:text-white resize-y"
                    />
                    <button onClick={submitFeedback} disabled={!feedbackMsg.trim() || isSending} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                      <Send size={20} /> {existingFeedbackId ? "Feedback Bijwerken" : t('feedbackSend')}
+                      <Send size={20} /> {existingFeedbackId ? "Update Feedback" : t('feedbackSend')}
                    </button>
                 </div>
              )}
