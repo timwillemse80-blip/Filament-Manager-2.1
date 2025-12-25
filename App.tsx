@@ -731,6 +731,61 @@ const AppContent = () => {
     } catch (e: any) { alert("Fout bij verwijderen: " + e.message); }
   };
 
+  const handleExport = () => {
+    const data = {
+      filaments,
+      materials,
+      locations,
+      suppliers,
+      printJobs,
+      printers,
+      settings,
+      version: APP_VERSION,
+      exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `filament-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        const userId = session?.user?.id;
+        if (!userId) return;
+
+        setIsLoading(true);
+
+        // Functie voor opschonen van data voor upsert (user_id toevoegen)
+        const prep = (items: any[]) => (items || []).map(item => ({ ...item, user_id: userId }));
+
+        if (data.filaments) await supabase.from('filaments').upsert(prep(data.filaments));
+        if (data.materials) await supabase.from('other_materials').upsert(prep(data.materials));
+        if (data.locations) await supabase.from('locations').upsert(prep(data.locations));
+        if (data.suppliers) await supabase.from('suppliers').upsert(prep(data.suppliers));
+        if (data.printJobs) await supabase.from('print_jobs').upsert(prep(data.printJobs));
+        if (data.printers) await supabase.from('printers').upsert(prep(data.printers));
+        if (data.settings) setSettings(data.settings);
+
+        alert("Back-up succesvol teruggezet!");
+        fetchData();
+      } catch (err: any) {
+        alert("Fout bij importeren: " + err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const totalLowStock = filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold).length + materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
   const editingFilament = useMemo(() => filaments.find(f => f.id === editingId), [editingId, filaments]);
   const editingMaterial = useMemo(() => materials.find(m => m.id === editingId), [editingId, materials]);
@@ -792,7 +847,7 @@ const AppContent = () => {
            {view === 'shopping' && <ShoppingList filaments={filaments} materials={materials} threshold={settings.lowStockThreshold} onToggleOrdered={handleToggleOrdered} />}
            {view === 'notifications' && <NotificationPage updateInfo={updateInfo} />}
            {view === 'admin' && isAdmin && <AdminPanel onClose={() => setView('dashboard')} />}
-           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={() => {}} onImport={() => {}} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
+           {view === 'settings' && <Settings settings={settings} filaments={filaments} onUpdate={setSettings} onExport={handleExport} onImport={handleImport} locations={locations} suppliers={suppliers} onSaveLocation={handleSaveLocation} onDeleteLocation={handleDeleteLocation} onSaveSupplier={handleSaveSupplier} onDeleteSupplier={handleDeleteSupplier} onLogout={() => supabase.auth.signOut()} isAdmin={isPremium} currentVersion={APP_VERSION} updateInfo={updateInfo} />}
            {view === 'support' && <SupportPage isAdmin={isAdmin} />}
            {view === 'feedback' && <FeedbackPage />}
            {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
