@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Filament, Location, Supplier, AiSuggestion } from '../types';
 import { 
   Save, X, Trash2, Layers, Tag, MapPin, Truck, Link as LinkIcon, 
   Euro, ExternalLink, Camera, Image as ImageIcon, Sparkles, 
-  Thermometer, Weight, Plus, RefreshCw, Loader2, Search, Check
+  Thermometer, Weight, Plus, RefreshCw, Loader2, Search, Check,
+  ChevronDown, ChevronUp, FileText, Hash
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Capacitor } from '@capacitor/core';
@@ -24,10 +26,6 @@ interface FilamentFormProps {
   isAdmin?: boolean;
 }
 
-/**
- * FIX: Reconstructed the entire FilamentForm component to resolve missing variable errors 
- * (filteredSpools, selectedSpoolId, setSelectedSpoolId) and the export error in App.tsx.
- */
 export const FilamentForm: React.FC<FilamentFormProps> = ({ 
   initialData, locations, suppliers, existingBrands, spoolWeights, 
   onSave, onCancel, isAdmin 
@@ -46,11 +44,14 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     purchaseDate: new Date().toISOString().split('T')[0],
     price: 0,
     notes: '',
-    shopUrl: ''
+    shopUrl: '',
+    locationId: null,
+    supplierId: null
   });
 
   const [multiSpoolCount, setMultiSpoolCount] = useState(1);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Weigh Helper state
   const [showWeighHelper, setShowWeighHelper] = useState(false);
@@ -66,7 +67,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
     return Array.from(new Set([...COMMON_BRANDS, ...existingBrands])).sort();
   }, [existingBrands]);
 
-  // FIX: Added filteredSpools memo to solve "Cannot find name 'filteredSpools'" error.
   const filteredSpools = useMemo(() => {
     if (!spoolSearch) return spoolWeights;
     const lower = spoolSearch.toLowerCase();
@@ -192,9 +192,20 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  </h2>
               </div>
            </div>
-           <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
-              <X size={24} />
-           </button>
+           <div className="flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={handleAiScan}
+                disabled={isAiAnalyzing}
+                className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-200 transition-colors"
+                title="Scan label met AI"
+              >
+                {isAiAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+              </button>
+              <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
+                 <X size={24} />
+              </button>
+           </div>
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6">
@@ -205,14 +216,17 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                     <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">{t('brand')}</label>
                     <div className="flex gap-2">
                        {isCustomBrand ? (
-                          <input 
-                             type="text" 
-                             required
-                             value={formData.brand} 
-                             onChange={e => setFormData({...formData, brand: e.target.value})}
-                             className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                             placeholder="Merknaam..."
-                          />
+                          <div className="flex-1 flex gap-2">
+                             <input 
+                                type="text" 
+                                required
+                                value={formData.brand} 
+                                onChange={e => setFormData({...formData, brand: e.target.value})}
+                                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                                placeholder="Merknaam..."
+                             />
+                             <button type="button" onClick={() => setIsCustomBrand(false)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500"><RefreshCw size={18}/></button>
+                          </div>
                        ) : (
                           <select 
                              required
@@ -234,14 +248,17 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                     <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block tracking-widest">{t('material')}</label>
                     <div className="flex gap-2">
                        {isCustomMaterial ? (
-                          <input 
-                             type="text" 
-                             required
-                             value={formData.material} 
-                             onChange={e => setFormData({...formData, material: e.target.value})}
-                             className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                             placeholder="Materiaal..."
-                          />
+                          <div className="flex-1 flex gap-2">
+                             <input 
+                                type="text" 
+                                required
+                                value={formData.material} 
+                                onChange={e => setFormData({...formData, material: e.target.value})}
+                                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                                placeholder="Materiaal..."
+                             />
+                             <button type="button" onClick={() => setIsCustomMaterial(false)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500"><RefreshCw size={18}/></button>
+                          </div>
                        ) : (
                           <select 
                              required
@@ -325,6 +342,9 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                     <label className="text-[10px] font-black uppercase text-slate-500 block tracking-widest flex items-center gap-2">
                        <Thermometer size={14} className="text-red-500" /> Temperaturen
                     </label>
+                    <button type="button" onClick={handleAutoFillSettings} className="text-[10px] font-bold text-blue-600 uppercase flex items-center gap-1 hover:underline">
+                        <Sparkles size={10} /> AI Suggestie
+                    </button>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
@@ -345,6 +365,140 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                        />
                        <span className="absolute left-3 top-3.5 text-slate-400 text-xs">Bed</span>
                     </div>
+                 </div>
+              </div>
+
+              {/* EXTRA OPTIES ACCORDION */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden transition-all">
+                  <button 
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 transition-colors"
+                  >
+                     <span className="text-xs font-black uppercase text-slate-500 flex items-center gap-2">
+                        {showAdvanced ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                        Extra Details & Opties
+                     </span>
+                     {(!formData.locationId && !formData.supplierId && !formData.shopUrl && !formData.notes) && (
+                        <span className="text-[10px] font-bold text-slate-400">Optioneel</span>
+                     )}
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="p-4 space-y-4 animate-fade-in border-t border-slate-200 dark:border-slate-700">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div>
+                              <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('location')}</label>
+                              <div className="relative">
+                                 <select 
+                                    value={formData.locationId || ''} 
+                                    onChange={e => setFormData({...formData, locationId: e.target.value || null})}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none"
+                                 >
+                                    <option value="">{t('none')}</option>
+                                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                 </select>
+                                 <MapPin size={18} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
+                              </div>
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('supplier')}</label>
+                              <div className="relative">
+                                 <select 
+                                    value={formData.supplierId || ''} 
+                                    onChange={e => setFormData({...formData, supplierId: e.target.value || null})}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none"
+                                 >
+                                    <option value="">{t('none')}</option>
+                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                 </select>
+                                 <Truck size={18} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
+                              </div>
+                           </div>
+                        </div>
+
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('shopUrl')}</label>
+                           <div className="relative">
+                              <input 
+                                 type="text" 
+                                 value={formData.shopUrl || ''} 
+                                 onChange={e => setFormData({...formData, shopUrl: e.target.value})}
+                                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white pl-10"
+                                 placeholder="https://..."
+                              />
+                              <LinkIcon size={18} className="absolute left-3 top-3.5 text-slate-400" />
+                              {formData.shopUrl && (
+                                 <button 
+                                    type="button" 
+                                    /* Fix: handleOpenUrl was not defined, use handleOpenShop instead */
+                                    onClick={handleOpenShop}
+                                    className="absolute right-2 top-2 p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"
+                                 >
+                                    <ExternalLink size={16}/>
+                                 </button>
+                              )}
+                           </div>
+                        </div>
+
+                        <div>
+                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('notes')}</label>
+                           <div className="relative">
+                              <textarea 
+                                 value={formData.notes || ''} 
+                                 onChange={e => setFormData({...formData, notes: e.target.value})}
+                                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-h-[80px] pl-10 resize-none"
+                                 placeholder="Extra informatie over deze spoel..."
+                              />
+                              <FileText size={18} className="absolute left-3 top-3.5 text-slate-400" />
+                           </div>
+                        </div>
+
+                        {!initialData && (
+                           <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                              <label className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 mb-2 block tracking-widest flex items-center gap-2">
+                                 <Hash size={14}/> Batch Toevoegen
+                              </label>
+                              <div className="flex items-center gap-4">
+                                 <input 
+                                    type="range" 
+                                    min="1" 
+                                    max="10" 
+                                    value={multiSpoolCount}
+                                    onChange={(e) => setMultiSpoolCount(parseInt(e.target.value))}
+                                    className="flex-1 accent-amber-500"
+                                 />
+                                 <span className="font-black text-xl w-12 text-center text-amber-600 dark:text-amber-400">{multiSpoolCount}x</span>
+                              </div>
+                              <p className="text-[10px] text-amber-600/70 mt-1">Snel meerdere identieke spoelen in één keer toevoegen.</p>
+                           </div>
+                        )}
+                    </div>
+                  )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('price')}</label>
+                    <div className="relative">
+                        <input 
+                           type="number" 
+                           step="0.01"
+                           value={formData.price || ''} 
+                           onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
+                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white pl-8"
+                        />
+                        <Euro size={16} className="absolute left-3 top-3.5 text-slate-400" />
+                    </div>
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block tracking-widest">{t('date')}</label>
+                    <input 
+                       type="date" 
+                       value={formData.purchaseDate} 
+                       onChange={e => setFormData({...formData, purchaseDate: e.target.value})}
+                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm"
+                    />
                  </div>
               </div>
 
@@ -412,7 +566,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                    key={spool.id}
                                    type="button"
                                    onClick={() => setSelectedSpoolId(spool.id)}
-                                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${selectedSpoolId === spool.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-[#1e293b] border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${selectedSpoolId === spool.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-[#1e293b] border-slate-700 text-slate-300 hover:border-slate-50'}`}
                                 >
                                    <div className="flex flex-col text-left overflow-hidden pr-2">
                                       <span className="font-bold text-sm truncate">{spool.brand || spool.name}</span>
