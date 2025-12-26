@@ -313,7 +313,7 @@ const AppContent = () => {
     fetchUpdates();
   }, []);
 
-  // Update refs to reflect current state in Capacitor listeners
+  // Sync refs with state to use in native listeners
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -360,8 +360,9 @@ const AppContent = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    // Robust back button handling
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
-      // 1. Prioriteit: Modals sluiten
+      // 1. Check ALL modals first (layered top-down)
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
@@ -371,12 +372,12 @@ const AppContent = () => {
         return;
       }
       if (showUpdateModalRef.current) {
-         setShowUpdateModal(false);
-         return;
+        setShowUpdateModal(false);
+        return;
       }
       if (showPrivacyRef.current) {
-         setShowPrivacy(false);
-         return;
+        setShowPrivacy(false);
+        return;
       }
       if (showProModalRef.current) {
         setShowProModal(false);
@@ -394,7 +395,6 @@ const AppContent = () => {
         setShowModal(false);
         setEditingId(null);
         setAiPreFill(null);
-        setShowLabelOnly(false);
         return; 
       }
       if (showMaterialModalRef.current) {
@@ -403,48 +403,49 @@ const AppContent = () => {
         return;
       }
       if (showLabelOnlyRef.current) {
-         setShowLabelOnly(false);
-         setEditingId(null);
-         return;
+        setShowLabelOnly(false);
+        setEditingId(null);
+        return;
       }
       if (viewingJobRef.current) {
         setViewingJob(null);
         return;
       }
 
-      // 2. Prioriteit: Zijmenu (Sidebar) sluiten
+      // 2. Check sidebar
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
 
-      // 3. Prioriteit: Inventory groep-weergave terug naar overzicht
+      // 3. View specific back-navigation
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
 
-      // 4. Prioriteit: Terug naar dashboard vanaf andere views
+      // 4. Global navigation (Back to Dashboard)
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
+        // Reset exit-timer when changing views
         lastBackPressRef.current = 0;
         return;
       }
 
-      // 5. Prioriteit: Afsluiten vanaf Dashboard (Double-tap logica)
-      if (viewRef.current === 'dashboard') {
-        const now = Date.now();
-        const BACK_PRESS_TIMEOUT = 2000;
-        if (now - lastBackPressRef.current < BACK_PRESS_TIMEOUT) {
-            setShowExitConfirm(true);
-            setShowBackToast(false);
-            if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-        } else {
-            lastBackPressRef.current = now;
-            setShowBackToast(true);
-            if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-            toastTimeoutRef.current = window.setTimeout(() => setShowBackToast(false), BACK_PRESS_TIMEOUT);
-        }
+      // 5. Exit App logic (on Dashboard)
+      const now = Date.now();
+      const EXIT_WINDOW = 2000; // 2 seconds
+
+      if (now - lastBackPressRef.current < EXIT_WINDOW) {
+         setShowExitConfirm(true); // Confirmation Modal
+         setShowBackToast(false);
+         if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+      } else {
+         // Show a "Toast" first before the confirmation modal
+         lastBackPressRef.current = now;
+         setShowBackToast(true);
+         if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+         toastTimeoutRef.current = window.setTimeout(() => setShowBackToast(false), EXIT_WINDOW);
       }
     });
 
@@ -898,7 +899,7 @@ const AppContent = () => {
            {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
         </PullToRefresh>
 
-        {/* System Back Toast */}
+        {/* Android Back Toast: Press once to see exit modal hint */}
         {showBackToast && (
           <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] bg-slate-900/90 backdrop-blur text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-2xl animate-fade-in border border-slate-700">
              Press back again to exit
@@ -906,20 +907,20 @@ const AppContent = () => {
         )}
       </main>
 
-      {/* Exit Confirmation Modal */}
+      {/* Modern Exit Confirmation Modal */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
               <div className="p-8 text-center">
-                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <LogOut size={32} />
+                 <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <LogOut size={40} />
                  </div>
-                 <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Exit App?</h3>
-                 <p className="text-slate-500 dark:text-slate-400">Are you sure you want to close Filament Manager?</p>
+                 <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Exit App?</h3>
+                 <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Are you sure you want to close Filament Manager? Your inventory stays safe in the cloud.</p>
               </div>
               <div className="p-6 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                 <button onClick={() => setShowExitConfirm(false)} className="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-slate-700">Cancel</button>
-                 <button onClick={handleExitApp} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20">Exit App</button>
+                 <button onClick={() => setShowExitConfirm(false)} className="flex-1 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-2xl border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform">Cancel</button>
+                 <button onClick={handleExitApp} className="flex-1 py-4 bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-500/20 active:scale-95 transition-transform">Exit App</button>
               </div>
            </div>
         </div>
