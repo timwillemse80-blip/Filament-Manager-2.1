@@ -54,13 +54,11 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const [lastScannedImage, setLastScannedImage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   
-  // Weigh Helper state
   const [showWeighHelper, setShowWeighHelper] = useState(false);
   const [grossWeight, setGrossWeight] = useState<number | ''>('');
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | number | null>(null);
   const [spoolSearch, setSpoolSearch] = useState('');
 
-  // Brand/Material custom state
   const [isCustomBrand, setIsCustomBrand] = useState(false);
   const [isCustomMaterial, setIsCustomMaterial] = useState(false);
 
