@@ -31,6 +31,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   onSave, onCancel, isAdmin 
 }) => {
   const { t, tColor } = useLanguage();
+  const hiddenFileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<Partial<Filament>>(initialData || {
     brand: '',
@@ -78,31 +79,54 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   }, [spoolWeights, spoolSearch]);
 
   const handleAiScan = async () => {
-    try {
-      const image = await CapacitorCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt, // Safert on mobile browsers/apps
-        width: 1200,
-        correctOrientation: true
-      });
+    // Check of we native zijn en of de plugin beschikbaar is
+    const isNative = Capacitor.isNativePlatform();
+    
+    if (isNative) {
+      try {
+        const image = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Prompt,
+          width: 1200,
+          correctOrientation: true
+        });
 
-      if (image.base64String) {
-        setIsAiAnalyzing(true);
-        setLastScannedImage(`data:image/jpeg;base64,${image.base64String}`);
-        try {
-          const suggestion = await analyzeSpoolImage(image.base64String);
-          applyAiSuggestion(suggestion);
-        } catch (e: any) {
-          alert(t('aiError') + "\n\n" + e.message);
+        if (image.base64String) {
+          processImageBase64(image.base64String);
         }
+        return;
+      } catch (error: any) {
+        if (error.message?.includes('User cancelled')) return;
+        console.warn("Native camera failed, falling back to browser input.", error);
       }
-    } catch (error: any) {
-      if (!error.message?.includes('User cancelled')) {
-        console.error('AI Scan Error:', error);
-        alert("Camera fout: " + error.message);
-      }
+    }
+
+    // Fallback voor Web of als Native Plugin faalt
+    hiddenFileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = (event.target?.result as string).split(',')[1];
+        processImageBase64(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const processImageBase64 = async (base64Data: string) => {
+    setIsAiAnalyzing(true);
+    setLastScannedImage(`data:image/jpeg;base64,${base64Data}`);
+    try {
+      const suggestion = await analyzeSpoolImage(base64Data);
+      applyAiSuggestion(suggestion);
+    } catch (e: any) {
+      alert(t('aiError') + "\n\n" + e.message);
     } finally {
       setIsAiAnalyzing(false);
     }
@@ -120,7 +144,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       shortId: suggestion.shortId || prev.shortId
     }));
     
-    // Auto-detect if we need to switch to "Custom" inputs
     if (suggestion.brand && !allBrands.includes(suggestion.brand)) {
         setIsCustomBrand(true);
     }
@@ -202,6 +225,16 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               </div>
            </div>
            <div className="flex items-center gap-2">
+              {/* Verborgen input voor fallback */}
+              <input 
+                type="file" 
+                ref={hiddenFileInputRef} 
+                accept="image/*" 
+                capture="environment" 
+                className="hidden" 
+                onChange={handleFileChange} 
+              />
+              
               <button 
                 type="button"
                 onClick={handleAiScan}
@@ -390,7 +423,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  </div>
               </div>
 
-              {/* EXTRA OPTIES ACCORDION */}
               <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden transition-all">
                   <button 
                     type="button"
