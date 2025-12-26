@@ -301,6 +301,7 @@ const AppContent = () => {
             downloadUrl: data.downloadUrl
           });
           
+          // ALTIJD tonen mits de keuze is gemaakt dat ze hem hebben gelezen (voor deze specifieke versie)
           const readStatus = localStorage.getItem(`update_read_${data.version}`);
           if (readStatus !== 'true') {
              setShowUpdateModal(true);

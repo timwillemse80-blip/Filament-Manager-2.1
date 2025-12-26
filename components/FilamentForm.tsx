@@ -398,23 +398,29 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                     </button>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
-                    <div className="relative">
-                       <span className="absolute left-3 top-1.5 text-slate-400 text-[10px] font-black uppercase tracking-tight z-10 pointer-events-none">Nozzle</span>
-                       <input 
-                          type="number" 
-                          value={formData.tempNozzle} 
-                          onChange={e => setFormData({...formData, tempNozzle: parseInt(e.target.value)})}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 pt-6 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-bold"
-                       />
+                    <div className="flex flex-col gap-1">
+                       <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Nozzle</label>
+                       <div className="relative">
+                          <input 
+                             type="number" 
+                             value={formData.tempNozzle} 
+                             onChange={e => setFormData({...formData, tempNozzle: parseInt(e.target.value)})}
+                             className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-bold"
+                          />
+                          <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold">°C</span>
+                       </div>
                     </div>
-                    <div className="relative">
-                       <span className="absolute left-3 top-1.5 text-slate-400 text-[10px] font-black uppercase tracking-tight z-10 pointer-events-none">Bed</span>
-                       <input 
-                          type="number" 
-                          value={formData.tempBed} 
-                          onChange={e => setFormData({...formData, tempBed: parseInt(e.target.value)})}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 pt-6 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-bold"
-                       />
+                    <div className="flex flex-col gap-1">
+                       <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Bed</label>
+                       <div className="relative">
+                          <input 
+                             type="number" 
+                             value={formData.tempBed} 
+                             onChange={e => setFormData({...formData, tempBed: parseInt(e.target.value)})}
+                             className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-bold"
+                          />
+                          <span className="absolute right-3 top-3 text-xs text-slate-400 font-bold">°C</span>
+                       </div>
                     </div>
                  </div>
               </div>
