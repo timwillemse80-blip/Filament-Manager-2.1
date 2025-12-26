@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Filament Manager',
   webDir: 'dist',
   server: {
-    // We stellen de server URL in op je eigen domein. 
-    // Dit zorgt voor een consistente ervaring tussen de web-versie en de app.
+    // Set the server URL to your own domain for a consistent PWA/Native experience.
     url: 'https://filamentmanager.nl',
     cleartext: true,
     allowNavigation: ['*']

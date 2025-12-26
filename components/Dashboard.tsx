@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Filament, PrintJob, OtherMaterial } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
-import { Layers, Weight, Euro, TrendingUp, AlertTriangle, Disc, BarChart2, Crown, CheckCircle2, XCircle, Snowflake, Lock, Box } from 'lucide-react';
+import { Layers, Weight, Euro, TrendingUp, AlertTriangle, Disc, BarChart2, Crown, CheckCircle2, XCircle, Snowflake, Lock, Box, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
@@ -111,18 +111,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
     return map;
   }, [filaments]);
 
-  const lowStockFilaments = useMemo(() => {
-    return filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= threshold);
-  }, [filaments, threshold]);
-
-  const lowStockMaterialsCount = useMemo(() => {
-    return materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
-  }, [materials]);
-
-  const totalLowStockCount = lowStockFilaments.length + lowStockMaterialsCount;
-
   const lowStockChartData = React.useMemo(() => {
-    return lowStockFilaments
+    if (filaments.length === 0) return [];
+
+    return [...filaments]
       .map(f => {
         const key = `${f.brand}-${f.material}-${f.colorName}`.toLowerCase().trim();
         const totalCount = stockMap.get(key) || 1;
@@ -134,12 +126,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
           pct: Math.round((f.weightRemaining / f.weightTotal) * 100),
           color: f.colorHex,
           extraStock: extraStock,
-          extraLabel: extraStock > 0 ? `+ ${extraStock} items` : ''
+          extraLabel: extraStock > 0 ? `+ ${extraStock}pcs` : ''
         };
       })
       .sort((a, b) => a.pct - b.pct)
       .slice(0, 5);
-  }, [lowStockFilaments, stockMap]);
+  }, [filaments, stockMap]);
 
   const valueByBrandData = React.useMemo(() => {
      if (!isAdmin) {
@@ -191,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
           </p>
           {data.extraStock > 0 && (
              <p className="text-xs text-green-400 mt-1 font-medium">
-                Extra: {data.extraStock} {t('items')}
+                Extra: {data.extraStock} pcs
              </p>
           )}
         </div>
@@ -273,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
            </div>
            <div className="relative z-10">
               <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{t('lowStock')}</p>
-              <h3 className="text-3xl font-bold text-red-500">{totalLowStockCount}</h3>
+              <h3 className="text-3xl font-bold text-red-500">{filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= threshold).length + (materials?.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length || 0)}</h3>
            </div>
         </div>
       </div>
@@ -369,8 +361,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                  </BarChart>
                </ResponsiveContainer>
              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                   <p>{t('noData')}</p>
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                   <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+                      <CheckCircle size={32} />
+                   </div>
+                   <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white">{t('allStockedMsg')}</h4>
+                      <p className="text-xs text-slate-500 mt-1">{t('everythingOk')}</p>
+                   </div>
                 </div>
              )}
            </div>

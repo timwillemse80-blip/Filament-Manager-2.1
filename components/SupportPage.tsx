@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Coffee, Heart, Star, Sparkles, Zap, ShieldCheck, Rocket, Server } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -91,10 +90,10 @@ export const SupportPage: React.FC<SupportPageProps> = ({ isAdmin }) => {
                </div>
                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Join Discord</h3>
                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 flex-1">
-                  Praat mee over features, meld bugs of deel je prints met de community.
+                  Discuss features, report bugs, or share your prints with the community.
                </p>
                <span className="inline-flex items-center gap-2 bg-[#5865F2]/10 text-[#5865F2] px-4 py-2 rounded-full text-sm font-bold">
-                  Word lid <Rocket size={14} />
+                  Join Now <Rocket size={14} />
                </span>
             </div>
          </button>

@@ -280,7 +280,6 @@ const AppContent = () => {
   const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
 
-  // Apply theme to document root
   useEffect(() => {
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -302,7 +301,6 @@ const AppContent = () => {
             downloadUrl: data.downloadUrl
           });
           
-          // Check of we dit als gelezen hebben gemarkeerd
           const readStatus = localStorage.getItem(`update_read_${data.version}`);
           if (readStatus !== 'true') {
              setShowUpdateModal(true);
@@ -701,7 +699,7 @@ const AppContent = () => {
       const { error } = await supabase.from(table).update({ is_ordered: !currentStatus }).eq('id', id);
       if (error) throw error;
       fetchData();
-    } catch (e: any) { alert("Fout bij bijwerken status: " + e.message); }
+    } catch (e: any) { alert("Error updating status: " + e.message); }
   };
 
   const handleSaveJob = async (job: PrintJob, filamentDeductions: { id: string, amount: number }[]) => {
@@ -734,7 +732,7 @@ const AppContent = () => {
       }
       await Promise.all(stockUpdates);
       fetchData();
-    } catch (e: any) { alert("Fout bij opslaan: " + e.message); }
+    } catch (e: any) { alert("Error saving: " + e.message); }
   };
 
   const handleDeleteJob = async (id: string) => {
@@ -765,7 +763,7 @@ const AppContent = () => {
       const { error } = await supabase.from('print_jobs').delete().eq('id', id);
       if (error) throw error;
       fetchData();
-    } catch (e: any) { alert("Fout bij verwijderen: " + e.message); }
+    } catch (e: any) { alert("Error deleting: " + e.message); }
   };
 
   const handleExport = () => {
@@ -801,7 +799,6 @@ const AppContent = () => {
 
         setIsLoading(true);
 
-        // Functie voor opschonen van data voor upsert (user_id toevoegen)
         const prep = (items: any[]) => (items || []).map(item => ({ ...item, user_id: userId }));
 
         if (data.filaments) await supabase.from('filaments').upsert(prep(data.filaments));
@@ -812,10 +809,10 @@ const AppContent = () => {
         if (data.printers) await supabase.from('printers').upsert(prep(data.printers));
         if (data.settings) setSettings(data.settings);
 
-        alert("Back-up succesvol teruggezet!");
+        alert("Backup successfully restored!");
         fetchData();
       } catch (err: any) {
-        alert("Fout bij importeren: " + err.message);
+        alert("Error importing: " + err.message);
       } finally {
         setIsLoading(false);
       }

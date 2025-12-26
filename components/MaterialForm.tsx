@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { OtherMaterial, Location, Supplier } from '../types';
 import { Save, X, Trash2, Box, Tag, MapPin, Truck, Link as LinkIcon, Euro, ExternalLink, Camera, Image as ImageIcon } from 'lucide-react';
@@ -22,7 +21,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
     name: '',
     category: '',
     quantity: 1,
-    unit: 'stuks',
+    unit: 'pcs',
     minStock: 0,
     price: 0,
     notes: '',
@@ -30,17 +29,17 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
     image: ''
   });
 
-  const categories = ["Electronica", "Bevestiging (Bouten/Moeren)", "Lijm & Tape", "Gereedschap", "Onderdelen", "Verpakking", "Anders"];
-  const units = ["stuks", "meter", "liter", "gram", "set", "rol", "doos"];
+  const categories = ["Electronics", "Fasteners (Bolts/Nuts)", "Glue & Tape", "Tools", "Parts", "Packaging", "Other"];
+  const units = ["pcs", "meter", "liter", "gram", "set", "roll", "box"];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       id: initialData?.id || crypto.randomUUID(),
       name: formData.name!,
-      category: formData.category || 'Anders',
+      category: formData.category || 'Other',
       quantity: Number(formData.quantity),
-      unit: formData.unit as any || 'stuks',
+      unit: formData.unit as any || 'pcs',
       minStock: Number(formData.minStock),
       price: Number(formData.price),
       locationId: formData.locationId,
@@ -101,7 +100,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
       <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-           <h2 className="text-xl font-bold dark:text-white text-slate-800">{initialData ? 'Materiaal Bewerken' : 'Nieuw Materiaal'}</h2>
+           <h2 className="text-xl font-bold dark:text-white text-slate-800">{initialData ? 'Edit Material' : 'New Material'}</h2>
            <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 dark:hover:text-white"><X size={24} /></button>
         </div>
 
@@ -154,7 +153,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
                        value={formData.name} 
                        onChange={e => setFormData({...formData, name: e.target.value})} 
                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 pl-10 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                       placeholder="bv. M3x10 Boutjes"
+                       placeholder="e.g. M3x10 Bolts"
                     />
                     <Box size={18} className="absolute left-3 top-3.5 text-slate-400"/>
                  </div>
@@ -162,21 +161,21 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
 
               <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Categorie</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Category</label>
                     <div className="relative">
                        <select 
                           value={formData.category} 
                           onChange={e => setFormData({...formData, category: e.target.value})}
                           className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 pl-10 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white appearance-none"
                        >
-                          <option value="">Kies...</option>
+                          <option value="">Select...</option>
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
                        </select>
                        <Tag size={18} className="absolute left-3 top-3.5 text-slate-400"/>
                     </div>
                  </div>
                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Eenheid</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Unit</label>
                     <select 
                        value={formData.unit} 
                        onChange={e => setFormData({...formData, unit: e.target.value as any})}
@@ -189,7 +188,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
 
               <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Aantal</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Quantity</label>
                     <input 
                        type="number" 
                        step="0.01"
@@ -200,7 +199,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
                     />
                  </div>
                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Min. Voorraad</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Min. Stock</label>
                     <input 
                        type="number" 
                        value={formData.minStock} 
@@ -243,7 +242,7 @@ export const MaterialForm: React.FC<MaterialFormProps> = ({ initialData, locatio
 
               <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('price')} (p/st)</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{t('price')} (p/unit)</label>
                     <div className="relative">
                        <input 
                           type="number" 

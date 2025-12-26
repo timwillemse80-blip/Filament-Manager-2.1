@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AiSuggestion } from "../types";
 
@@ -29,7 +28,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-          { text: "Strictly identify the 3D printer filament from this label. Extract the exact Brand, Material (e.g., PLA, PETG, ABS, ASA, TPU), Color Name (in Dutch), most accurate HEX color code, recommended Nozzle Temp (°C), and Bed Temp (°C). If temps are ranges, give the middle value. Look for a 4-character ID code (Short ID) like 'A1B2'. Return ONLY valid JSON." }
+          { text: "Strictly identify the 3D printer filament from this label. Extract the exact Brand, Material (e.g., PLA, PETG, ABS, ASA, TPU), Color Name (in English), most accurate HEX color code, recommended Nozzle Temp (°C), and Bed Temp (°C). If temps are ranges, give the middle value. Look for a 4-character ID code (Short ID) like 'A1B2'. Return ONLY valid JSON." }
         ]
       },
       config: { 
@@ -39,7 +38,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
           properties: {
             brand: { type: Type.STRING, description: "The manufacturer brand name" },
             material: { type: Type.STRING, description: "The type of material (PLA, PETG, etc.)" },
-            colorName: { type: Type.STRING, description: "Common name of the color in Dutch" },
+            colorName: { type: Type.STRING, description: "Common name of the color in English" },
             colorHex: { type: Type.STRING, description: "Hexadecimal color code representing the filament" },
             tempNozzle: { type: Type.NUMBER, description: "Ideal nozzle temperature in Celsius" },
             tempBed: { type: Type.NUMBER, description: "Ideal bed temperature in Celsius" },
@@ -54,7 +53,7 @@ export const analyzeSpoolImage = async (base64Image: string): Promise<AiSuggesti
     return result;
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    throw new Error(error.message || "AI Analyse mislukt.");
+    throw new Error(error.message || "AI Analysis failed.");
   }
 };
 

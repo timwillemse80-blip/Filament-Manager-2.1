@@ -1,4 +1,3 @@
-
 export enum FilamentMaterial {
   PLA = 'PLA',
   PETG = 'PETG',
@@ -37,9 +36,9 @@ export interface Filament {
 export interface OtherMaterial {
   id: string;
   name: string;
-  category: string; // e.g. "Electronica", "Boutjes", "Lijm"
+  category: string; // e.g. "Electronics", "Fasteners", "Glue"
   quantity: number;
-  unit: 'stuks' | 'meter' | 'liter' | 'gram' | 'set';
+  unit: 'pcs' | 'meter' | 'liter' | 'gram' | 'set';
   minStock?: number; // Alert threshold
   locationId?: string | null;
   supplierId?: string | null;

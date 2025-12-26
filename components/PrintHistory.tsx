@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, PrintJob, Printer, AppSettings, CostBreakdown, OtherMaterial } from '../types';
@@ -20,7 +19,6 @@ interface PrintHistoryProps {
   setViewingJob: (job: PrintJob | null) => void;
 }
 
-// --- Color Matching Utilities ---
 const getRgb = (hex: string) => {
   const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
   hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -174,7 +172,7 @@ const MaterialPicker = ({ materials, selectedId, onChange }: { materials: OtherM
                {filtered.length === 0 ? <div className="p-3 text-xs text-slate-500 text-center">{t('none')}</div> : filtered.map(m => (
                   <div key={m.id} onClick={() => { onChange(m.id); setIsOpen(false); }} className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-700/50 last:border-0">
                      <div className="text-sm font-bold text-slate-800 dark:text-slate-200">{m.name}</div>
-                     <div className="text-[10px] text-slate-500">{m.category} • {m.quantity} {m.unit} op voorraad</div>
+                     <div className="text-[10px] text-slate-500">{m.category} • {m.quantity} {m.unit} in stock</div>
                   </div>
                ))}
             </div>
@@ -258,7 +256,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
      inputUnit?: string;
   }[]>([]);
 
-  // Recommendation Logic Function
   const findBestFilament = (type: string, colorHex?: string, printer?: Printer): { id: string, source: 'ams' | 'stock', slotNumber?: number } | null => {
     const COLOR_THRESHOLD = 60;
     
@@ -272,7 +269,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
         return score;
     };
 
-    // 1. Try physical CFS/AMS Slots of the printer
     if (printer && printer.hasAMS) {
         const amsOptions = printer.amsSlots
             .map(slot => {
@@ -287,7 +283,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
         }
     }
 
-    // 2. Try General Stock
     const stockOptions = filaments
         .map(f => ({ f, score: scoreFilament(f) }))
         .filter(o => o.score > 0)
@@ -300,12 +295,11 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
     return null;
   };
 
-  // Re-run matching when printer changes or slots change
   useEffect(() => {
     if (selectedPrinterId) {
         const printer = printers.find(p => p.id === selectedPrinterId);
         const updatedSlots = materialSlots.map(slot => {
-            if (slot.detectedType.includes('Afval') || slot.detectedType.includes('Flush')) return slot;
+            if (slot.detectedType.includes('Waste') || slot.detectedType.includes('Flush')) return slot;
             const match = findBestFilament(slot.detectedType, slot.detectedColor, printer);
             if (match) {
                 return { ...slot, assignedFilamentId: match.id, recommendationSource: match.source, matchedSlotNumber: match.slotNumber };
@@ -320,14 +314,14 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
 
   useEffect(() => {
       if (overrideTotalWeight === '' || overrideTotalWeight <= 0) return;
-      const currentSum = materialSlots.filter(s => s.detectedType !== 'Rest / Afval / Flush').reduce((acc, curr) => acc + curr.weight + curr.wasteWeight, 0);
+      const currentSum = materialSlots.filter(s => s.detectedType !== 'Waste / Flush / Remaining').reduce((acc, curr) => acc + curr.weight + curr.wasteWeight, 0);
       const diff = Number(overrideTotalWeight) - currentSum;
       
       if (diff > 0.5) {
-          const hasWasteSlot = materialSlots.some(s => s.detectedType === 'Rest / Afval / Flush');
+          const hasWasteSlot = materialSlots.some(s => s.detectedType === 'Waste / Flush / Remaining');
           if (!hasWasteSlot) {
               setMaterialSlots(prev => [...prev, {
-                  detectedType: 'Rest / Afval / Flush',
+                  detectedType: 'Waste / Flush / Remaining',
                   weight: Number(diff.toFixed(2)),
                   wasteWeight: 0,
                   assignedFilamentId: '',
@@ -335,11 +329,11 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
               }]);
           } else {
               setMaterialSlots(prev => prev.map(s => 
-                  s.detectedType === 'Rest / Afval / Flush' ? { ...s, weight: Number(diff.toFixed(2)) } : s
+                  s.detectedType === 'Waste / Flush / Remaining' ? { ...s, weight: Number(diff.toFixed(2)) } : s
               ));
           }
       } else {
-          setMaterialSlots(prev => prev.filter(s => s.detectedType !== 'Rest / Afval / Flush'));
+          setMaterialSlots(prev => prev.filter(s => s.detectedType !== 'Waste / Flush / Remaining'));
       }
   }, [overrideTotalWeight]);
 
@@ -397,7 +391,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
       }
 
     } catch (e: any) {
-      alert("Fout: " + e.message);
+      alert("Error: " + e.message);
       if (materialSlots.length === 0) {
           setMaterialSlots([{ detectedType: 'PLA', weight: 0, wasteWeight: 0, assignedFilamentId: '' }]);
       }
@@ -408,19 +402,19 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
 
   const handleSave = () => {
     if (!jobName) {
-      alert("Vul een naam in.");
+      alert("Please enter a project name.");
       return;
     }
     
     const validAssignments = materialSlots.every(slot => 
         (slot.weight + slot.wasteWeight) === 0 || 
         slot.assignedFilamentId || 
-        slot.detectedType.includes('Afval') || 
+        slot.detectedType.includes('Waste') || 
         slot.detectedType.includes('Flush')
     );
     
     if (!validAssignments) {
-      if(!confirm("Niet alle slots zijn gekoppeld. Doorgaan?")) return;
+      if(!confirm("Not all slots are linked. Continue?")) return;
     }
 
     const totalWeight = materialSlots.reduce((acc, curr) => acc + curr.weight + curr.wasteWeight, 0);
@@ -526,7 +520,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
         return;
      }
      if (!history.length) return;
-     const headers = [t('date'), t('name'), t('status'), t('printTime'), `${t('totalWeight')} (g)`, `${t('totalValue')} (€)`, t('printer'), "Filamenten"];
+     const headers = [t('date'), t('name'), t('status'), t('printTime'), `${t('totalWeight')} (g)`, `${t('totalValue')} (€)`, t('printer'), "Filaments"];
      const rows = history.map(job => {
         const date = new Date(job.date).toLocaleDateString();
         const printerName = job.printerId ? printers.find(p => p.id === job.printerId)?.name : t('unknown');
@@ -639,7 +633,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
           </div>
        </div>
 
-       {/* View Details Modal via PORTAL */}
        {viewingJob && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-hidden">
              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden relative max-h-[90vh] flex flex-col">
@@ -729,7 +722,7 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                                     return (
                                         <div key={idx} className="text-xs flex justify-between items-center dark:text-slate-300">
                                             <span>{mat ? mat.name : t('unknownMaterial')}</span>
-                                            <span className="font-mono text-slate-500">{displayQty} {mat?.unit || 'st'}</span>
+                                            <span className="font-mono text-slate-500">{displayQty} {mat?.unit || 'pcs'}</span>
                                         </div>
                                     );
                                 })}
@@ -762,7 +755,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
           document.body
        )}
 
-       {/* Modal for Adding/Editing via PORTAL */}
        {showModal && createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto overflow-x-hidden">
              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -869,7 +861,6 @@ export const PrintHistory: React.FC<PrintHistoryProps> = ({ filaments, materials
                          {materialSlots.map((slot, index) => {
                             const printer = printers.find(p => p.id === selectedPrinterId);
                             
-                            // physical mapping calculation
                             const physicalSlot = slot.matchedSlotNumber || (index + 1);
                             const unit = Math.ceil(physicalSlot / 4);
                             const unitSlot = ((physicalSlot - 1) % 4) + 1;

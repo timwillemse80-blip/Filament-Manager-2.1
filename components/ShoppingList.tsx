@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Filament, OtherMaterial } from '../types';
 import { ShoppingCart, ExternalLink, Search, Box, Tag, Sparkles, ArrowRight, Truck, PackageCheck, CheckCircle2, Clock } from 'lucide-react';
@@ -31,7 +30,6 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
   const handleOpenUrl = (url: string) => {
     if (!url) return;
     
-    // Fix protocol if missing
     let target = url;
     if (!/^https?:\/\//i.test(target)) {
         target = 'https://' + target;
@@ -81,7 +79,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {lowStockFilaments.map(f => {
                   const pct = Math.round((f.weightRemaining / f.weightTotal) * 100);
-                  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`kopen ${f.brand} ${f.material} ${f.colorName} filament`)}`;
+                  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`buy ${f.brand} ${f.material} ${f.colorName} filament`)}`;
                   const targetUrl = f.shopUrl || googleSearchUrl;
 
                   return (
@@ -104,7 +102,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                         <button 
                           onClick={() => onToggleOrdered?.(f.id, 'filament', !!f.is_ordered)}
                           className={`p-2 rounded-full transition-all group ${f.is_ordered ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-500 dark:bg-slate-800'}`}
-                          title={f.is_ordered ? 'Gemarkeerd als besteld' : 'Markeren als besteld'}
+                          title={f.is_ordered ? 'Marked as ordered' : 'Mark as ordered'}
                         >
                           {f.is_ordered ? <PackageCheck size={20} /> : <Truck size={20} className="group-hover:translate-x-1 transition-transform" />}
                         </button>
@@ -144,7 +142,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {lowStockMaterials.map(m => {
-                     const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`kopen ${m.name} ${m.category}`)}`;
+                     const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`buy ${m.name} ${m.category}`)}`;
                      const targetUrl = m.shopUrl || googleSearchUrl;
 
                      return (
@@ -171,7 +169,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ filaments, materials
                               <button 
                                 onClick={() => onToggleOrdered?.(m.id, 'material', !!m.is_ordered)}
                                 className={`p-2 rounded-full transition-all group ${m.is_ordered ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-500 dark:bg-slate-800'}`}
-                                title={m.is_ordered ? 'Gemarkeerd als besteld' : 'Markeren als besteld'}
+                                title={m.is_ordered ? 'Marked as ordered' : 'Mark as ordered'}
                               >
                                 {m.is_ordered ? <PackageCheck size={20} /> : <Truck size={20} className="group-hover:translate-x-1 transition-transform" />}
                               </button>

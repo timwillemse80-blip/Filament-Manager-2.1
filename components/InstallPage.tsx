@@ -36,10 +36,10 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
               <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                  <CheckCircle2 size={48} className="text-green-600 dark:text-green-400" />
               </div>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">App is geïnstalleerd!</h1>
-              <p className="text-slate-600 dark:text-slate-400 mb-8">Je gebruikt de app al in volledige modus.</p>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">App is installed!</h1>
+              <p className="text-slate-600 dark:text-slate-400 mb-8">You are already using the app in full mode.</p>
               <button onClick={onClose} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-500 transition-colors">
-                 Ga naar Dashboard
+                 Go to Dashboard
               </button>
            </div>
         </div>
@@ -60,7 +60,7 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                <Logo className="w-16 h-16" />
             </div>
             <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-2">Filament Manager</h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">De ultieme app voor je 3D voorraad.</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">The ultimate app for your 3D inventory.</p>
          </div>
 
          <div className="p-8 space-y-6">
@@ -70,8 +70,8 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                      <Wifi size={24} />
                   </div>
                   <div>
-                     <h3 className="font-bold text-slate-800 dark:text-white">Offline Modus</h3>
-                     <p className="text-xs text-slate-500 dark:text-slate-400">Werkt ook zonder internetverbinding.</p>
+                     <h3 className="font-bold text-slate-800 dark:text-white">Offline Mode</h3>
+                     <p className="text-xs text-slate-500 dark:text-slate-400">Works even without an internet connection.</p>
                   </div>
                </div>
                <div className="flex items-center gap-4 text-left">
@@ -79,8 +79,8 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                      <Zap size={24} />
                   </div>
                   <div>
-                     <h3 className="font-bold text-slate-800 dark:text-white">Supersnel</h3>
-                     <p className="text-xs text-slate-500 dark:text-slate-400">Start direct op, net als een native app.</p>
+                     <h3 className="font-bold text-slate-800 dark:text-white">Lightning Fast</h3>
+                     <p className="text-xs text-slate-500 dark:text-slate-400">Starts instantly, just like a native app.</p>
                   </div>
                </div>
             </div>
@@ -90,9 +90,9 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                   <>
                     <button 
                        onClick={onInstall}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-lg animate-pulse-soft"
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-lg animate-pulse-soft"
                     >
-                       <Download size={24} /> Installeer App
+                       <Download size={24} /> Install App
                     </button>
                     {!isIOS && (
                         <button 
@@ -105,16 +105,16 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                   </>
                ) : isIOS ? (
                   <div className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 text-left">
-                     <h4 className="font-bold text-slate-800 dark:text-white mb-2 text-sm">Installeren op iOS:</h4>
+                     <h4 className="font-bold text-slate-800 dark:text-white mb-2 text-sm">Install on iOS:</h4>
                      <ol className="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-decimal pl-4">
-                        <li>Tik onderin op de <strong>Deel-knop</strong> <Share size={12} className="inline"/></li>
-                        <li>Scroll omlaag en kies <strong>"Zet op beginscherm"</strong> <PlusSquare size={12} className="inline"/></li>
-                        <li>Tik op <strong>"Voeg toe"</strong>.</li>
+                        <li>Tap the <strong>Share button</strong> at the bottom <Share size={12} className="inline"/></li>
+                        <li>Scroll down and select <strong>"Add to Home Screen"</strong> <PlusSquare size={12} className="inline"/></li>
+                        <li>Tap <strong>"Add"</strong>.</li>
                      </ol>
                   </div>
                ) : (
                   <div className="text-center space-y-3">
-                     <p className="text-sm text-slate-500 mb-2">Je browser ondersteunt automatische installatie niet of de app is al geïnstalleerd.</p>
+                     <p className="text-sm text-slate-500 mb-2">Your browser does not support automatic installation or the app is already installed.</p>
                      
                      <button 
                         onClick={handleDownloadApk}
@@ -124,7 +124,7 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
                      </button>
 
                      <button onClick={onClose} className="text-blue-500 font-bold text-sm hover:underline flex items-center justify-center gap-1">
-                        Ga direct naar de webversie <ArrowRight size={14}/>
+                        Go directly to web version <ArrowRight size={14}/>
                      </button>
                   </div>
                )}
@@ -133,7 +133,7 @@ export const InstallPage: React.FC<InstallPageProps> = ({ onInstall, installProm
       </div>
       
       <p className="mt-8 text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-         Deze app gebruikt de nieuwste PWA-technologie voor een app-store ervaring direct vanuit je browser.
+         This app uses the latest PWA technology for an app-store experience directly from your browser.
       </p>
     </div>
   );

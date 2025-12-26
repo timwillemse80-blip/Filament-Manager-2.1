@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Printer, Filament } from '../types';
 import { Plus, Edit2, Trash2, Printer as PrinterIcon, X, Save, CircleDashed, ChevronRight, Search, RefreshCw, Disc, Coins, Hourglass, Crown } from 'lucide-react';
@@ -13,7 +12,6 @@ interface PrinterManagerProps {
   onLimitReached?: () => void;
 }
 
-// --- Printer Database ---
 const PRINTER_PRESETS: Record<string, string[]> = {
   "Bambu Lab": ["X1 Carbon", "X1E", "P1S", "P1P", "A1", "A1 Mini"],
   "Creality": [
@@ -269,7 +267,7 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
                            <div key={unitIndex}>
                               <div className="flex items-center gap-2 mb-2">
                                  <CircleDashed size={14} className="text-slate-400" />
-                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">CFS/AMS {unitIndex + 1}</span>
+                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">CFS/AMS Unit {unitIndex + 1}</span>
                               </div>
                               <div className="grid grid-cols-4 gap-2">
                                  {[0, 1, 2, 3].map(offset => renderSlot(printer, (unitIndex * 4) + offset, `Slot ${offset + 1}`))}
@@ -301,8 +299,8 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
                   <button onClick={() => setEditingPrinter(null)} className="text-slate-400 hover:text-white"><X size={24}/></button>
                </div>
                
-               <div className="p-6 overflow-y-auto space-y-4">
-                  <form id="printerForm" onSubmit={handleSubmit} className="space-y-4">
+               <div className="p-6 overflow-y-auto space-y-6">
+                  <form id="printerForm" onSubmit={handleSubmit} className="space-y-6">
                      <div>
                         <label className="text-xs font-bold text-slate-500 uppercase mb-1 block tracking-widest">{t('printerName')}</label>
                         <input 
@@ -310,7 +308,7 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
                            value={editingPrinter.name} 
                            onChange={e => setEditingPrinter({...editingPrinter, name: e.target.value})} 
                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                           placeholder={t('projectNamePlaceholder')}
+                           placeholder={t('printerNamePlaceholder')}
                         />
                      </div>
 
@@ -363,7 +361,7 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-sm"
                                  disabled={!editingPrinter.brand}
                               >
-                                 <option value="">{t('selectMaterial')}</option>
+                                 <option value="">{t('selectModel')}</option>
                                  {editingPrinter.brand && PRINTER_PRESETS[editingPrinter.brand]?.map(m => <option key={m} value={m}>{m}</option>)}
                                  <option value="CUSTOM">{t('otherMaterial')}</option>
                               </select>
@@ -430,37 +428,52 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
                         </div>
                      </div>
 
-                     <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center justify-between">
-                           <label className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('hasAMS')}</label>
-                           <input 
-                              type="checkbox" 
-                              checked={editingPrinter.hasAMS} 
-                              onChange={e => setEditingPrinter({...editingPrinter, hasAMS: e.target.checked})} 
-                              className="w-6 h-6 accent-blue-600 rounded cursor-pointer"
-                           />
+                     <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                           <div>
+                              <label className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('hasAMS')}</label>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-tight">CFS/AMS/Multi-material</p>
+                           </div>
+                           <label className="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                 type="checkbox" 
+                                 checked={editingPrinter.hasAMS} 
+                                 onChange={e => setEditingPrinter({...editingPrinter, hasAMS: e.target.checked, amsCount: e.target.checked ? (editingPrinter.amsCount || 1) : 0})}
+                                 className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                           </label>
                         </div>
 
                         {editingPrinter.hasAMS && (
-                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block tracking-widest">Aantal CFS/AMS units</label>
-                              <div className="flex items-center gap-4">
-                                 <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="4" 
-                                    value={editingPrinter.amsCount || 1} 
-                                    onChange={e => setEditingPrinter({...editingPrinter, amsCount: parseInt(e.target.value)})}
-                                    className="flex-1 accent-blue-600"
-                                 />
-                                 <span className="font-bold text-lg w-8 text-center dark:text-white">{editingPrinter.amsCount || 1}</span>
+                           <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30 space-y-3 animate-fade-in">
+                              <div className="flex items-center justify-between">
+                                 <div>
+                                    <label className="text-xs font-bold text-blue-800 dark:text-blue-300">{t('amsUnits')}</label>
+                                    <p className="text-[10px] text-blue-600/70 dark:text-blue-400/60 uppercase">{t('amsUnitsDesc')}</p>
+                                 </div>
+                                 <div className="flex gap-2">
+                                    {[1, 2, 3, 4].map(num => (
+                                       <button 
+                                          key={num}
+                                          type="button"
+                                          onClick={() => setEditingPrinter({...editingPrinter, amsCount: num})}
+                                          className={`w-10 h-10 rounded-lg font-black transition-all flex items-center justify-center ${editingPrinter.amsCount === num ? 'bg-blue-600 text-white shadow-lg scale-110' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-blue-300'}`}
+                                       >
+                                          {num}
+                                       </button>
+                                    ))}
+                                 </div>
                               </div>
                            </div>
                         )}
                      </div>
 
-                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg mt-4 flex items-center justify-center gap-2">
-                        <Save size={20}/> {t('saveChanges')}
+                     <button 
+                        type="submit" 
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-lg"
+                     >
+                        <Save size={24} /> {t('saveChanges')}
                      </button>
                   </form>
                </div>
@@ -475,7 +488,6 @@ export const PrinterManager: React.FC<PrinterManagerProps> = ({ printers, filame
             onClose={() => setSelectingSlot(null)} 
          />
       )}
-
     </div>
   );
 };

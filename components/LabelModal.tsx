@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Printer, Download, Check, Loader2 } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -25,8 +24,6 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     canvas.width = size;
     canvas.height = size;
 
-    // Gebruik level 'M' voor minder complexiteit (grotere blokjes)
-    // Margin 2 zorgt voor een betere 'quiet zone' voor de scanner
     await QRCode.toCanvas(canvas, text, {
       width: size,
       margin: 2,
@@ -41,10 +38,8 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
     if (ctx) {
       const centerX = size / 2;
       const centerY = size / 2;
-      // Iets kleiner icoon (20% ipv 25%) voor minder dataverlies
       const iconContainerSize = size * 0.20;
       
-      // Teken een witte cirkel achter het icoon voor contrast
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(centerX, centerY, iconContainerSize / 2 + 5, 0, Math.PI * 2);
@@ -57,11 +52,10 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
       ctx.translate(-12, -12);
 
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3; // Iets dikkere lijnen voor het icoon
+      ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // Teken Filament Icoon
       ctx.beginPath();
       ctx.arc(12, 12, 9, 0, Math.PI * 1.6);
       ctx.stroke();
@@ -149,8 +143,8 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
       <div className="w-full max-w-lg flex flex-col items-center">
         
         <div className="text-center mb-8">
-           <h2 className="text-white text-xl font-black mb-1 uppercase tracking-widest">Etiket Preview</h2>
-           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Geoptimaliseerd voor scans</p>
+           <h2 className="text-white text-xl font-black mb-1 uppercase tracking-widest">Label Preview</h2>
+           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Optimized for scanning</p>
         </div>
 
         <div 
@@ -201,7 +195,7 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
             className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg disabled:opacity-70"
           >
             {isGenerating ? <Loader2 size={24} className="animate-spin" /> : <Printer size={24} />}
-            Print naar Labelprinter
+            Print to Label Printer
           </button>
           <button 
             onClick={handleSaveImage}
@@ -209,13 +203,13 @@ export const LabelModal: React.FC<LabelModalProps> = ({ filament, onClose }) => 
             className={`w-full ${isSaved ? 'bg-emerald-600' : 'bg-[#2563eb] hover:bg-[#1d4ed8]'} text-white font-black py-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 text-lg disabled:opacity-70`}
           >
             {isGenerating ? <Loader2 size={24} className="animate-spin" /> : isSaved ? <Check size={24} /> : <Download size={24} />}
-            {isSaved ? 'Opgeslagen!' : 'Opslaan als Afbeelding'}
+            {isSaved ? 'Saved!' : 'Save as Image'}
           </button>
           <button 
             onClick={onClose}
             className="w-full py-3 text-slate-400 hover:text-white font-bold text-sm"
           >
-            Annuleren
+            Cancel
           </button>
         </div>
       </div>

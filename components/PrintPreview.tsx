@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Filament, Printer } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -60,7 +59,7 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ filaments, printers,
         materials: stats.materials
       });
     } catch (e: any) {
-      alert(e.message || "Fout bij laden van bestand.");
+      alert(e.message || t('aiError'));
     } finally {
       setIsParsing(false);
     }
@@ -303,7 +302,7 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ filaments, printers,
                        {allReady ? t('readyToPrint') : t('notReadyToPrint')}
                     </h3>
                     <p className="text-sm opacity-70 dark:text-slate-300">
-                       {allReady ? 'Alle materialen zijn aanwezig in de CFS/AMS.' : t('checkAlertsBelow')}
+                       {allReady ? 'All materials are available in the CFS/AMS.' : t('checkAlertsBelow')}
                     </p>
                  </div>
               </div>

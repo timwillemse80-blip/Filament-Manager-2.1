@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Filament, Location, Supplier, AiSuggestion } from '../types';
 import { 
@@ -79,7 +78,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   }, [spoolWeights, spoolSearch]);
 
   const handleAiScan = async () => {
-    // Check of we native zijn en of de plugin beschikbaar is
     const isNative = Capacitor.isNativePlatform();
     
     if (isNative) {
@@ -103,7 +101,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
       }
     }
 
-    // Fallback voor Web of als Native Plugin faalt
     hiddenFileInputRef.current?.click();
   };
 
@@ -169,7 +166,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.brand || !formData.material || !formData.colorName) {
-        alert("Vul alle verplichte velden in.");
+        alert("Please fill in all required fields.");
         return;
     }
 
@@ -225,7 +222,6 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               </div>
            </div>
            <div className="flex items-center gap-2">
-              {/* Verborgen input voor fallback */}
               <input 
                 type="file" 
                 ref={hiddenFileInputRef} 
@@ -256,8 +252,8 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/50 rounded-3xl flex items-center justify-center mb-4 shadow-xl border border-indigo-200 dark:border-indigo-800">
                     <Loader2 size={40} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
                  </div>
-                 <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-300">Analyseer etiket...</h3>
-                 <p className="text-sm text-indigo-600/70 dark:text-indigo-400/60">Even geduld, Gemini AI leest de gegevens.</p>
+                 <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-300">{t('aiAnalyzing')}</h3>
+                 <p className="text-sm text-indigo-600/70 dark:text-indigo-400/60">{t('aiAnalyzingDesc')}</p>
                  {lastScannedImage && (
                     <img src={lastScannedImage} className="w-32 h-32 object-cover rounded-2xl mt-6 border-4 border-white dark:border-slate-800 shadow-2xl transform rotate-3" />
                  )}
@@ -278,7 +274,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                 value={formData.brand} 
                                 onChange={e => setFormData({...formData, brand: e.target.value})}
                                 className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                                placeholder="Merknaam..."
+                                placeholder="Brand Name..."
                              />
                              <button type="button" onClick={() => setIsCustomBrand(false)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500"><RefreshCw size={18}/></button>
                           </div>
@@ -310,7 +306,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                 value={formData.material} 
                                 onChange={e => setFormData({...formData, material: e.target.value})}
                                 className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                                placeholder="Materiaal..."
+                                placeholder="Material..."
                              />
                              <button type="button" onClick={() => setIsCustomMaterial(false)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500"><RefreshCw size={18}/></button>
                           </div>
@@ -380,7 +376,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                  <div>
                     <div className="flex justify-between items-center mb-1.5">
                        <label className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 block tracking-widest">{t('weightRemainingLabel')}</label>
-                       <button type="button" onClick={() => setShowWeighHelper(true)} className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full hover:bg-blue-500 transition-colors uppercase">Weeg Hulp</button>
+                       <button type="button" onClick={() => setShowWeighHelper(true)} className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full hover:bg-blue-500 transition-colors uppercase">Weigh Helper</button>
                     </div>
                     <input 
                        type="number" 
@@ -395,10 +391,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                  <div className="flex justify-between items-center mb-4">
                     <label className="text-[10px] font-black uppercase text-slate-500 block tracking-widest flex items-center gap-2">
-                       <Thermometer size={14} className="text-red-500" /> Temperaturen
+                       <Thermometer size={14} className="text-red-500" /> Temperatures
                     </label>
                     <button type="button" onClick={handleAutoFillSettings} className="text-[10px] font-bold text-blue-600 uppercase flex items-center gap-1 hover:underline">
-                        <Sparkles size={10} /> AI Suggestie
+                        <Sparkles size={10} /> AI Suggestion
                     </button>
                  </div>
                  <div className="grid grid-cols-2 gap-4">
@@ -431,10 +427,10 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                   >
                      <span className="text-xs font-black uppercase text-slate-500 flex items-center gap-2">
                         {showAdvanced ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                        Extra Details & Opties
+                        Extra Details & Options
                      </span>
                      {(!formData.locationId && !formData.supplierId && !formData.shopUrl && !formData.notes) && (
-                        <span className="text-[10px] font-bold text-slate-400">Optioneel</span>
+                        <span className="text-[10px] font-bold text-slate-400">Optional</span>
                      )}
                   </button>
 
@@ -479,7 +475,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                  value={formData.shortId || ''} 
                                  onChange={e => setFormData({...formData, shortId: e.target.value.toUpperCase()})}
                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white pl-10"
-                                 placeholder="bv. #A1B2"
+                                 placeholder="e.g. #A1B2"
                                  maxLength={10}
                               />
                               <Hash size={18} className="absolute left-3 top-3.5 text-slate-400" />
@@ -516,7 +512,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                  value={formData.notes || ''} 
                                  onChange={e => setFormData({...formData, notes: e.target.value})}
                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white min-h-[80px] pl-10 resize-none"
-                                 placeholder="Extra informatie over deze spoel..."
+                                 placeholder="Additional information about this spool..."
                               />
                               <FileText size={18} className="absolute left-3 top-3.5 text-slate-400" />
                            </div>
@@ -525,7 +521,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                         {!formData.id && (
                            <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800/30">
                               <label className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 mb-2 block tracking-widest flex items-center gap-2">
-                                 <Hash size={14}/> Batch Toevoegen
+                                 <Hash size={14}/> Batch Addition
                               </label>
                               <div className="flex items-center gap-4">
                                  <input 
@@ -538,7 +534,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                                  />
                                  <span className="font-black text-xl w-12 text-center text-amber-600 dark:text-amber-400">{multiSpoolCount}x</span>
                               </div>
-                              <p className="text-[10px] text-amber-600/70 mt-1">Snel meerdere identieke spoelen in één keer toevoegen.</p>
+                              <p className="text-[10px] text-amber-600/70 mt-1">Quickly add multiple identical spools at once.</p>
                            </div>
                         )}
                     </div>
@@ -649,7 +645,7 @@ export const FilamentForm: React.FC<FilamentFormProps> = ({
                              ))
                           ) : (
                              <div className="p-8 text-center text-slate-500 text-sm italic">
-                                Geen spoelen gevonden in de database.
+                                No spools found in database.
                              </div>
                           )}
                        </div>

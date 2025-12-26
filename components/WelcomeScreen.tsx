@@ -14,23 +14,23 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
   const steps = [
     {
       icon: <Package size={48} className="text-blue-500" />,
-      title: "Welkom bij Filament Manager",
-      desc: "De alles-in-één oplossing om je 3D-printer voorraad en projecten georganiseerd te houden."
+      title: "Welcome to Filament Manager",
+      desc: "The all-in-one solution to keep your 3D printer inventory and projects organized."
     },
     {
       icon: <ScanLine size={48} className="text-purple-500" />,
       title: "AI & Scanner",
-      desc: "Scan etiketten met je camera. Onze AI herkent automatisch het merk, materiaal en de kleuren voor je."
+      desc: "Scan labels with your camera. Our AI automatically identifies the brand, material, and colors for you."
     },
     {
       icon: <FileCode size={48} className="text-emerald-500" />,
-      title: "G-code Analyse",
-      desc: "Upload je G-code bestanden om automatisch het verbruik te loggen en de printkosten te berekenen."
+      title: "G-code Analysis",
+      desc: "Upload your G-code files to automatically log consumption and calculate print costs."
     },
     {
       icon: <QrCode size={48} className="text-orange-500" />,
-      title: "Slimme Labels",
-      desc: "Genereer en print QR-codes voor je spoelen. Scan ze later om razendsnel de voorraad bij te werken."
+      title: "Smart Labels",
+      desc: "Generate and print QR codes for your spools. Scan them later to update inventory instantly."
     }
   ];
 
@@ -79,9 +79,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
             className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all transform active:scale-[0.98]"
           >
             {step < steps.length - 1 ? (
-              <>Volgende <ChevronRight size={20} /></>
+              <>Next <ChevronRight size={20} /></>
             ) : (
-              <>Aan de slag <Check size={20} /></>
+              <>Get Started <Check size={20} /></>
             )}
           </button>
 
@@ -90,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onComplete }) => {
               onClick={onComplete}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold"
             >
-              Overslaan
+              Skip
             </button>
           )}
         </div>

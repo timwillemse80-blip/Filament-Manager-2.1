@@ -99,6 +99,7 @@ export const Inventory: React.FC<InventoryProps> = ({
       window.addEventListener('keydown', handleEsc);
     } else {
       document.body.style.overflow = '';
+      // Fixed: Property 'removeOverride' does not exist on type 'Window', changed to removeEventListener
       window.removeEventListener('keydown', handleEsc);
     }
 
@@ -255,7 +256,6 @@ export const Inventory: React.FC<InventoryProps> = ({
         }
      }
 
-     // Web Fallback
      setShowWebCamera(true);
      try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -270,7 +270,7 @@ export const Inventory: React.FC<InventoryProps> = ({
         }
      } catch (err: any) {
         console.error("Web camera error:", err);
-        alert(t('failed') + ": Camera niet toegankelijk.");
+        alert(t('failed') + ": Camera not accessible.");
         setShowWebCamera(false);
      }
   };
@@ -308,7 +308,6 @@ export const Inventory: React.FC<InventoryProps> = ({
       }
     }
 
-    // Web Fallback
     hiddenAiInputRef.current?.click();
   };
 
@@ -377,7 +376,7 @@ export const Inventory: React.FC<InventoryProps> = ({
     else if (percentage <= 35) progressColor = 'bg-orange-500';
     else if (percentage <= 60) progressColor = 'bg-yellow-400';
 
-    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`kopen ${filament.brand} ${filament.material} ${filament.colorName} filament`)}`;
+    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`buy ${filament.brand} ${filament.material} ${filament.colorName} filament`)}`;
     const actionUrl = filament.shopUrl || googleSearchUrl;
     const hasShopUrl = !!filament.shopUrl;
 
@@ -396,7 +395,7 @@ export const Inventory: React.FC<InventoryProps> = ({
 
         {filament.is_ordered && !isSelectionMode && (
            <div className="absolute top-3 right-12 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
-              <Truck size={10} /> BESTELD
+              <Truck size={10} /> ORDERED
            </div>
         )}
 
@@ -487,7 +486,7 @@ export const Inventory: React.FC<InventoryProps> = ({
 
         {material.is_ordered && !isSelectionMode && (
            <div className="absolute top-3 right-3 z-10 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
-              <Truck size={10} /> BESTELD
+              <Truck size={10} /> ORDERED
            </div>
         )}
 
@@ -609,7 +608,7 @@ export const Inventory: React.FC<InventoryProps> = ({
         <button
            onClick={() => onAddClick(activeTab)}
            className="fixed bottom-24 right-6 bg-blue-600 hover:bg-blue-500 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110 active:scale-95 z-[60]"
-           title="Nieuw Item"
+           title="New Item"
         >
            <Plus size={28} />
         </button>,
@@ -674,7 +673,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                   </div>
                </div>
            </div>
-           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title="Selectie Modus">
+           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-2 rounded-lg transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-800'}`} title="Selection Mode">
               <CheckSquare size={20} />
            </button>
         </div>
@@ -762,7 +761,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                      <Plus size={24} />
                   </button>
                   
-                  <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
+                  <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:white'}`} title="Batch selection">
                      <CheckSquare size={24} />
                   </button>
                </div>
@@ -806,7 +805,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                   <div className="max-w-xs">
                      <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{t('materials')} (PRO)</h3>
                      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                        Houd ook je voorraad bij van boutjes, moertjes, lijm, elektronica en andere onderdelen. Alles op één plek.
+                        Track your inventory of bolts, nuts, glue, electronics, and other parts. All in one place.
                      </p>
                   </div>
                   <button 
@@ -838,7 +837,7 @@ export const Inventory: React.FC<InventoryProps> = ({
                            <Plus size={24} />
                         </button>
 
-                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`} title="Batch selection">
+                        <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds(new Set()); }} className={`p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors ${isSelectionMode ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:white'}`} title="Batch selection">
                            <CheckSquare size={24} />
                         </button>
                      </div>
@@ -882,7 +881,6 @@ export const Inventory: React.FC<InventoryProps> = ({
          </div>
       )}
 
-      {/* Hidden inputs for AI Add Scan (Web Fallback) */}
       <input 
         type="file" 
         ref={hiddenAiInputRef} 
@@ -892,7 +890,6 @@ export const Inventory: React.FC<InventoryProps> = ({
         onChange={handleAiFileChange} 
       />
 
-      {/* --- WEB CAMERA OVERLAY for Quick Scan --- */}
       {showWebCamera && (
          <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
             <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden">
@@ -903,7 +900,6 @@ export const Inventory: React.FC<InventoryProps> = ({
                   className="h-full w-full object-cover"
                />
                
-               {/* Scanning Overlay Visual */}
                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                   <div className="w-72 h-72 border-2 border-white/50 rounded-[40px] relative overflow-hidden">
                      <div className="absolute top-0 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-scanner-scan" />

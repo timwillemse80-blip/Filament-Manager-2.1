@@ -16,16 +16,13 @@ export const FeedbackPage = () => {
     setIsSending(true);
     setStatus('idle');
 
-    // Get Technical Info
-    const appVersion = localStorage.getItem('app_version') || 'Onbekend';
+    const appVersion = localStorage.getItem('app_version') || 'Unknown';
     const platform = Capacitor.getPlatform();
     const userAgent = navigator.userAgent;
 
-    // Append tech info to message for DB (optional, useful for debugging)
     const fullMessage = `${message}\n\n[System Info]\nVersion: ${appVersion}\nPlatform: ${platform}`;
 
     try {
-      // 1. Try sending to Supabase
       const { error } = await supabase.from('feedback').insert({
         message: fullMessage,
         rating,
@@ -43,35 +40,31 @@ export const FeedbackPage = () => {
       setMessage('');
       setRating(0);
       
-      // Mark feedback as given locally so the prompt stops appearing
       localStorage.setItem('feedback_status', 'given');
 
     } catch (e: any) {
       console.error("Feedback failed:", e);
       
-      let errorMsg = "Kon feedback niet opslaan in database.";
+      let errorMsg = "Could not save feedback to database.";
       
-      // Check specific error codes/messages
       if (e.message && (e.message.includes('does not exist') || e.code === '42P01')) {
-          errorMsg = "De database tabel 'feedback' bestaat nog niet. \n\nGa naar Admin Dashboard -> Feedback tab voor de installatie-code.";
+          errorMsg = "The database table 'feedback' does not exist yet. \n\nGo to Admin Dashboard -> Feedback tab for the installation code.";
       } else if (e.message && e.message.includes('Could not find the') && e.message.includes('column')) {
-          errorMsg = "De database tabel is verouderd (mist kolommen). \n\nGa naar Admin Dashboard -> Feedback tab en voer de SQL code opnieuw uit om de tabel te updaten.";
+          errorMsg = "The database table is outdated (missing columns). \n\nGo to Admin Dashboard -> Feedback tab and run the SQL code again to update the table.";
       } else if (e.message && e.message.includes('policy')) {
-          errorMsg = "Geen rechten om feedback te sturen (RLS Policy fout).";
+          errorMsg = "No permissions to send feedback (RLS Policy error).";
       } else if (e.message) {
-          // Show raw error for debugging
-          errorMsg += `\nFoutmelding: ${e.message}`;
+          errorMsg += `\nError: ${e.message}`;
       }
 
-      // Fallback: Open Mail Client
-      if (confirm(`${errorMsg}\n\nWil je in plaats daarvan je mail-app openen?`)) {
+      if (confirm(`${errorMsg}\n\nWould you like to open your mail app instead?`)) {
          const subject = encodeURIComponent(`Feedback Filament Manager`);
          
          const bodyContent = `
 ${message}
 
 --------------------------------
-App-versie: ${appVersion}
+App Version: ${appVersion}
 Platform: ${platform}
 Rating: ${rating}/5
 --------------------------------
@@ -84,7 +77,7 @@ Rating: ${rating}/5
          } else {
             window.open(`mailto:info@filamentmanager.nl?subject=${subject}&body=${body}`);
          }
-         setStatus('success'); // Mark as handled because sent via mail
+         setStatus('success');
          localStorage.setItem('feedback_status', 'given');
       } else {
          setStatus('error');
@@ -129,7 +122,7 @@ Rating: ${rating}/5
             {status === 'error' && (
                <div className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 p-4 rounded-xl flex items-center gap-3 animate-fade-in">
                   <AlertCircle size={24} />
-                  <span className="font-bold">Er ging iets mis. Probeer het later opnieuw.</span>
+                  <span className="font-bold">Something went wrong. Please try again later.</span>
                </div>
             )}
 
