@@ -820,6 +820,14 @@ const AppContent = () => {
     reader.readAsText(file);
   };
 
+  const handleExitApp = () => {
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.exitApp();
+    } else {
+      setShowExitConfirm(false);
+    }
+  };
+
   const totalLowStock = filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= settings.lowStockThreshold).length + materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
   const editingFilament = useMemo(() => filaments.find(f => f.id === editingId), [editingId, filaments]);
   const editingMaterial = useMemo(() => materials.find(m => m.id === editingId), [editingId, materials]);
@@ -886,7 +894,33 @@ const AppContent = () => {
            {view === 'feedback' && <FeedbackPage />}
            {view === 'print-preview' && <PrintPreview filaments={filaments} printers={printers} onNavigate={setView} />}
         </PullToRefresh>
+
+        {/* System Back Toast */}
+        {showBackToast && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] bg-slate-900/90 backdrop-blur text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-2xl animate-fade-in border border-slate-700">
+             Press back again to exit
+          </div>
+        )}
       </main>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              <div className="p-8 text-center">
+                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <LogOut size={32} />
+                 </div>
+                 <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Exit App?</h3>
+                 <p className="text-slate-500 dark:text-slate-400">Are you sure you want to close Filament Manager?</p>
+              </div>
+              <div className="p-6 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+                 <button onClick={() => setShowExitConfirm(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-slate-700">Cancel</button>
+                 <button onClick={handleExitApp} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20">Exit App</button>
+              </div>
+           </div>
+        </div>
+      )}
 
       {showModal && <FilamentForm initialData={editingFilament || aiPreFill} locations={locations} suppliers={suppliers} existingBrands={existingBrands} spoolWeights={spoolWeights} onSave={handleSaveFilament} onSaveLocation={() => fetchData()} onSaveSupplier={() => fetchData()} onCancel={() => { setShowModal(false); setEditingId(null); setAiPreFill(null); }} isAdmin={isAdmin} />}
       {showLabelOnly && editingFilament && <LabelModal filament={editingFilament} onClose={() => { setShowLabelOnly(false); setEditingId(null); }} />}
