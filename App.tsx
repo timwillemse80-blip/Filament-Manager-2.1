@@ -24,6 +24,7 @@ import { NotificationPage } from './components/NotificationPage';
 import { PrintPreview } from './components/PrintPreview';
 import { LabelModal } from './components/LabelModal';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { UpdateModal } from './components/UpdateModal';
 import { Package, Plus, MapPin, Truck, Settings as SettingsIcon, Bell, Menu, X, ShoppingCart, LogOut, AlertTriangle, Download, RefreshCw, PartyPopper, WifiOff, History, CheckCircle2, Printer as PrinterIcon, LayoutDashboard, Sparkles, ChevronLeft, Lock, ShieldCheck, Coffee, Snowflake, MessageSquare, ThumbsUp, Clock, Globe, PanelLeftClose, PanelLeftOpen, Crown, Hammer, LifeBuoy, Star, Box, AlertCircle, HardHat, Shield, QrCode, ArrowLeft } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { Capacitor } from '@capacitor/core';
@@ -267,6 +268,7 @@ const AppContent = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false); 
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{ version: string, notes: string, downloadUrl?: string } | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   
   const [showBackToast, setShowBackToast] = useState(false);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -278,9 +280,40 @@ const AppContent = () => {
   const [previewFilters, setPreviewFilters] = useState<string[]>([]);
   const [publicViewData, setPublicViewData] = useState<{ filaments: Filament[], name?: string, filters?: string[] } | null>(null);
 
+  // Apply theme to document root
   useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('filament_settings', JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    const fetchUpdates = async () => {
+      try {
+        const resp = await fetch('/version.json');
+        const data = await resp.json();
+        if (data && data.version) {
+          setUpdateInfo({
+            version: data.version,
+            notes: data.releaseNotes,
+            downloadUrl: data.downloadUrl
+          });
+          
+          // Check of we dit als gelezen hebben gemarkeerd
+          const readStatus = localStorage.getItem(`update_read_${data.version}`);
+          if (readStatus !== 'true') {
+             setShowUpdateModal(true);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch version info", e);
+      }
+    };
+    fetchUpdates();
+  }, []);
 
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
@@ -865,6 +898,7 @@ const AppContent = () => {
       {showShowcaseModal && isPremium && <ShowcaseModal filaments={filaments} settings={settings} onUpdateSettings={setSettings} onClose={() => setShowShowcaseModal(false)} onPreview={(filters) => { setPreviewFilters(filters); setShowShowcasePreview(true); }} userId={session.user.id} />}
       {showShowcasePreview && <ShowcasePreview filaments={filaments} onClose={() => setShowShowcasePreview(false)} publicName={settings.showcasePublicName} initialFilters={previewFilters} isAdminPreview={true} />}
       {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
+      {showUpdateModal && updateInfo && <UpdateModal version={updateInfo.version} notes={updateInfo.notes} downloadUrl={updateInfo.downloadUrl} onClose={(dontShowAgain) => { if(dontShowAgain) localStorage.setItem(`update_read_${updateInfo.version}`, 'true'); setShowUpdateModal(false); }} />}
     </div>
   );
 };

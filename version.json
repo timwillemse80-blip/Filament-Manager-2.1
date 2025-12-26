@@ -1,5 +1,5 @@
 {
-  "version": "2.1.25",
+  "version": "2.1.35",
   "downloadUrl": "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases",
-  "releaseNotes": "Download link hersteld naar de juiste GitHub repository (timwillemse80-blip). Dit lost de 404 melding op."
+  "releaseNotes": "The camera finally works for real! 📸 \n\nIMPORTANT: To use the camera scanner, you must download the latest APK file. The web version (browser) has limited camera access. Tap the download button below to update your app."
 }

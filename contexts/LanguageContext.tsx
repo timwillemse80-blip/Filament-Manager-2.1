@@ -23,6 +23,7 @@ const translations: Record<Language, Record<string, string>> = {
     aiCameraUnavailable: "AI camera temporarily unavailable",
     aiCameraUnavailableDesc: "We are working hard to improve AI features. This feature will be fully available again in a future update!",
     aiScanLabel: "Scan Label with AI",
+    aiAdd: "AI Add",
     aiAnalyzing: "AI is analyzing the label...",
     aiSuccess: "Label analyzed successfully!",
     aiError: "AI could not recognize the label. Please enter data manually.",
@@ -105,6 +106,14 @@ const translations: Record<Language, Record<string, string>> = {
     slot: "Slot",
     confirmDelete: "Are you sure you want to delete this?",
     
+    // Sorting
+    sortNameAsc: "Name (A-Z)",
+    sortNameDesc: "Name (Z-A)",
+    sortWeightAsc: "Weight (Low-High)",
+    sortWeightDesc: "Weight (High-Low)",
+    sortDateNew: "Purchase Date (Newest)",
+    sortDateOld: "Purchase Date (Oldest)",
+
     // Feedback Page Specific
     feedbackTitle: "Your opinion matters!",
     feedbackSubtitle: "Help us improve the app by sharing your experience.",

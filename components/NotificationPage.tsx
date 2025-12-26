@@ -1,13 +1,23 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Bell, Info, ShieldCheck, History, Zap, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, Bell, Info, ShieldCheck, History, Zap, CheckCircle2, Smartphone, Download } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Capacitor } from '@capacitor/core';
 
 interface NotificationPageProps {
-  updateInfo: { version: string, notes: string } | null;
+  updateInfo: { version: string, notes: string, downloadUrl?: string } | null;
 }
 
 export const NotificationPage: React.FC<NotificationPageProps> = ({ updateInfo }) => {
   const { t } = useLanguage();
+
+  const handleDownload = () => {
+    const url = updateInfo?.downloadUrl || "https://github.com/timwillemse80-blip/Filament-Manager-2.1/releases";
+    if (Capacitor.isNativePlatform()) {
+      window.open(url, '_system');
+    } else {
+      window.open(url, '_blank');
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-20 pt-4 px-4">
@@ -55,14 +65,24 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ updateInfo }
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 mb-3 flex items-center gap-2">
                 <History size={14} /> {t('whatsNew')}
               </h4>
-              <p className="text-base leading-relaxed font-medium">
+              <p className="text-base leading-relaxed font-medium whitespace-pre-line">
                 {updateInfo.notes}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-blue-200/80 text-xs font-bold justify-center pt-2">
-               <CheckCircle2 size={14} className="text-emerald-400" />
-               {t('autoUpdateMsg')}
+            <div className="space-y-4">
+                <button 
+                    onClick={handleDownload}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg active:scale-[0.98]"
+                >
+                    <Smartphone size={24} />
+                    Download Latest APK
+                </button>
+                
+                <div className="flex items-center gap-2 text-blue-200/80 text-xs font-bold justify-center pt-2">
+                   <CheckCircle2 size={14} className="text-emerald-400" />
+                   {t('autoUpdateMsg')}
+                </div>
             </div>
             
             <p className="text-[10px] text-center text-blue-200/60 font-bold uppercase tracking-widest">

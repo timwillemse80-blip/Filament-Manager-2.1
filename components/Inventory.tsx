@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Filament, Location, Supplier, OtherMaterial, AiSuggestion } from '../types';
@@ -84,10 +83,11 @@ export const Inventory: React.FC<InventoryProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [isAiAdding, setIsAiAdding] = useState(false);
   
-  // Web Camera State
-  const [showWebCamera, setShowWebCamera] = useState(false);
+  // Camera Refs
+  const hiddenAiInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showWebCamera, setShowWebCamera] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -275,32 +275,52 @@ export const Inventory: React.FC<InventoryProps> = ({
      }
   };
 
-  const handleAiAddScan = async () => {
+  const processAiImage = async (base64Data: string) => {
+    setIsAiAdding(true);
     try {
-      const image = await CapacitorCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt,
-        width: 1200,
-        correctOrientation: true
-      });
+      const suggestion = await analyzeSpoolImage(base64Data);
+      onAddClick('filament', suggestion);
+    } catch (e: any) {
+      alert(t('aiError') + "\n\n" + e.message);
+    } finally {
+      setIsAiAdding(false);
+    }
+  };
 
-      if (image.base64String) {
-        setIsAiAdding(true);
-        try {
-          const suggestion = await analyzeSpoolImage(image.base64String);
-          onAddClick('filament', suggestion);
-        } catch (e: any) {
-          alert(t('aiError') + "\n\n" + e.message);
-        } finally {
-          setIsAiAdding(false);
+  const handleAiAddScan = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const image = await CapacitorCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Prompt,
+          width: 1200,
+          correctOrientation: true
+        });
+
+        if (image.base64String) {
+          processAiImage(image.base64String);
         }
+        return;
+      } catch (error: any) {
+        if (error.message?.includes('User cancelled')) return;
       }
-    } catch (error: any) {
-      if (!error.message?.includes('User cancelled')) {
-        console.error('AI Scan Error:', error);
-      }
+    }
+
+    // Web Fallback
+    hiddenAiInputRef.current?.click();
+  };
+
+  const handleAiFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = (event.target?.result as string).split(',')[1];
+        processAiImage(base64);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -728,10 +748,10 @@ export const Inventory: React.FC<InventoryProps> = ({
                     onClick={handleAiAddScan}
                     disabled={isAiAdding}
                     className="p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50"
-                    title="AI Scan & Voeg toe"
+                    title="AI Scan & Add"
                   >
                     {isAiAdding ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} className="group-hover:rotate-12 transition-transform" />}
-                    <span className="hidden md:inline font-bold">AI Toevoegen</span>
+                    <span className="hidden md:inline font-bold">{t('aiAdd')}</span>
                   </button>
 
                   <button 
@@ -861,6 +881,16 @@ export const Inventory: React.FC<InventoryProps> = ({
             </button>
          </div>
       )}
+
+      {/* Hidden inputs for AI Add Scan (Web Fallback) */}
+      <input 
+        type="file" 
+        ref={hiddenAiInputRef} 
+        accept="image/*" 
+        capture="environment" 
+        className="hidden" 
+        onChange={handleAiFileChange} 
+      />
 
       {/* --- WEB CAMERA OVERLAY for Quick Scan --- */}
       {showWebCamera && (

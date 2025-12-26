@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { AppSettings, Filament, Location, Supplier } from '../types';
 import { Moon, Sun, AlertTriangle, Clock, Download, Upload, RefreshCw, Info, Smartphone, Loader2, Shield, Calculator, Globe, Eye, Copy, Check, Trash2, Undo2, LayoutGrid, Bell, Database, User, Cpu, Coffee, ExternalLink, Percent, ArrowUpFromLine, Snowflake, Filter, Share2, MessageCircle, Crown, Lock, X, LogOut, Settings2, LifeBuoy, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
@@ -338,16 +337,14 @@ export const Settings: React.FC<SettingsProps> = ({
                            </div>
                         </div>
                         
-                        {!Capacitor.isNativePlatform() && (
-                           <button 
-                              onClick={handleDownloadApk}
-                              disabled={isDownloading}
-                              className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-3 py-2 rounded-lg text-xs font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors shadow-sm"
-                           >
-                              {isDownloading ? <Loader2 size={14} className="animate-spin"/> : <Smartphone size={14} />}
-                              APK
-                           </button>
-                        )}
+                        <button 
+                            onClick={handleDownloadApk}
+                            disabled={isDownloading}
+                            className="flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                        >
+                            {isDownloading ? <Loader2 size={16} className="animate-spin"/> : <Smartphone size={16} />}
+                            Download APK
+                        </button>
                      </div>
 
                      {/* Help & Contact Expandable Section */}
