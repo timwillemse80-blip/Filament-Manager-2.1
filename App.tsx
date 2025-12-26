@@ -313,6 +313,7 @@ const AppContent = () => {
     fetchUpdates();
   }, []);
 
+  // Update refs to reflect current state in Capacitor listeners
   const viewRef = useRef(view);
   const isSidebarOpenRef = useRef(isSidebarOpen);
   const showModalRef = useRef(showModal);
@@ -322,6 +323,9 @@ const AppContent = () => {
   const showShowcasePreviewRef = useRef(showShowcasePreview);
   const showWelcomeRef = useRef(showWelcome);
   const showExitConfirmRef = useRef(showExitConfirm);
+  const showUpdateModalRef = useRef(showUpdateModal);
+  const showPrivacyRef = useRef(showPrivacy);
+  const showLabelOnlyRef = useRef(showLabelOnly);
   const activeGroupKeyRef = useRef(activeGroupKey);
   const viewingJobRef = useRef(viewingJob);
   const lastBackPressRef = useRef<number>(0);
@@ -336,9 +340,12 @@ const AppContent = () => {
     showShowcasePreviewRef.current = showShowcasePreview;
     showWelcomeRef.current = showWelcome;
     showExitConfirmRef.current = showExitConfirm;
+    showUpdateModalRef.current = showUpdateModal;
+    showPrivacyRef.current = showPrivacy;
+    showLabelOnlyRef.current = showLabelOnly;
     activeGroupKeyRef.current = activeGroupKey;
     viewingJobRef.current = viewingJob;
-  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, activeGroupKey, viewingJob]);
+  }, [view, isSidebarOpen, showModal, showMaterialModal, showProModal, showShowcaseModal, showShowcasePreview, showWelcome, showExitConfirm, showUpdateModal, showPrivacy, showLabelOnly, activeGroupKey, viewingJob]);
 
   useEffect(() => {
     const search = window.location.search || (window.location.hash.includes('?') ? window.location.hash.substring(window.location.hash.indexOf('?')) : '');
@@ -353,39 +360,8 @@ const AppContent = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    const handleInboundUrl = (url: string) => {
-      let code = null;
-      if (url.startsWith('filament://')) {
-        code = url.split('://')[1]?.split(/[?&]/)[0]?.toUpperCase();
-      } 
-      
-      if (url.includes('code=')) {
-        const urlObj = new URL(url);
-        const searchParams = urlObj.searchParams;
-        code = searchParams.get('code')?.toUpperCase();
-        
-        if (!code && url.includes('#')) {
-           const hashSearch = url.substring(url.indexOf('?'));
-           code = new URLSearchParams(hashSearch).get('code')?.toUpperCase();
-        }
-      }
-
-      if (code) {
-         setPendingScanCode(code);
-      }
-    };
-
-    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
-      handleInboundUrl(data.url);
-    });
-
-    CapacitorApp.getLaunchUrl().then(data => {
-      if (data && data.url) {
-        handleInboundUrl(data.url);
-      }
-    });
-
     const backButtonListener = CapacitorApp.addListener('backButton', () => {
+      // 1. Prioriteit: Modals sluiten
       if (showExitConfirmRef.current) {
         setShowExitConfirm(false);
         return;
@@ -393,6 +369,14 @@ const AppContent = () => {
       if (showWelcomeRef.current) {
         setShowWelcome(false);
         return;
+      }
+      if (showUpdateModalRef.current) {
+         setShowUpdateModal(false);
+         return;
+      }
+      if (showPrivacyRef.current) {
+         setShowPrivacy(false);
+         return;
       }
       if (showProModalRef.current) {
         setShowProModal(false);
@@ -418,23 +402,36 @@ const AppContent = () => {
         setEditingId(null);
         return;
       }
+      if (showLabelOnlyRef.current) {
+         setShowLabelOnly(false);
+         setEditingId(null);
+         return;
+      }
       if (viewingJobRef.current) {
         setViewingJob(null);
         return;
       }
+
+      // 2. Prioriteit: Zijmenu (Sidebar) sluiten
       if (isSidebarOpenRef.current) {
         setSidebarOpen(false);
         return;
       }
+
+      // 3. Prioriteit: Inventory groep-weergave terug naar overzicht
       if (viewRef.current === 'inventory' && activeGroupKeyRef.current) {
         setActiveGroupKey(null);
         return;
       }
+
+      // 4. Prioriteit: Terug naar dashboard vanaf andere views
       if (viewRef.current !== 'dashboard') {
         setView('dashboard');
         lastBackPressRef.current = 0;
         return;
       }
+
+      // 5. Prioriteit: Afsluiten vanaf Dashboard (Double-tap logica)
       if (viewRef.current === 'dashboard') {
         const now = Date.now();
         const BACK_PRESS_TIMEOUT = 2000;
@@ -451,6 +448,18 @@ const AppContent = () => {
       }
     });
 
+    const urlListener = CapacitorApp.addListener('appUrlOpen', data => {
+      let code = null;
+      if (data.url.startsWith('filament://')) {
+        code = data.url.split('://')[1]?.split(/[?&]/)[0]?.toUpperCase();
+      } 
+      if (data.url.includes('code=')) {
+        const urlObj = new URL(data.url);
+        code = urlObj.searchParams.get('code')?.toUpperCase();
+      }
+      if (code) setPendingScanCode(code);
+    });
+
     return () => {
       backButtonListener.then(l => l.remove());
       urlListener.then(l => l.remove());
@@ -464,8 +473,6 @@ const AppContent = () => {
           setEditingId(match.id);
           setShowModal(true);
           setView('inventory');
-       } else {
-          console.warn("Scan code matched no inventory items:", pendingScanCode);
        }
        setPendingScanCode(null);
     }
@@ -536,11 +543,7 @@ const AppContent = () => {
             table: 'profiles',
             filter: `id=eq.${s.user.id}`
           }, payload => {
-            const wasPro = isPro;
             setIsPro(payload.new.is_pro);
-            if (payload.new.is_pro && !wasPro) {
-               alert("Congratulations! Your account has just been upgraded to PRO.");
-            }
           })
           .subscribe();
       }
@@ -849,9 +852,9 @@ const AppContent = () => {
       </aside>
 
       {isSidebarOpen && (
-        <div className="lg:hidden inset-0 z-40 flex fixed">
+        <div className="lg:hidden inset-0 z-[100] flex fixed">
           <div className="bg-black/60 inset-0 backdrop-blur-sm fixed" onClick={() => setSidebarOpen(false)}></div>
-          <div className="bg-white dark:bg-slate-950 w-80 h-full relative">
+          <div className="bg-white dark:bg-slate-950 w-80 h-full relative animate-slide-in-left">
             <SidebarContent 
               view={view} setView={setView} filaments={filaments} lowStockCount={totalLowStock} onClose={() => setSidebarOpen(false)} t={t} isAdmin={isAdmin} isPremium={isPremium}
               onBecomePro={() => setShowProModal(true)} onOpenShowcase={() => setShowShowcaseModal(true)} adminBadgeCount={adminBadgeCount} avgRating={avgRating} 
@@ -915,7 +918,7 @@ const AppContent = () => {
                  <p className="text-slate-500 dark:text-slate-400">Are you sure you want to close Filament Manager?</p>
               </div>
               <div className="p-6 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                 <button onClick={() => setShowExitConfirm(false)} className="flex-1 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-slate-700">Cancel</button>
+                 <button onClick={() => setShowExitConfirm(false)} className="flex-1 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-slate-700">Cancel</button>
                  <button onClick={handleExitApp} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-500/20">Exit App</button>
               </div>
            </div>
