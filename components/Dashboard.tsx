@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { Filament, PrintJob, OtherMaterial } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
@@ -14,7 +13,7 @@ interface DashboardProps {
   isSnowEnabled?: boolean;
   onInspectItem?: (id: string) => void;
   onBecomePro?: () => void;
-  threshold?: number; // Nieuwe prop voor de drempelwaarde uit instellingen
+  threshold?: number; 
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4'];
@@ -112,13 +111,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
     return map;
   }, [filaments]);
 
-  // Added useMemo to the React import to fix compilation errors on lines 116 and 120.
-  // Berekening van lage voorraad, exclusief items die al besteld zijn
   const lowStockFilaments = useMemo(() => {
     return filaments.filter(f => !f.is_ordered && (f.weightRemaining / f.weightTotal) * 100 <= threshold);
   }, [filaments, threshold]);
 
-  // Added useMemo to the React import to fix compilation errors on lines 116 and 120.
   const lowStockMaterialsCount = useMemo(() => {
     return materials.filter(m => !m.is_ordered && m.minStock && m.quantity <= m.minStock).length;
   }, [materials]);
@@ -189,9 +185,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
       
       return (
         <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg shadow-xl z-50">
-          <p className="text-white font-bold text-sm">{label || payload[0].name}</p>
+          <p className="text-white font-bold text-sm">{String(label || payload[0].name)}</p>
           <p className="text-blue-400 text-sm">
-            {isCurrency ? '€' : ''}{payload[0].value.toFixed(isCurrency ? 2 : 0)}{data.pct ? '%' : ''}
+            {isCurrency ? '€' : ''}{Number(payload[0].value).toFixed(isCurrency ? 2 : 0)}{data.pct ? '%' : ''}
           </p>
           {data.extraStock > 0 && (
              <p className="text-xs text-green-400 mt-1 font-medium">
@@ -313,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                       verticalAlign="bottom" 
                       height={36} 
                       iconType="circle"
-                      formatter={(value) => <span className="text-slate-600 dark:text-slate-300 ml-1">{value}</span>}
+                      formatter={(value) => <span className="text-slate-600 dark:text-slate-300 ml-1">{String(value)}</span>}
                    />
                  </PieChart>
                </ResponsiveContainer>
@@ -450,7 +446,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ filaments, materials = [],
                            iconType="circle"
                            formatter={(value, entry: any) => (
                               <span className="text-slate-600 dark:text-slate-300 font-medium ml-1">
-                                 {value}: <span className="font-bold">{entry.payload.value}</span>
+                                 {String(value)}: <span className="font-bold">{entry.payload.value}</span>
                               </span>
                            )}
                         />

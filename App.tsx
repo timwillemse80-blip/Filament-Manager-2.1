@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Filament, Location, Supplier, AppSettings, PrintJob, Printer, ViewState, OtherMaterial, AiSuggestion } from './types';
 import { Inventory } from './components/Inventory';
@@ -36,7 +35,7 @@ import { DISCORD_INVITE_URL } from './constants';
 
 const generateShortId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
-const APP_VERSION = "2.1.34"; 
+const APP_VERSION = "2.1.35"; 
 const ADMIN_EMAILS = ["timwillemse@hotmail.com"];
 
 interface NavButtonProps {

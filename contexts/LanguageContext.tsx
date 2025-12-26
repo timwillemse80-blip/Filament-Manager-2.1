@@ -1,10 +1,24 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type Language = 'en';
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
+    // View Titles (Mapping ViewState keys)
+    dashboard: "Dashboard",
+    inventory: "Inventory",
+    history: "Print History",
+    printers: "Printers",
+    shopping: "Shopping List",
+    settings: "Settings",
+    notifications: "Notifications",
+    admin: "Admin Dashboard",
+    support: "Support Project",
+    feedback: "Feedback",
+    help: "Help & Contact",
+    install: "Install App",
+    'print-preview': "Print Preview",
+
     // AI Alert
     aiCameraUnavailable: "AI camera temporarily unavailable",
     aiCameraUnavailableDesc: "We are working hard to improve AI features. This feature will be fully available again in a future update!",
@@ -34,14 +48,10 @@ const translations: Record<Language, Record<string, string>> = {
     featureExportDesc: "Export your full print history to CSV for Excel.",
 
     // Menu & Tabs
-    inventory: "Inventory",
     filaments: "Filaments",
     materials: "Materials",
     locations: "Locations",
     suppliers: "Suppliers",
-    printers: "Printers",
-    shopping: "Shopping List",
-    settings: "Settings",
     logout: "Logout",
     menu: "Menu",
     menuManagement: "Management",
@@ -49,18 +59,13 @@ const translations: Record<Language, Record<string, string>> = {
     menuPremium: "Premium",
     loggedInAs: "Logged in as",
     madeBy: "Made by",
-    feedback: "Feedback",
     printHistory: "Logbook",
-    dashboard: "Dashboard",
     supportTitle: "Support Project",
-    admin: "Admin Dashboard",
     becomePro: "Upgrade to PRO",
-    help: "Help & Contact",
     userRatingText: "Users rate us with a",
     showcaseTitle: "Showcase",
     spools: "Spools & Weights",
     requests: "Requests",
-    notifications: "Notifications",
     labels: "Print Labels",
     printPreview: "Print Preview",
     
@@ -309,6 +314,7 @@ const translations: Record<Language, Record<string, string>> = {
     winterEditionDesc: "Let it snow in the app!",
     aboutApp: "About the app",
     proComingSoonMsg: "This feature will be available soon for PRO members.",
+    version: "Version",
     
     // Support Page
     supportPageTitle: "Support this project",
